@@ -51,11 +51,16 @@ export interface AttendanceRecordRow {
   /** 最後修改者姓名 / 時間（tooltip 用） */
   adjustedBy: string;
   adjustedAt: string;
-  /** 有上班卡、沒有下班卡、且已過當天（系統不再自動補下班卡的異常情形也會落在這裡） */
+  /**
+   * 本人沒打下班卡：系統補的（isClockOutAuto），或已過當天仍空著（非工作日 / 全日請假，系統不補）。
+   * 清單一律標「未打下班卡」：紅字＝待 HR 處理；HR 於編輯填寫備註（原因）後轉綠字，見 missingClockOutResolved
+   */
   isMissingClockOut: boolean;
+  /** 「未打下班卡」已由 HR 於編輯填寫原因（備註非空）→ 綠字留存 */
+  missingClockOutResolved: boolean;
   /** 該日打卡時勾選為出差 */
   isBusinessTrip: boolean;
-  /** 管理者填寫的備註（僅編輯表單使用，清單不顯示） */
+  /** 管理者填寫的備註；「未打下班卡」的列視為 HR 填寫的原因，顯示於下班欄下方 */
   remark: string;
   /** 遲到 / 早退（四週彈性工時切換後由後端於打卡時判定，出差當日恆 false） */
   isLate: boolean;
@@ -289,9 +294,8 @@ export class AttendanceReport implements OnInit {
             isManuallyAdjusted: !!r.isManuallyAdjusted,
             adjustedBy: r.adjustedByName ?? '',
             adjustedAt: r.adjustedAt ? new Date(r.adjustedAt).toLocaleString('zh-TW', {hour12: false}) : '',
-            // 有上班卡卻沒下班卡的過去日期：系統對異常的上班時間（凌晨、非工作日）不再自動補下班卡，需管理者補正
-            isMissingClockOut: !!r.clockInTime && !r.clockOutTime && r.rowKind !== 'absent'
-              && !!r.recordDate && new Date(r.recordDate) < new Date(new Date().toDateString()),
+            isMissingClockOut: this.isMissingClockOut(r),
+            missingClockOutResolved: !!(r.remark ?? '').trim(),
             isBusinessTrip: !!r.isBusinessTrip,
             remark: r.remark ?? '',
             isLate: !!r.isLate,
@@ -345,6 +349,17 @@ export class AttendanceReport implements OnInit {
    * 下班打卡原因的標籤：早退 → 早退原因；出差當日（早退／逾時皆不判定、原因非必填）→ 下班說明；其餘 → 逾時原因。
    * 後端只存一欄 ClockOutReason，未另存「逾時」旗標，故以 isEarlyLeave / isBusinessTrip 推回當時的情境。
    */
+  /**
+   * 本人沒打下班卡：系統於登入時補上的，或已過當天仍空著（非工作日 / 全日請假時系統不補）。
+   * 畫面 badge 與 Excel 備註共用此判定。
+   */
+  private isMissingClockOut(r: any): boolean {
+    if (r.rowKind === 'absent' || r.rowKind === 'leave') return false;
+    if (r.isClockOutAuto) return true;
+    return !!r.clockInTime && !r.clockOutTime
+      && !!r.recordDate && new Date(r.recordDate) < new Date(new Date().toDateString());
+  }
+
   private clockOutReasonLabel(r: any): string {
     if (r.isEarlyLeave) return '早退原因';
     if (r.isBusinessTrip) return '下班說明';
@@ -541,7 +556,9 @@ export class AttendanceReport implements OnInit {
           // 兩種虛擬列（請假 / 缺勤）匯出後仍需分辨得出來；出差與逾時註記與畫面 badge 同源
           '備註': [
             r.isManuallyAdjusted ? `管理者已修正${r.adjustedByName ? '（' + r.adjustedByName + '）' : ''}` : '',
-            (r.clockInTime && !r.clockOutTime && r.rowKind === 'clock') ? '未打下班卡' : '',
+            this.isMissingClockOut(r)
+              ? (r.remark?.trim() ? `未打下班卡（已註記原因：${r.remark.trim()}）` : '未打下班卡（待處理）')
+              : '',
             r.rowKind === 'absent' ? '缺勤（未打卡未請假）' : '',
             r.rowKind === 'leave' ? '請假（未打卡）' : '',
             (!r.clockInTime && r.expectedStart && r.rowKind === 'clock') ? '未打上班卡' : '',

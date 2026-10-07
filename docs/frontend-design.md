@@ -1688,7 +1688,9 @@ fetch(`/assets/fonts/NotoSansTC-Regular.subset.ttf?v=${FONT_SUBSET_VERSION}`)
 | 請假 | 請假 | `bg-primary-subtle text-primary` | `rowKind === 'leave'`（當日只有請假、無打卡） |
 | 缺勤 | 請假 | `bg-danger-subtle text-danger` | `rowKind === 'absent'`（工作日無打卡且無請假） |
 | 未打卡 | 請假 | `bg-danger-subtle text-danger` | `isMissingClockIn`（有應出勤時段卻無上班時間，例如只請半天卻整天沒打卡） |
-| 系統補卡 | 上班 / 下班 | `bg-warning-subtle text-warning-emphasis` | `isClockInAuto` / `isClockOutAuto`（登入時系統代打） |
+| 系統補卡 | 上班 | `bg-warning-subtle text-warning-emphasis` | `isClockInAuto`（登入時系統代打） |
+| 未打下班卡（待處理） | 下班 | `bg-danger-subtle text-danger` | `isMissingClockOut && !missingClockOutResolved`（系統補的下班卡 `isClockOutAuto`，或過去日期仍無下班卡；2026-10-07） |
+| 未打下班卡（已註記） | 下班 | `bg-success-subtle text-success` | `isMissingClockOut && missingClockOutResolved`（HR 於編輯填了備註＝原因，下班欄下方綠色小字顯示「原因：…」） |
 | 超過 9.5 小時 | 下班 | `bg-danger-subtle text-danger` | `isLongWorkday`（純前端 derived） |
 
 > **`rowKind` 是三種列的唯一判別依據**：請假列與缺勤列同樣 `id === null`，

@@ -143,13 +143,16 @@
                 </td>
                 <td class="text-center" [title]="row.expectedWindow">
                   {{ row.clockOutTime }}
-                  @if (row.isClockOutAuto) {
-                    <span class="badge bg-warning-subtle text-warning-emphasis ms-1"
-                          title="未打下班卡，系統於登入時自動補上">系統補卡</span>
-                  }
                   @if (row.isMissingClockOut) {
-                    <span class="badge bg-danger-subtle text-danger ms-1"
-                          title="有上班卡但沒有下班卡；上班時間異常（如凌晨）或非工作日時，系統不會自動補下班卡，請管理者確認後補正">未打下班卡</span>
+                    @if (row.missingClockOutResolved) {
+                      <span class="badge bg-success-subtle text-success ms-1"
+                            [title]="'HR 已註記原因：' + row.remark">未打下班卡</span>
+                    } @else {
+                      <span class="badge bg-danger-subtle text-danger ms-1"
+                            [title]="row.isClockOutAuto
+                              ? '本人未打下班卡，系統於登入時以上班時間 + 9 小時補上；請 HR 確認後於編輯填寫原因'
+                              : '有上班卡但沒有下班卡（非工作日或全日請假時系統不自動補）；請 HR 確認後補正並填寫原因'">未打下班卡</span>
+                    }
                   }
                   @if (row.isEarlyLeave) {
                     <span class="badge bg-danger-subtle text-danger ms-1"
@@ -167,6 +170,10 @@
                   @if (row.clockOutReason) {
                     <div class="text-muted small text-start max-w-[180px] mx-auto truncate"
                          [title]="row.clockOutReasonLabel + '：' + row.clockOutReason">{{ row.clockOutReasonLabel }}：{{ row.clockOutReason }}</div>
+                  }
+                  @if (row.isMissingClockOut && row.missingClockOutResolved) {
+                    <div class="text-success small text-start max-w-[180px] mx-auto truncate"
+                         [title]="'未打下班卡原因：' + row.remark">原因：{{ row.remark }}</div>
                   }
                 </td>
                 <td class="text-center">
@@ -290,7 +297,12 @@
           </div>
 
           <div class="mt-4">
-            <label class="form-label">備註</label>
+            <label class="form-label">
+              備註
+              @if (editingRecord()?.isMissingClockOut) {
+                <span class="text-danger small ms-1">（未打下班卡原因，填寫後清單轉為綠字）</span>
+              }
+            </label>
             <textarea class="form-control" rows="3" maxlength="500"
                       placeholder="例：忘刷卡，經主管確認"
                       [ngModel]="editForm().remark"

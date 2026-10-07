@@ -19,8 +19,11 @@ namespace Jabez.Api.Services;
 /// 兩種缺口（2026-10 防灌工時後；原有的第三種「補加班結束卡」已**取消**）：
 ///   ① 有下班卡或加班卡、沒有上班卡 → 補上班卡（僅工作日，時間為當日應出勤起）
 ///   ② 有上班卡、沒有下班卡         → 補下班卡（上班 + 9 小時，被請假蓋掉時提前）
-///      —— 僅在「該日是該員工的工作日」且「上班打卡時間落在應出勤起點的合理範圍內」才補，
-///         見 <see cref="PlausibleClockInEarlyHours"/> / <see cref="PlausibleClockInLateHours"/>。
+///      —— 僅在「該日是該員工的工作日」且「當日並非全日請假」才補。
+///         2026-10-07 拿掉「上班打卡時間須落在應出勤起點 −2h～+3h」的合理性檢查：
+///         遲到很久才到班（例：14:58 上班）的人也確實來過，不補的話整天沒有下班時間。
+///         改由出缺勤報表把所有沒打下班卡的列（含系統補的）標紅字「未打下班卡」，
+///         HR 於編輯填寫備註（原因）後轉綠字留存 —— 把關從「不補」改為「補了但必須有人看過」。
 ///
 /// <b>不補加班結束卡</b>：以前會把結束卡補成「加班開始 + 申請單預估時數」，結果申請 14 小時就憑空補出 14 小時
 /// （正式資料 12 張）。現在加班給付依實際打卡結算（<see cref="OvertimeSettlement"/>），沒打結束卡就留空、結算為 0，
@@ -34,19 +37,6 @@ public static class AttendanceAutoClockService
     /// <summary>自動補下班卡的時數＝標準工時 + 午休（一律 +9，不分上下午打卡）</summary>
     private const int AutoClockOutHours =
         WorkdayHours.FullDayHours + (WorkdayHours.LunchEndHour - WorkdayHours.LunchStartHour);
-
-    /// <summary>
-    /// 自動補下班卡的合理性檢查（2026-10 防灌工時）：上班打卡時間須落在「該員工當日應出勤起點」
-    /// 往前 N 小時 ～ 往後 M 小時之內，超出一律不補（留空，由報表呈現「未打下班卡」）。
-    /// 起點取 <see cref="ExpectedWorkWindow"/>（已依切換日選用 08:00 / 09:00，並因上午請假後延到 13:00）。
-    /// 數字的取捨：
-    ///   · 往前 2 小時：公司時段 08:00 起 → 06:00；彈性制 09:00 起 → 07:00。自訂上下班時段者（S 介於 07:30–09:30）
-    ///     與提早到班的人都落在內，凌晨在家打上班卡（正式資料出現過）則落在外。
-    ///   · 往後 3 小時：容許遲到與上午請假後晚到；再晚就不是「忘了打下班卡」而是來歷不明的紀錄。
-    /// 排班制員工的休假日、彈性制的例假 / 休假 / 國定假日，另由「是否為工作日」判定擋下。
-    /// </summary>
-    public const int PlausibleClockInEarlyHours = 2;
-    public const int PlausibleClockInLateHours  = 3;
 
     /// <summary>
     /// 套用自動補卡。呼叫端負責 SaveChangesAsync。
@@ -125,7 +115,7 @@ public static class AttendanceAutoClockService
             //    ⚠️ 只有「當日有假把下班時段蓋掉」時才提前（EndAdjustedByLeave 為閘門）：
             //    無請假時 window.End 恆為 17:00，無條件取 min 會把 09:00 上班者從 18:00 壓成 17:00。
             if (record.ClockInTime is { } clockIn && record.ClockOutTime is null
-                && IsPlausibleClockIn(clockIn, window)
+                && window.Start is not null      // 全日請假卻有上班卡屬異常，不補，留紅字由 HR 判斷
                 && workingDates?.Contains(date) == true)
             {
                 var target = clockIn.AddHours(AutoClockOutHours);
@@ -134,7 +124,7 @@ public static class AttendanceAutoClockService
                     target = expectedEnd;
 
                 record.ClockOutTime   = target;
-                record.IsClockOutAuto = true;   // 供出缺勤清單標示「系統補卡」
+                record.IsClockOutAuto = true;   // 供出缺勤清單標示「未打下班卡」（紅，HR 填原因後轉綠）
                 filledClockOut.Add(date);
             }
 
@@ -146,17 +136,6 @@ public static class AttendanceAutoClockService
             filledClockIn.Count  == 0 ? null : new AutoClockInInfo(filledClockIn.Count, ToDateStrings(filledClockIn)),
             filledClockOut.Count == 0 ? null : new AutoClockOutInfo(filledClockOut.Count, ToDateStrings(filledClockOut)),
             null);   // AutoOvertimeEnd：不再補加班結束卡，欄位保留（AuthHandler 回應結構不變）
-    }
-
-    /// <summary>
-    /// 上班打卡時間是否落在該日應出勤起點的合理範圍內（見 <see cref="PlausibleClockInEarlyHours"/>）。
-    /// 當日免出勤（全日請假，<c>Start</c> 為 null）無從判斷 → 視為不合理、不補。
-    /// </summary>
-    private static bool IsPlausibleClockIn(DateTime clockIn, WorkWindow window)
-    {
-        if (window.Start is not { } start) return false;
-        return clockIn >= start.AddHours(-PlausibleClockInEarlyHours)
-            && clockIn <= start.AddHours(PlausibleClockInLateHours);
     }
 
     /// <summary>該列有下班卡或加班卡、卻沒有上班卡 —— 人確實來過，只是漏打上班</summary>
