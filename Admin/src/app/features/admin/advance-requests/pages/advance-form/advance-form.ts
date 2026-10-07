@@ -75,6 +75,8 @@ export class AdvanceForm implements OnInit {
   /** 原預支單既有批次（唯讀對照用） */
   parentRounds: AdvanceRound[] = [];
   parentGrandTotal = 0;
+  /** 項次起始偏移：追加批次接續前面所有批次的明細筆數，整張單連續編號 */
+  seqOffset = 0;
   readonly roundLabel = roundLabel;
   errorMsg   = signal('');
   approvalStatus: ApprovalStatus = 'draft';
@@ -221,6 +223,7 @@ export class AdvanceForm implements OnInit {
 
         if (this.isSupplement) {
           this._initSupplement(r.rounds ?? [], r.grandTotal ?? 0);
+          this.seqOffset = r.items.filter(item => item.roundNo < this.supplementRound).length;
           // 只載入本批次明細；新增追加時為空白
           r.items
             .filter(item => item.roundNo === this.supplementRound)
@@ -589,7 +592,7 @@ export class AdvanceForm implements OnInit {
       const file = this.fileMap.get(id);
       const meta = {
         category:    ctrl.get('category')?.value || '',
-        seqNo:       +(ctrl.get('seqNo')?.value) || 0,
+        seqNo:       this.seqOffset + itemsMeta.length + 1,   // 項次依列序自動編號
         itemName:    ctrl.get('itemName')?.value || '',
         unitPrice:   +(ctrl.get('unitPrice')?.value) || 0,
         quantity:    ctrl.get('quantity')?.value || '',

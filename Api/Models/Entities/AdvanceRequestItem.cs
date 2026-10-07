@@ -6,7 +6,7 @@ public class AdvanceRequestItem
     public int      AdvanceRequestId  { get; set; }
     public int      RoundNo           { get; set; } = 1;             // 所屬預支批次（1 = 原始預支，≥2 = 第N次追加）
     public string   Category          { get; set; } = string.Empty;  // 交通費, 活動費, 設計費, 雜支 …
-    public int      SeqNo             { get; set; }                  // 該分類內的項次
+    public int      SeqNo             { get; set; }                  // 明細項次（依列序 1..N，前端自動編號）
     public string   ItemName          { get; set; } = string.Empty;  // 項目說明
     public decimal  UnitPrice         { get; set; }
     public string   Quantity          { get; set; } = string.Empty;  // 數量/單位（如「1式」「30小時」）

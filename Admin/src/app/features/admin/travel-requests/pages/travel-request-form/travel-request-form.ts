@@ -318,7 +318,7 @@ export class TravelRequestForm implements OnInit {
     }));
     const items = this.itemArray.controls.map((c, idx) => ({
       category:   c.get('category')?.value || '',
-      seqNo:      +(c.get('seqNo')?.value) || 0,
+      seqNo:      idx + 1,   // 項次依列序自動編號
       itemName:   c.get('itemName')?.value || '',
       unitPrice:  +(c.get('unitPrice')?.value) || 0,
       quantity:   c.get('quantity')?.value || '',

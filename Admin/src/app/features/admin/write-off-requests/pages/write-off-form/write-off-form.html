@@ -226,6 +226,7 @@
                 <th style="min-width:130px">發票號碼</th>
                 <th style="min-width:120px">發票日期</th>
                 <th style="min-width:90px">分類</th>
+                <th style="width:48px">項次</th>
                 <th style="min-width:130px">項目說明</th>
                 <th style="min-width:150px">單價</th>
                 <th style="min-width:70px">數量/單位</th>
@@ -279,6 +280,9 @@
                         <option [value]="cat">{{ cat }}</option>
                       }
                     </select>
+                  </td>
+                  <td class="align-middle">
+                    <span class="small">{{ i + 1 }}</span>
                   </td>
                   <td class="align-middle">
                     <input class="form-control form-control-sm" formControlName="itemName" placeholder="項目說明">
@@ -335,7 +339,7 @@
                 </tr>
                 @if (invoiceWarnings.has(ctrl.get('id')?.value)) {
                   <tr>
-                    <td colspan="12" class="small py-1 ps-3 border-0"
+                    <td colspan="13" class="small py-1 ps-3 border-0"
                         [class.text-danger]="!invoiceConfirmed.has(ctrl.get('id')?.value)"
                         [class.text-muted]="invoiceConfirmed.has(ctrl.get('id')?.value)">
                       <span class="inline-flex items-center gap-3 flex-wrap">
@@ -357,7 +361,7 @@
                 }
                 @if (amountWarnings.has(ctrl.get('id')?.value)) {
                   <tr>
-                    <td colspan="12" class="text-danger small py-1 ps-3 border-0">
+                    <td colspan="13" class="text-danger small py-1 ps-3 border-0">
                       <span class="inline-flex items-center gap-1">
                         <svg class="sa-icon sa-icon-1x" style="stroke:currentColor"><use href="/assets/icons/sprite.svg#alert-triangle"></use></svg>
                         {{ amountWarnings.get(ctrl.get('id')?.value) }}
@@ -367,14 +371,14 @@
                 }
               } @empty {
                 <tr>
-                  <td colspan="12" class="text-center text-muted py-4 small">請上傳發票圖檔，或點擊「手動新增行」</td>
+                  <td colspan="13" class="text-center text-muted py-4 small">請上傳發票圖檔，或點擊「手動新增行」</td>
                 </tr>
               }
             </tbody>
             @if (itemControls.length > 0) {
               <tfoot>
                 <tr class="table-light">
-                  <td colspan="7" class="text-right fw-500 small">合計</td>
+                  <td colspan="8" class="text-right fw-500 small">合計</td>
                   <td class="fw-600">{{ grandTotal | number:'1.0-0' }}</td>
                   <td class="fw-600">{{ cashTotal | number:'1.0-0' }}</td>
                   <td class="fw-600">{{ checkTotal | number:'1.0-0' }}</td>

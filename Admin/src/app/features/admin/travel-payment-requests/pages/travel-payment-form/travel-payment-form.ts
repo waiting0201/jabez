@@ -491,7 +491,7 @@ export class TravelPaymentForm implements OnInit {
       const file = this.fileMap.get(id);
       const meta = {
         category:    ctrl.get('category')?.value || '',
-        seqNo:       +(ctrl.get('seqNo')?.value) || 0,
+        seqNo:       itemsMeta.length + 1,   // 項次依列序自動編號
         itemName:    ctrl.get('itemName')?.value || '',
         unitPrice:   +(ctrl.get('unitPrice')?.value) || 0,
         quantity:    ctrl.get('quantity')?.value || '',
