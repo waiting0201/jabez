@@ -235,12 +235,12 @@ export class AdvancePdfService {
         // 沖銷明細表格
         const woBodyRows: any[][] = [];
         let woLastCat = '';
-        for (const item of wo.items) {
+        for (const [idx, item] of wo.items.entries()) {
           const cat = item.category === woLastCat ? '' : item.category;
           woLastCat = item.category;
           woBodyRows.push([
             cat,
-            item.seqNo.toString(),
+            String(item.seqNo || idx + 1),   // 舊沖銷單項次存 0，退回列序
             item.itemName,
             `${fmt(item.unitPrice)}元`,
             item.quantity,

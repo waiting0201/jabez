@@ -140,6 +140,7 @@
                 <th style="min-width:140px">發票號碼</th>
                 <th style="min-width:130px">發票日期</th>
                 <th style="min-width:100px">分類</th>
+                <th style="width:48px">項次</th>
                 <th style="min-width:160px">項目說明</th>
                 <th style="min-width:130px">單價</th>
                 <th style="min-width:80px">數量/單位</th>
@@ -193,6 +194,9 @@
                     </select>
                   </td>
                   <td class="align-middle">
+                    <span class="small">{{ i + 1 }}</span>
+                  </td>
+                  <td class="align-middle">
                     <input class="form-control form-control-sm" formControlName="itemName" placeholder="項目說明">
                   </td>
                   <td class="align-middle">
@@ -230,7 +234,7 @@
                 </tr>
                 @if (invoiceWarnings.has(ctrl.get('id')?.value)) {
                   <tr>
-                    <td colspan="10" class="small py-1 ps-3 border-0"
+                    <td colspan="11" class="small py-1 ps-3 border-0"
                         [class.text-danger]="!invoiceConfirmed.has(ctrl.get('id')?.value)"
                         [class.text-muted]="invoiceConfirmed.has(ctrl.get('id')?.value)">
                       <span class="inline-flex items-center gap-3 flex-wrap">
@@ -252,14 +256,14 @@
                 }
               } @empty {
                 <tr>
-                  <td colspan="10" class="text-center text-muted py-4 small">請上傳發票圖檔，或點擊「手動新增行」</td>
+                  <td colspan="11" class="text-center text-muted py-4 small">請上傳發票圖檔，或點擊「手動新增行」</td>
                 </tr>
               }
             </tbody>
             @if (itemControls.length > 0) {
               <tfoot>
                 <tr class="table-light">
-                  <td colspan="7" class="text-right fw-500 small">合計</td>
+                  <td colspan="8" class="text-right fw-500 small">合計</td>
                   <td class="fw-600">{{ grandTotal | number:'1.0-0' }}</td>
                   <td colspan="2"></td>
                 </tr>
