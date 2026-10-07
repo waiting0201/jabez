@@ -86,12 +86,12 @@ export class WriteOffPdfService {
       // 建立表格資料：按分類分組
       const bodyRows: any[][] = [];
       let lastCategory = '';
-      for (const item of items) {
+      for (const [idx, item] of items.entries()) {
         const cat = item.category === lastCategory ? '' : item.category;
         lastCategory = item.category;
         bodyRows.push([
           cat,
-          item.seqNo.toString(),
+          String(item.seqNo || idx + 1),   // 舊沖銷單項次存 0，退回列序
           item.itemName,
           `${fmt(item.unitPrice)}元`,
           item.quantity,

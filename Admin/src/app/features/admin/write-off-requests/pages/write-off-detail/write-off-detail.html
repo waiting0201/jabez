@@ -136,6 +136,7 @@
                 <th style="min-width:130px">發票號碼</th>
                 <th style="min-width:120px">發票日期</th>
                 <th style="min-width:90px">分類</th>
+                <th style="width:48px">項次</th>
                 <th style="min-width:130px">項目說明</th>
                 <th style="min-width:150px">單價</th>
                 <th style="min-width:70px">數量/單位</th>
@@ -147,7 +148,7 @@
               </tr>
             </thead>
             <tbody>
-              @for (item of r.items; track item.id) {
+              @for (item of r.items; track item.id; let i = $index) {
                 <tr>
                   <td class="align-middle text-center">
                     @if (item.fileUrl) {
@@ -161,6 +162,7 @@
                   <td class="small font-monospace">{{ item.invoiceNo || '—' }}</td>
                   <td class="small">{{ item.invoiceDate ? (item.invoiceDate | date:'yyyy-MM-dd') : '—' }}</td>
                   <td class="small">{{ item.category }}</td>
+                  <td class="small">{{ item.seqNo || (i + 1) }}</td>
                   <td class="small">{{ item.itemName }}</td>
                   <td class="small">{{ item.unitPrice | number:'1.0-0' }}</td>
                   <td class="small">{{ item.quantity }}</td>
@@ -181,7 +183,7 @@
             </tbody>
             <tfoot>
               <tr class="table-light">
-                <td colspan="7" class="text-right fw-500 small">合計</td>
+                <td colspan="8" class="text-right fw-500 small">合計</td>
                 <td class="text-right fw-600">{{ r.grandTotal | number:'1.0-0' }}</td>
                 <td class="text-right fw-600">{{ r.cashTotal | number:'1.0-0' }}</td>
                 <td class="text-right fw-600">{{ r.checkTotal | number:'1.0-0' }}</td>

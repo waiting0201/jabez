@@ -934,15 +934,14 @@ isFirstOfRound(r: AdvanceRequest, index: number): boolean {
 
 > 上方骨架用 `w-10` / `w-12` 只是示意；**專案實務一律用 inline `style="min-width:Npx"` / `style="width:Npx"`**，因為明細表包在 `table-responsive` 內、欄數多，Tailwind 的 `w-*` 無法表達「至少多寬、可再撐開」。新表格請直接沿用下表數值，不要另訂。
 
-- **固定小欄用 `width`**（不需要被內容撐開）：項次唯讀 `48px`（容納雙位數）／項次可編輯 `64px`（格內為 `<input type="number">`，瀏覽器的上下微調箭頭另佔約 11px，48px 只剩兩字寬）、刪除鈕欄 `40px`、per-row 檔案欄 `72px`、僅圖示的檔案欄 `40px`、分組欄（批次）`130px`
+- **固定小欄用 `width`**（不需要被內容撐開）：項次 `48px`（容納雙位數；2026-10 起項次一律唯讀自動編號，見 §7.1.5）、刪除鈕欄 `40px`、per-row 檔案欄 `72px`、僅圖示的檔案欄 `40px`、分組欄（批次）`130px`
 - **其餘用 `min-width`**：金額欄 `150px`（七位數 + 千分位不被擠壓，**明細表內最寬的欄**）、日期 `120px`、發票號碼 / 項目說明 `130px`、分類 `90px`、備註 `80px`、數量/單位 `70px`
 
 | 欄位 | 寬度 | 屬性 |
 |---|---|---|
 | 批次（分組欄） | 130px | `width` |
 | 分類 | 90px | `min-width` |
-| 項次（唯讀文字） | **48px** | `width` |
-| 項次（可編輯 number input） | **64px** | `width` |
+| 項次（唯讀，自動編號） | **48px** | `width` |
 | 發票號碼 | 130px | `min-width` |
 | 發票日期 | 120px | `min-width` |
 | 項目說明 | 130px | `min-width` |
@@ -1004,6 +1003,16 @@ isFirstOfRound(r: AdvanceRequest, index: number): boolean {
 
 > `createdAt` 仍保留在 model 上（建立草稿時間），但**不再用於任何「申請日期」的顯示**。
 > 主檔類清單（廠商 / 職稱 / 角色 / 簽核流程設定）的「建立時間」欄不是申請單，維持 `createdAt` 不動。
+
+### 7.1.5 項次自動編號（2026-10 hotfix）
+
+帳務類明細（預支 / 出差預支 / 出差請款 / 預支沖銷 / 出差預支沖銷）的「項次」**一律由系統依列序自動編號 1、2、3…，同仁不可輸入**：
+
+- **編輯中的表單**：項次欄顯示 `{{ i + 1 }}`（純文字、無 input），刪列後自然重排，不需另寫 renumber。
+- **送出 payload**：`seqNo` 一律以列序寫入（`itemsMeta.length + 1` 或 `idx + 1`），不再讀 FormControl；`seqNo` 控制項保留只為載入舊資料。
+- **預支追加批次整張單連續編號**：`advance-form` 的 `seqOffset` ＝ 前面所有批次的明細筆數（`r.items.filter(x => x.roundNo < supplementRound).length`），追加批次顯示與送出都加上這個偏移。
+- **唯讀 / 詳情 / 簽核作業詳情頁 / PDF 一律顯示 DB 存的值**（與已列印紙本一致）；存的是 `0`（2026-10 前的沖銷單沒有項次欄、一律存 0）時退回列序 `i + 1`，寫法 `{{ item.seqNo || (i + 1) }}` / `String(item.seqNo || idx + 1)`。
+- 後端 `SeqNo` 不驗證、不重算（舊客戶端送來的值照存）。請款（InvoiceItem）與預審沒有項次欄。
 
 ### 7.2 ⚠ 刪除按鈕標準（**重要**）
 

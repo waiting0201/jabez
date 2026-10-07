@@ -182,7 +182,7 @@
                         @if (isReadOnly) {
                           <span class="small">{{ ctrl.get('seqNo')?.value }}</span>
                         } @else {
-                          <input type="number" class="form-control form-control-sm" formControlName="seqNo" min="1" style="width:60px">
+                          <span class="small">{{ i + 1 }}</span>
                         }
                       </td>
                       <td class="align-middle">

@@ -423,6 +423,7 @@
                         <thead class="table-light">
                           <tr>
                             <th>分類</th>
+                            <th style="width:48px">項次</th>
                             <th>項目說明</th>
                             <th class="text-right">單價</th>
                             <th>數量/單位</th>
@@ -431,9 +432,10 @@
                           </tr>
                         </thead>
                         <tbody>
-                          @for (item of d.items; track item.id) {
+                          @for (item of d.items; track item.id; let i = $index) {
                             <tr>
                               <td class="small">{{ item.category }}</td>
+                              <td class="small">{{ item.seqNo || (i + 1) }}</td>
                               <td class="small">{{ item.itemName }}</td>
                               <td class="text-right small">{{ item.unitPrice | number:'1.0-0' }}</td>
                               <td class="small">{{ item.quantity }}</td>
@@ -444,7 +446,7 @@
                         </tbody>
                         <tfoot>
                           <tr class="table-light">
-                            <td colspan="4" class="text-right fw-500 small">合計</td>
+                            <td colspan="5" class="text-right fw-500 small">合計</td>
                             <td class="text-right fw-600">{{ d.grandTotal | number:'1.0-0' }}</td>
                             <td></td>
                           </tr>
@@ -577,6 +579,7 @@
                             <th>發票號碼</th>
                             <th>發票日期</th>
                             <th>分類</th>
+                            <th style="width:48px">項次</th>
                             <th>項目說明</th>
                             <th class="text-right">單價</th>
                             <th>數量/單位</th>
@@ -585,7 +588,7 @@
                           </tr>
                         </thead>
                         <tbody>
-                          @for (item of d.items; track item.id) {
+                          @for (item of d.items; track item.id; let i = $index) {
                             <tr>
                               <td class="align-middle text-center">
                                 @if (item.fileUrl) {
@@ -599,6 +602,7 @@
                               <td class="small font-monospace">{{ item.invoiceNo || '—' }}</td>
                               <td class="small">{{ item.invoiceDate ? (item.invoiceDate | date:'yyyy-MM-dd') : '—' }}</td>
                               <td class="small">{{ item.category }}</td>
+                              <td class="small">{{ item.seqNo || (i + 1) }}</td>
                               <td class="small">{{ item.itemName }}</td>
                               <td class="text-right small">{{ item.unitPrice | number:'1.0-0' }}</td>
                               <td class="small">{{ item.quantity }}</td>
@@ -609,7 +613,7 @@
                         </tbody>
                         <tfoot>
                           <tr class="table-light">
-                            <td colspan="7" class="text-right fw-500 small">合計</td>
+                            <td colspan="8" class="text-right fw-500 small">合計</td>
                             <td class="text-right fw-600">{{ d.grandTotal | number:'1.0-0' }}</td>
                             <td></td>
                           </tr>
@@ -782,6 +786,7 @@
                           <tr>
                             <th style="width:110px">批次</th>
                             <th>分類</th>
+                            <th style="width:48px">項次</th>
                             <th>項目說明</th>
                             <th class="text-right">單價</th>
                             <th>數量/單位</th>
@@ -804,6 +809,7 @@
                                 }
                               </td>
                               <td class="small">{{ item.category }}</td>
+                              <td class="small">{{ item.seqNo || (i + 1) }}</td>
                               <td class="small">{{ item.itemName }}</td>
                               <td class="text-right small">{{ item.unitPrice | number:'1.0-0' }}</td>
                               <td class="small">{{ item.quantity }}</td>
@@ -825,7 +831,7 @@
                         </tbody>
                         <tfoot>
                           <tr class="table-light">
-                            <td colspan="5" class="text-right fw-500 small">合計</td>
+                            <td colspan="6" class="text-right fw-500 small">合計</td>
                             <td class="text-right fw-600">{{ d.grandTotal | number:'1.0-0' }}</td>
                             <td class="text-right fw-600">{{ sumField(d.items, 'cashAmount') | number:'1.0-0' }}</td>
                             <td class="text-right fw-600">{{ sumField(d.items, 'checkAmount') | number:'1.0-0' }}</td>
@@ -901,6 +907,7 @@
                             <th>發票號碼</th>
                             <th>發票日期</th>
                             <th>分類</th>
+                            <th style="width:48px">項次</th>
                             <th>項目說明</th>
                             <th>單價</th>
                             <th>數量/單位</th>
@@ -912,7 +919,7 @@
                           </tr>
                         </thead>
                         <tbody>
-                          @for (item of d.items; track item.id) {
+                          @for (item of d.items; track item.id; let i = $index) {
                             <tr>
                               <td class="align-middle text-center">
                                 @if (item.fileUrl) {
@@ -926,6 +933,7 @@
                               <td class="small font-monospace">{{ item.invoiceNo || '—' }}</td>
                               <td class="small">{{ item.invoiceDate ? (item.invoiceDate | date:'yyyy-MM-dd') : '—' }}</td>
                               <td class="small">{{ item.category }}</td>
+                              <td class="small">{{ item.seqNo || (i + 1) }}</td>
                               <td class="small">{{ item.itemName }}</td>
                               <td class="small">{{ item.unitPrice | number:'1.0-0' }}</td>
                               <td class="small">{{ item.quantity }}</td>
@@ -948,7 +956,7 @@
                         </tbody>
                         <tfoot>
                           <tr class="table-light">
-                            <td colspan="7" class="text-right fw-500 small">合計</td>
+                            <td colspan="8" class="text-right fw-500 small">合計</td>
                             <td class="text-right fw-600">{{ d.grandTotal | number:'1.0-0' }}</td>
                             <td class="text-right fw-600">{{ d.cashTotal | number:'1.0-0' }}</td>
                             <td class="text-right fw-600">{{ d.checkTotal | number:'1.0-0' }}</td>
@@ -1039,6 +1047,7 @@
                             <th>發票號碼</th>
                             <th>發票日期</th>
                             <th>分類</th>
+                            <th style="width:48px">項次</th>
                             <th>項目說明</th>
                             <th class="text-right">單價</th>
                             <th>數量/單位</th>
@@ -1047,7 +1056,7 @@
                           </tr>
                         </thead>
                         <tbody>
-                          @for (item of d.items; track item.id) {
+                          @for (item of d.items; track item.id; let i = $index) {
                             <tr>
                               <td class="align-middle text-center">
                                 @if (item.fileUrl) {
@@ -1061,6 +1070,7 @@
                               <td class="small font-monospace">{{ item.invoiceNo || '—' }}</td>
                               <td class="small">{{ item.invoiceDate ? (item.invoiceDate | date:'yyyy-MM-dd') : '—' }}</td>
                               <td class="small">{{ item.category }}</td>
+                              <td class="small">{{ item.seqNo || (i + 1) }}</td>
                               <td class="small">{{ item.itemName }}</td>
                               <td class="text-right small">{{ item.unitPrice | number:'1.0-0' }}</td>
                               <td class="small">{{ item.quantity }}</td>
@@ -1071,7 +1081,7 @@
                         </tbody>
                         <tfoot>
                           <tr class="table-light">
-                            <td colspan="7" class="text-right fw-500 small">合計</td>
+                            <td colspan="8" class="text-right fw-500 small">合計</td>
                             <td class="text-right fw-600">{{ d.grandTotal | number:'1.0-0' }}</td>
                             <td></td>
                           </tr>
@@ -1190,6 +1200,7 @@
                             <th>發票號碼</th>
                             <th>發票日期</th>
                             <th>分類</th>
+                            <th style="width:48px">項次</th>
                             <th>項目說明</th>
                             <th>單價</th>
                             <th>數量/單位</th>
@@ -1198,7 +1209,7 @@
                           </tr>
                         </thead>
                         <tbody>
-                          @for (item of d.items; track item.id) {
+                          @for (item of d.items; track item.id; let i = $index) {
                             <tr>
                               <td class="align-middle text-center">
                                 @if (item.fileUrl) {
@@ -1212,6 +1223,7 @@
                               <td class="small font-monospace">{{ item.invoiceNo || '—' }}</td>
                               <td class="small">{{ item.invoiceDate ? (item.invoiceDate | date:'yyyy-MM-dd') : '—' }}</td>
                               <td class="small">{{ item.category }}</td>
+                              <td class="small">{{ item.seqNo || (i + 1) }}</td>
                               <td class="small">{{ item.itemName }}</td>
                               <td class="small">{{ item.unitPrice | number:'1.0-0' }}</td>
                               <td class="small">{{ item.quantity }}</td>
@@ -1222,7 +1234,7 @@
                         </tbody>
                         <tfoot>
                           <tr class="table-light">
-                            <td colspan="7" class="text-right fw-500 small">合計</td>
+                            <td colspan="8" class="text-right fw-500 small">合計</td>
                             <td class="text-right fw-600">{{ d.grandTotal | number:'1.0-0' }}</td>
                             <td></td>
                           </tr>
