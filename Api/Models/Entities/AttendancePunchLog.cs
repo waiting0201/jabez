@@ -26,6 +26,8 @@ public class AttendancePunchLog
     public string?   ChallengeNonce { get; set; }
     /// <summary>挑戰碼簽發到送出打卡的毫秒數（機器人通常極短）</summary>
     public int?      ChallengeAgeMs { get; set; }
+    /// <summary>Cloudflare Turnstile 驗證結果（見 TurnstileResults：ok / missing / failed / unavailable / skipped）；GPS 未過就被擋下者為 null</summary>
+    public string?   TurnstileResult { get; set; }
 
     // Navigation
     public User? User { get; set; }

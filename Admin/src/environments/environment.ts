@@ -5,4 +5,6 @@ export const environment = {
   lineCallbackUrl: 'http://localhost:4200/line/bind-callback',
   // LINE 官方帳號加好友 URL（格式 https://line.me/R/ti/p/@{basicId}）— 用於已綁定但未加 OA 好友的用戶
   lineOaFriendUrl: 'https://line.me/R/ti/p/@348qgtvl',
+  // Cloudflare 官方測試 sitekey（一律通過）；後端搭配測試 secret 1x0000000000000000000000000000000AA
+  turnstileSiteKey: '1x00000000000000000000AA',
 };

@@ -1449,9 +1449,14 @@ overtimeStartHint = computed<string>(() => {
 前端不重組規則，避免前後端判定漂移。
 
 **打卡送出流程（防機器人打卡，2026-10）**：四鈕共用 `performAction()`，按下後
-`Promise.all([取 GPS, 取挑戰碼])` → **無 GPS 直接以紅字 toast 擋下、不呼叫打卡 API**（右欄定位卡改顯示紅色
+`Promise.all([取 GPS, 取挑戰碼, 取 Turnstile token])` → **無 GPS 直接以紅字 toast 擋下、不呼叫打卡 API**（右欄定位卡改顯示紅色
 「無法取得定位，未完成打卡」＋開啟定位的指引，不再是黃色「打卡仍有效」）→ 挑戰碼停留不足 `minWaitMs`
-時以「收到回應」起算補等（+300ms 緩衝）→ 送出時帶 `challengeToken` 與 `accuracy`。
+時以「收到回應」起算補等（+300ms 緩衝）→ 送出時帶 `challengeToken`、`turnstileToken` 與 `accuracy`。
+Turnstile 走 `shared/services/turnstile.service.ts`：script **第一次呼叫才動態載入**、每次 render 新 widget 取得 token 後立即 remove
+（token 只能驗證一次）、`appearance: 'interaction-only'`（容器 `#turnstileBox` 平常為空，Cloudflare 起疑才浮出勾選框）；
+**載入失敗 / 逾時（15 秒）/ sitekey 為空一律回 null、不在前端擋**，由後端 `Turnstile:Mode` 決定。
+sitekey 在 `environment*.ts` 的 `turnstileSiteKey`；`staticwebapp.config.json` 的 CSP 須於 `script-src` / `frame-src` / `connect-src`
+放行 `https://challenges.cloudflare.com`，漏了 widget 會被靜默擋下。
 期間 `loading` 一律 true（按鈕 disabled），收尾放在 `finally`。前端先擋 GPS 只為給明確指引，
 真正的防線在後端 `AttendancePunchGuard`，見 [business/attendance-clock-rules.md §防機器人打卡](business/attendance-clock-rules.md#防機器人打卡2026-10-hotfix)。
 

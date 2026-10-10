@@ -74,6 +74,8 @@ export interface ClockActionRequest {
   accuracy?: number;
   /** POST /attendances/clock-challenge 取得的一次性挑戰碼（防機器人打卡，後端必填） */
   challengeToken?: string;
+  /** Cloudflare Turnstile token（防機器人打卡；是否必填依後端 Turnstile:Mode） */
+  turnstileToken?: string;
 }
 
 /** 打卡挑戰碼：簽發後須等 minWaitMs 才可使用、expiresInMs 內有效（後端 AttendancePunchGuard） */

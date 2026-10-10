@@ -1,4 +1,4 @@
-import {Component, computed, inject, signal, OnInit, OnDestroy, ChangeDetectionStrategy} from '@angular/core';
+import {Component, computed, inject, signal, OnInit, OnDestroy, ChangeDetectionStrategy, ElementRef, viewChild} from '@angular/core';
 import {NgbModal} from '@ng-bootstrap/ng-bootstrap';
 import {ConfirmModal, ConfirmModalResult} from '@/app/shared/components/confirm-modal';
 import {DatePipe, DecimalPipe} from '@angular/common';
@@ -6,6 +6,7 @@ import {firstValueFrom, Observable} from 'rxjs';
 import {AuthService} from '@core/auth/services/auth.service';
 import {AttendanceService} from '../../services/attendance.service';
 import {LineQuotaService} from '../../services/line-quota.service';
+import {TurnstileService} from '@/app/shared/services/turnstile.service';
 import {LineQuota} from '../../models/line-quota.model';
 import {OvertimeRequestService} from '@features/admin/overtime-requests/services/overtime-request.service';
 import {OvertimeRequest} from '@features/admin/overtime-requests/models/overtime-request.model';
@@ -26,6 +27,10 @@ export class Dashboard implements OnInit, OnDestroy {
   private modal = inject(NgbModal);
   private overtimeService = inject(OvertimeRequestService);
   private lineQuotaService = inject(LineQuotaService);
+  private turnstile = inject(TurnstileService);
+
+  /** Cloudflare Turnstile 容器：平常為空、看不到；Cloudflare 起疑時才浮出勾選框 */
+  private turnstileBox = viewChild<ElementRef<HTMLElement>>('turnstileBox');
 
   private timerId: ReturnType<typeof setInterval> | null = null;
 
@@ -337,9 +342,9 @@ export class Dashboard implements OnInit, OnDestroy {
   }
 
   /**
-   * 打卡：同時「取得 GPS」與「向後端取一次性挑戰碼」→ 不足挑戰碼最短停留時間則補等 → 送出。
+   * 打卡：同時「取得 GPS」「向後端取一次性挑戰碼」「取得 Turnstile token」→ 不足挑戰碼最短停留時間則補等 → 送出。
    * 防機器人打卡（後端 AttendancePunchGuard）：沒有 GPS 或挑戰碼不合規一律擋下，
-   * 前端先擋 GPS 是為了給明確指引，不是唯一防線。
+   * 前端先擋 GPS 是為了給明確指引，不是唯一防線。Turnstile token 取不到時送 null，放不放行由後端模式決定。
    */
   async performAction(type: ClockActionType, reason: string | null = null) {
     if (this.loading()) return;
@@ -347,9 +352,10 @@ export class Dashboard implements OnInit, OnDestroy {
     this.gpsStatus.set('locating');
 
     try {
-      const [coords, challenge] = await Promise.all([
+      const [coords, challenge, turnstileToken] = await Promise.all([
         this._getGps(),
         firstValueFrom(this.attendanceService.getChallenge(type)),
+        this.turnstile.getToken(this.turnstileBox()?.nativeElement, type),
       ]);
       const challengeReceivedAt = Date.now();
 
@@ -372,6 +378,7 @@ export class Dashboard implements OnInit, OnDestroy {
         isBusinessTrip: this.isBusinessTrip(),
         reason: type === 'clock-in' || type === 'clock-out' ? reason : undefined,
         challengeToken: challenge.token,
+        turnstileToken: turnstileToken ?? undefined,
       };
 
       let obs$: Observable<TodayAttendance>;

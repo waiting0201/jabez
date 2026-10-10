@@ -4,5 +4,7 @@ export const environment = {
   lineLoginChannelId: '2010126560',
   lineCallbackUrl: 'https://jabez.4webdemo.com/line/bind-callback',
   // LINE 官方帳號加好友 URL（格式 https://line.me/R/ti/p/@{basicId}）— 用於已綁定但未加 OA 好友的用戶
-  lineOaFriendUrl: 'https://line.me/R/ti/p/@348qgtvl'
+  lineOaFriendUrl: 'https://line.me/R/ti/p/@348qgtvl',
+  // Cloudflare Turnstile sitekey（公開值；secret 只放 Function App 的 Turnstile__SecretKey）
+  turnstileSiteKey: '0x4AAAAAAFS04cxqPjMoSQpX',
 };

@@ -86,11 +86,31 @@ SQL 端的判定片段收斂於 `LeaveRevocationService.NotRevokedClause`，EF �
    - **只能成功使用一次**（`AttendancePunchLogs.ChallengeNonce` 的 filtered unique index + 送出前查重）；
    - 拿 A 動作的碼打 B 動作、或拿別人的碼 → 一律無效。
    前端按下打卡時「取 GPS」與「取碼」並行，不足 3 秒自動補等（多留 300ms 緩衝），使用者只會看到約 3 秒的處理中。
-3. **嘗試紀錄** `AttendancePunchLogs`：成功與被擋下的每一次嘗試都留一列（動作 / 時間 / 結果 / 擋下原因 /
-   GPS / 精度 / IP / User-Agent / 挑戰碼停留毫秒）。被擋下時先寫紀錄再丟 400；成功時與打卡紀錄同一次 SaveChanges，
+3. **Cloudflare Turnstile 人機驗證**（2026-10 新增，`Services/TurnstileVerifier.cs`）：前端在打卡時以 widget 取得一次性 token
+   （`action` ＝ 打卡動作），後端向 Cloudflare siteverify 驗證，並比對回應的 `action` 與 `hostname`（白名單 `Turnstile:AllowedHostnames`）。
+   依 App Setting `Turnstile:Mode`：
+   - `off`（預設；未設定或 `Turnstile:SecretKey` 為空時強制 off）：不驗證，結果記 `skipped`；
+   - `log`（上線觀察期）：驗證並記錄結果，**一律放行**；
+   - `enforce`：沒帶 token（`missing`）或驗證失敗（`failed`）→ 400「人機驗證失敗，請重新整理頁面後再試。」
+   - **Cloudflare 連不到 / 逾時（`unavailable`）一律放行並記錄（fail-open）**：不能因外部服務故障讓全公司打不了卡，其餘關卡仍有效。
+   Widget 為 `appearance: 'interaction-only'`，平常看不到；Cloudflare 起疑時才在打卡按鈕下方浮出勾選框。
+   前端取不到 token（script 被擋、逾時）不在前端擋，送出時不帶 token，交由後端模式決定。
+   Cloudflare 官方測試 secret（`1x…` 一律通過 / `2x…` 一律失敗）回應不帶 action、hostname 固定 example.com，
+   故僅在設定值為測試 secret 時跳過兩項比對（本機開發用）。
+4. **嘗試紀錄** `AttendancePunchLogs`：成功與被擋下的每一次嘗試都留一列（動作 / 時間 / 結果 / 擋下原因 /
+   GPS / 精度 / IP / User-Agent / 挑戰碼停留毫秒 / Turnstile 結果）。被擋下時先寫紀錄再丟 400；成功時與打卡紀錄同一次 SaveChanges，
    後續業務檢查（例如「今日已打上班卡」）失敗則成功紀錄不落地、挑戰碼也不會被消耗。
 
-擋下原因代碼：`no_gps` / `challenge_missing` / `challenge_invalid` / `too_fast` / `challenge_expired` / `challenge_reused`。
+擋下原因代碼：`no_gps` / `turnstile_missing` / `turnstile_failed` / `challenge_missing` / `challenge_invalid` / `too_fast` / `challenge_expired` / `challenge_reused`。
+`TurnstileResult`：`ok` / `missing` / `failed` / `unavailable` / `skipped`（GPS 未過即被擋者為 null）。
+
+### Turnstile 上線步驟
+1. Cloudflare 後台建 Managed widget，Hostnames 列入正式 / 測試網域與兩個 SWA 預設網域。
+2. Site Key（公開）寫在 `environment.prod.ts` / `environment.staging.ts` 的 `turnstileSiteKey`；本機用官方測試 key `1x00000000000000000000AA`。
+3. 兩個 Function App 設 `Turnstile__SecretKey` / `Turnstile__Mode=log` / `Turnstile__AllowedHostnames`。
+4. 觀察一週：`SELECT TurnstileResult, COUNT(*) FROM AttendancePunchLogs WHERE AttemptedAt >= … GROUP BY TurnstileResult`，
+   正常員工應幾乎都是 `ok`；確認無誤判再改 `enforce`。
+   ⚠ log 模式下，通過守門但被後續業務規則擋下的嘗試不會落地（見第 4 點），統計只涵蓋「被守門擋下」與「打卡成功」兩類。
 
 打卡頁「定位資訊」卡片底部常駐隱私說明（2026-10）：「系統僅於您『主動點擊打卡』瞬間記錄位置，不會進行背景追蹤或記錄其他時間的行蹤。」
 與實作一致——前端只在按下打卡時呼叫一次 `getCurrentPosition`，沒有 `watchPosition` 或背景定位。
@@ -99,8 +119,9 @@ SQL 端的判定片段收斂於 `LeaveRevocationService.NotRevokedClause`，EF �
 系統自動補卡（`AttendanceAutoClockService`）與管理者修改（`PUT/PATCH /attendances/{id}`）不經此流程。
 
 ### 限制（刻意取捨）
-這是「提高門檻 + 留證據」：**改寫過的腳本仍可模仿取碼、等 3 秒、偽造座標**。真正無法以腳本繞過的只有人機驗證
-（Cloudflare Turnstile）或生物辨識（passkey），日後若 `AttendancePunchLogs` 仍看到可疑樣態再評估。
+GPS 與挑戰碼只是「提高門檻 + 留證據」：**改寫過的腳本仍可模仿取碼、等 3 秒、偽造座標**。
+Turnstile（enforce 後）要求真的跑過 Cloudflare 的瀏覽器挑戰，腳本成本大幅提高，但**擋不住把手機交給同事代打**；
+若仍有濫用，下一步是生物辨識（passkey 裝置綁定）。
 IP 取自 `X-Forwarded-For` 第一段，僅供稽核、**不可作為授權依據**（標頭可偽造）。
 
 ---

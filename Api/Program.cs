@@ -105,8 +105,15 @@ var host = new HostBuilder()
         // ── 打卡提醒服務（Timer Trigger 排程使用）──────────────────────────
         services.AddScoped<IAttendanceReminderService, AttendanceReminderService>();
 
-        // ── 防機器人打卡（挑戰碼 + 強制 GPS + 嘗試紀錄）─────────────────
+        // ── 防機器人打卡（挑戰碼 + 強制 GPS + Turnstile + 嘗試紀錄）──────
         services.AddScoped<IAttendancePunchGuard, AttendancePunchGuard>();
+
+        // Cloudflare Turnstile 人機驗證；5s timeout：連不到時 fail-open（見 AttendancePunchGuard）
+        services.AddHttpClient<ITurnstileVerifier, TurnstileVerifier>(c =>
+        {
+            c.BaseAddress = new Uri("https://challenges.cloudflare.com/");
+            c.Timeout     = TimeSpan.FromSeconds(5);
+        });
 
         // ── 簽核流程輔助服務 ────────────────────────────────────────────────
         services.AddScoped<IApprovalFlowService, ApprovalFlowService>();

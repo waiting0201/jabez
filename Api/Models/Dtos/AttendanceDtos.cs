@@ -197,7 +197,9 @@ public sealed record ClockActionRequest(
     /// <summary>瀏覽器回報的定位精度（公尺），僅供稽核</summary>
     double? Accuracy = null,
     /// <summary>POST /attendances/clock-challenge 取得的一次性挑戰碼（防機器人打卡，必填）</summary>
-    string? ChallengeToken = null);
+    string? ChallengeToken = null,
+    /// <summary>Cloudflare Turnstile token（防機器人打卡；是否必填依設定 Turnstile:Mode）</summary>
+    string? TurnstileToken = null);
 
 /// <summary>取得打卡挑戰碼</summary>
 public sealed record ClockChallengeRequest(string? Action);

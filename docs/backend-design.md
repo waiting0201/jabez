@@ -491,7 +491,7 @@ RequestDateGuard.EnsurePastWithin(body.ChildBirthDate, "子女出生日期",
 
 | 守門 | 位置 | 規則 |
 |---|---|---|
-| 打卡 | `Services/AttendancePunchGuard` | 強制 GPS + 一次性挑戰碼（見 9.5）+ `AttendancePunchLogs` |
+| 打卡 | `Services/AttendancePunchGuard` | 強制 GPS + Cloudflare Turnstile（`Services/TurnstileVerifier`，`Turnstile:Mode` off / log / enforce，Cloudflare 連不到 fail-open）+ 一次性挑戰碼（見 9.5）+ `AttendancePunchLogs` |
 | 簽核授權 | `ApprovalTaskHandler.AuthorizeStepAsync` | 所有審核入口（單筆 / 批次 / 指定 / 升級）的**共同授權點**：審核者＝申請人一律 403；ApprovalItemId 為 null 或查無目前關卡一律 403（**不得再加「查無就放行」的出口**） |
 | 指定審核者 | `DesignatedReviewerHelper.ValidateAndNormalizeAsync`（送簽時） | 不可指定本人、不可指定非在職者、職級須嚴格高於申請人（Level < 申請人，同級不放行；申請人為全公司最高職級時豁免）、先選部門的關卡須屬該部門 |
 | 簽核流程 ID | 各申請 Handler | **Create / Update 不得採用前端傳來的 `ApprovalItemId`**，只由 Submit 依申請人部門解析 |
@@ -1373,6 +1373,9 @@ Line__LoginChannelId              ↔ IConfiguration["Line:LoginChannelId"]
 
 | App Setting | 作用 |
 |---|---|
+| `Turnstile__SecretKey` | Cloudflare Turnstile secret（**只放後端**）；空白＝強制 off |
+| `Turnstile__Mode` | `off`（預設）/ `log`（驗證只記錄、一律放行）/ `enforce`（missing / failed 擋下）；見 [attendance-clock-rules.md §防機器人打卡](business/attendance-clock-rules.md#防機器人打卡2026-10-hotfix) |
+| `Turnstile__AllowedHostnames` | 逗號分隔，比對 siteverify 回應的 hostname；空白＝不檢查 |
 | `App__ShiftScheduleOpenAllFutureMonths=true` | 個人排班的**所有月份**（過往月份、當月、未來月份）一律開放編輯，不受「過往唯讀」「當月僅能改當天」「開放期（前三個月 10 日 ～ 前一個月 25 日）」任何限制（2026-09-28 由「只開未來月份」擴大，供教育訓練以不同月份示範；鍵名沿用舊名以免重設）。對應 `ShiftScheduleWindow.OpenAllFutureMonths`，於 `Program.cs` 啟動時讀入，**改值後須重啟 Function App** |
 
 ### 16.4 一次性 Seeder 工具（Startup Hook 模式）
