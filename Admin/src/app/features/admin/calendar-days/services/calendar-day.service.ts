@@ -1,7 +1,7 @@
 import {Injectable, inject} from '@angular/core';
 import {HttpClient} from '@angular/common/http';
 import {Observable} from 'rxjs';
-import {CalendarDay, CalendarDayCreateDto, CalendarDayUpdateDto} from '../models/calendar-day.model';
+import {CalendarDay, CalendarDayCreateDto, CalendarDayUpdateDto, CalendarImportResult} from '../models/calendar-day.model';
 import {environment} from '@/environments/environment';
 
 @Injectable({providedIn: 'root'})
@@ -15,8 +15,8 @@ export class CalendarDayService {
   }
 
   /** 從政府 API 匯入指定年份行事曆 */
-  importYear(year: number): Observable<CalendarDay[]> {
-    return this.http.post<CalendarDay[]>(`${this.base}/import`, null, {params: {year}});
+  importYear(year: number): Observable<CalendarImportResult> {
+    return this.http.post<CalendarImportResult>(`${this.base}/import`, null, {params: {year}});
   }
 
   /** 手動新增單筆日曆資料 */

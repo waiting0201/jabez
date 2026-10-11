@@ -6,6 +6,14 @@ export interface CalendarDay {
   year: number;
 }
 
+/** 匯入結果摘要（POST /calendar-days/import 回傳的是摘要，不是日期清單） */
+export interface CalendarImportResult {
+  year: number;
+  totalDays: number;
+  holidays: number;
+  workdays: number;
+}
+
 export interface CalendarDayCreateDto {
   date: string;
   isHoliday: boolean;
