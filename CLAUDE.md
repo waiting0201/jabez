@@ -204,7 +204,7 @@ Admin/src/app/
 │       ├── footer/
 │       └── customizer/
 └── features/
-    ├── dashboard/              # 打卡系統（即時時鐘、上下班/加班打卡、GPS；**路由需 `attendances:read`**，選單同步；未持有者由根路由 `resolveLandingUrl()` 導向個人資訊；**打卡按鈕上方有「出差（在外辦公）」勾選框**（2026-08 新增）：整天一個旗標 `AttendanceRecord.IsBusinessTrip`，四個打卡動作皆帶出並覆寫，初始值由 `/attendances/today` 帶回故不會被第二次打卡誤清，出缺勤清單以「出差」badge 呈現）；**防機器人打卡（2026-10 hotfix）**：按下打卡時並行「取 GPS＋取一次性挑戰碼＋取 Turnstile token」、不足 3 秒自動補等，**無 GPS 不得打卡**，見 [docs/business/attendance-clock-rules.md §防機器人打卡](docs/business/attendance-clock-rules.md)
+    ├── dashboard/              # 打卡系統（即時時鐘、上下班/加班打卡、GPS；**路由需 `attendances:read`**，選單同步；未持有者由根路由 `resolveLandingUrl()` 導向個人資訊；**打卡按鈕上方有「出差（在外辦公）」勾選框**（2026-08 新增）：整天一個旗標 `AttendanceRecord.IsBusinessTrip`，四個打卡動作皆帶出並覆寫，初始值由 `/attendances/today` 帶回故不會被第二次打卡誤清，出缺勤清單以「出差」badge 呈現）；**防機器人打卡（2026-10 hotfix）**：按下打卡時並行「取 GPS＋取一次性挑戰碼＋取 Turnstile token」、不足 3 秒自動補等，**GPS 選填**（2026-10-11 取消強制；取定位失敗會自動降級改用 Wi-Fi／基地台定位重試一次），見 [docs/business/attendance-clock-rules.md §防機器人打卡](docs/business/attendance-clock-rules.md)
     │   ├── models/attendance.model.ts
     │   ├── services/attendance.service.ts
     │   └── pages/dashboard/
@@ -377,7 +377,7 @@ Api/
 │   ├── AdvanceRequestHandler.cs       # 預支申請 CRUD（單號 ADV-yyyyMMdd-NNN，**送簽時取號**；追加批次沿用父單單號）＋**追加預支批次**（POST/PATCH/DELETE /advance-requests/{id}/supplements[/{roundNo}]；新增即送簽、無草稿階段；有進行中批次時禁止整單編輯/刪除）
 │   ├── WriteOffRequestHandler.cs      # 預支沖銷申請 CRUD（獨立簽核流程）＋**依預支單彙總檢視**（GET /write-off-requests/by-advance/{advanceRequestId}，回傳預支單完整資訊 + 該單全部沖銷單）＋**差額撥款分期**（PATCH /write-off-requests/{id}/installments，SUM 對應 RefundDue 超支增額）＋**支票已支付註記**（PATCH /{id}/check-payments）
 │   ├── TravelWriteOffRequestHandler.cs # 出差預支沖銷申請 CRUD（獨立簽核流程）
-│   ├── AttendanceHandler.cs           # 打卡（上班/下班/加班開始/加班結束；請假時段內擋上下班打卡；**休假日（行事曆假日／六日）或當日全日請假時，加班開始免下班卡**（**排班制員工 `User.IsShiftWorker` 恆不適用休假日條件**，週六仍須先打下班卡），無紀錄則建立只含加班時間的紀錄；**2026-08 起納入權限管理**：打卡走 `attendances:read/write`（員工對自己）、出缺勤報表列表與 `PUT/PATCH /attendances/{id}` 走 `reports-attendance:read/write`（管理者對別人），後者另在 Handler 內套部門可見性 scope 控管「能改誰」）；**2026-10 防機器人打卡**：四個本人打卡動作送出前須先 `POST /attendances/clock-challenge` 取碼，並經 `Services/AttendancePunchGuard` 驗證（強制 GPS＋挑戰碼簽發後 ≥3 秒、5 分鐘內、限用一次），每次嘗試（含被擋下）寫入 `AttendancePunchLogs`（IP / UA / GPS）
+│   ├── AttendanceHandler.cs           # 打卡（上班/下班/加班開始/加班結束；請假時段內擋上下班打卡；**休假日（行事曆假日／六日）或當日全日請假時，加班開始免下班卡**（**排班制員工 `User.IsShiftWorker` 恆不適用休假日條件**，週六仍須先打下班卡），無紀錄則建立只含加班時間的紀錄；**2026-08 起納入權限管理**：打卡走 `attendances:read/write`（員工對自己）、出缺勤報表列表與 `PUT/PATCH /attendances/{id}` 走 `reports-attendance:read/write`（管理者對別人），後者另在 Handler 內套部門可見性 scope 控管「能改誰」）；**2026-10 防機器人打卡**：四個本人打卡動作送出前須先 `POST /attendances/clock-challenge` 取碼，並經 `Services/AttendancePunchGuard` 驗證（GPS 選填＋挑戰碼簽發後 ≥3 秒、5 分鐘內、限用一次），每次嘗試（含被擋下）寫入 `AttendancePunchLogs`（IP / UA / GPS）
 │   ├── ShiftChangeRequestHandler.cs  # **改班申請（四週彈性工時 §3.5.2，2026-09 新增，第 12 種申請類型）**：
 │   │                                    **2026-09-28**：`POST /shift-changes/preview` 試算；送簽與每關核准前以「現行班表＋本單」重驗合規
 │   │                                    （`ShiftChangeRequestService.EnsureValidAsync`）；**同一人同一月份同時只能有一張進行中的單**。
@@ -554,7 +554,7 @@ Api/
 │   ├── HolidayTravelParticipantGuard.cs # 假日津貼重複給付防線（2026-10）：參與人員須在職；同人同一假日不得跨單、不得同時有已核准加班費單或有薪假
 │   ├── TurnstileVerifier.cs           # **Cloudflare Turnstile siteverify**（2026-10）：比對 success ＋ action ＋ hostname；設定 `Turnstile__SecretKey` / `Turnstile__Mode`（off 預設・log 只記錄・enforce 擋下）/ `Turnstile__AllowedHostnames`；
 │   │                                    連不到回 unavailable（打卡端 fail-open）；secret 空白強制 off；官方測試 secret 跳過 action / hostname 比對
-│   ├── AttendancePunchGuard.cs        # **防機器人打卡（2026-10 hotfix）**：強制 GPS ＋ **Turnstile 人機驗證（依 `Turnstile:Mode`）** ＋ 一次性打卡挑戰碼（HMAC，由 Jwt:Secret 衍生專用金鑰；
+│   ├── AttendancePunchGuard.cs        # **防機器人打卡（2026-10 hotfix）**：GPS 選填（2026-10-11 取消強制）＋ **Turnstile 人機驗證（依 `Turnstile:Mode`）** ＋ 一次性打卡挑戰碼（HMAC，由 Jwt:Secret 衍生專用金鑰；
 │   │                                    簽發後 ≥3 秒、5 分鐘內、限用一次）＋ 每次嘗試寫 `AttendancePunchLogs`（含被擋下、IP / UA）。
 │   │                                    起因：正式站有人以排程腳本「登入 → 1 秒內打卡、不送 GPS」。⚠ 只是提高門檻＋留證據，改寫過的腳本仍可模仿
 │   ├── IJwtService.cs
@@ -798,7 +798,7 @@ dotnet ef database update               # 套用 Migration
 > `CreatedAt` 保留原義（建立草稿時間），不再用於顯示。
 >
 > **防濫用安全修補（2026-10）**：客戶發現員工以排程腳本打卡、灌加班時數、自己簽自己的單後全面補強 ——
-> 打卡強制 GPS + 一次性挑戰碼（`AttendancePunchGuard`）；**加班費 / 補休改依實際加班打卡結算**（`SettledHours`，舊單不變）、不再自動補加班結束卡、非工作日的上班卡不自動補下班卡（2026-10-07 拿掉「上班時間須在應出勤起點 −2h～+3h」的檢查，改為報表紅字「未打下班卡」→ HR 於編輯填原因後轉綠字留存）；
+> 打卡一次性挑戰碼（`AttendancePunchGuard`；GPS 原為強制，2026-10-11 改回選填）；**加班費 / 補休改依實際加班打卡結算**（`SettledHours`，舊單不變）、不再自動補加班結束卡、非工作日的上班卡不自動補下班卡（2026-10-07 拿掉「上班時間須在應出勤起點 −2h～+3h」的檢查，改為報表紅字「未打下班卡」→ HR 於編輯填原因後轉綠字留存）；
 > 加班補登 ≤7 天 / 同日一張 / 每月上限；半天制假別時數改由後端計算；**簽核一律禁止自審**、指定審核者不可是本人 / 離職者 / 低階者、流程 ID 只由後端解析；
 > 沖銷退款日限財務關卡；明細金額不可為負、發票號碼正規化比對；後端強制首次改密碼、登入失敗鎖定、refresh token 30 天上限與重用偵測、簽名檔改需登入；
 > 角色管理不可改自己所屬角色、不可授出超出自身的權限；出缺勤不可改自己的、修改留 `AttendanceAuditLogs`。
