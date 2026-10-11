@@ -122,10 +122,13 @@ INTO #Ok
 FROM @Routes r
 WHERE r.DeptId IS NOT NULL
   -- 「上級」型關卡（UseDirectSup = 1）刻意不指定部門與職稱，故不算缺漏；
+  -- 「申請人部門」型關卡（UseApplicantDept = 1）刻意不指定部門，只須有職稱 ——
+  --   2026-10-11 修正：原本把它也當成「部門查無」，正式站因此跳過營運管理及發展部、品牌事業部兩條路線
   -- 只有固定關卡（部門＋職稱）少了任一邊才算解析失敗
   AND NOT EXISTS (SELECT 1 FROM @Routes x WHERE x.RouteNo = r.RouteNo
                     AND x.UseDirectSup = 0
-                    AND (x.StepTitle IS NULL OR x.StepDept IS NULL))
+                    AND (x.StepTitle IS NULL
+                         OR (x.StepDept IS NULL AND x.UseApplicantDept = 0)))
   AND NOT EXISTS (SELECT 1 FROM ApprovalItems ai
                   WHERE ai.ApplicationType = 'shift_change' AND ai.DepartmentId = r.DeptId);
 
