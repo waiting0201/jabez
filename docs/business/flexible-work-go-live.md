@@ -1,0 +1,134 @@
+# 四週彈性工時：正式站上線執行清單
+
+> 對象：執行正式站上線操作的人（Superadmin／DB 管理者）。只列「要做什麼、什麼時候做、怎麼確認」，
+> 規則細節見 [flexible-work-hours.md](flexible-work-hours.md)。
+>
+> **現況（2026-10-11）**：程式已部署正式站（merge `c364ec50`），6 個權限碼已建立但**未指派任何角色**，
+> 切換日 `FlexibleWorkStartDate` 為 null ⇒ 全系統仍是舊制。正式站 App Setting `ShiftScheduleReminderCron` 已建立。
+
+## 時程總覽
+
+| 日期 | 事項 | 誰做 |
+|---|---|---|
+| 隨時（建議 10/21 前） | ① 建改班簽核流程（Script 14）② 匯入 2027 行事曆 ③ 放寬打卡提醒 cron | Superadmin / DB |
+| 10 月中旬 | ④ 開活動日權限給主管（Script 13a），各部門建未來 3 個月活動日 | DB → 主管 |
+| 10/21 教育訓練後 | ⑤ 開個人排班權限給全員（Script 13b） | DB |
+| 10/25 23:59 | 11 月份班表**系統自動鎖定**（見下方「⚠ 待決定」） | — |
+| 10/31 晚上 | ⑥ 期初補休（Script 12）＋ ⑦ 設定切換日 —— **同一次操作連續做完** | DB → Superadmin |
+| 11/1 | 新制生效，⑧ 上線後檢查 | — |
+
+所有 SQL 腳本都在 `Api/Data/Scripts/`，用法一致：**先原樣執行（`@Commit = 0`）看空跑報表 → 確認無誤後把 `@Commit` 改成 1 重跑**。
+皆可重複執行（已存在者跳過）。
+
+---
+
+## ⚠ 待決定：11 月份排班截止日
+
+程式規定每個月份的班表在**前一個月 25 日 23:59** 截止（`Api/Common/ShiftScheduleWindow.cs`），
+所以 11 月份在 **10/25** 就鎖住，與「10/31 關閉排班」不符。
+另外切換日前**不會**發排班提醒、也**不會**替未排班者自動排班 —— 10/25 前沒排完 11 月的人，11/1 起會被當成整月上班日。
+
+二選一：改程式讓首月截止延到 10/31，或 10/21–10/25 由各部門盯著排完。決定後更新本節。
+
+---
+
+## ① 建立〈改班申請〉簽核流程 —— Script 14
+
+- 檔案：[14-seed-shift-change-approval-flows.sql](../../Api/Data/Scripts/14-seed-shift-change-approval-flows.sql)
+- 建 6 個 `shift_change` ApprovalItem（5 條部門路線 + 總監室）。沒人有排班權限前沒人送得出改班申請，提早建無影響。
+- 空跑時看：
+  - 每關「候選人」欄 —— 「申請人部門」型關卡是逐部門展開，**某部門 0 人＝該部門送不出改班申請**
+  - 「查無」的部門／職稱 —— 正式站名稱可能與測試站不同（腳本已接受多種寫法）
+- ⚠ 沒有協理的部門（例：發展三部、門市）送不出改班申請，需回問客戶怎麼處理。
+- **必須在 ⑤（13b）之前完成**：13b 跑完同仁就能送改班申請。
+
+## ② 匯入 2027 年公司行事曆
+
+- 後台〈行事曆〉→「匯入 2027 年」。資料來源已有 2027 年。
+- 不匯入的話，排 2027 年 1 月班表時國定假日判定會出錯。
+
+## ③ 放寬打卡提醒 cron
+
+新制的下班提醒依每人實際上班打卡時間推算，時點會晚於現行的推播窗口；不放寬的話會出現「有些人收不到下班提醒」且紀錄看不出異常。舊制下放寬無影響（推播時點仍由程式判斷）。
+
+```bash
+az functionapp config appsettings set -n jabez-api -g WeyproUS \
+  --settings "AttendanceReminderCron=0 */1 23,0-13 * * *"
+```
+
+- 現值：`0 */1 23,0-1,8-10 * * *` → 新值：`0 */1 23,0-13 * * *`
+- 改 App Setting 會讓 Function App 重啟一次（數秒）。
+
+## ④ 開活動日權限給主管 —— Script 13a（10 月中旬）
+
+- 檔案：[13a-grant-activity-days-permissions.sql](../../Api/Data/Scripts/13a-grant-activity-days-permissions.sql)
+- 給主管層 5 個角色 `activity-days:read` / `:write`：協理、總監室總監、營運管理部執行長、數位研發部經理、經理副理主管。
+- 空跑時看「⚠ 查無此角色」—— 正式站角色名稱若不同，要先改腳本裡的名稱。
+- 跑完請這些主管**重新登入**（權限在登入憑證裡）。
+- 若改由 Superadmin 代建活動日，這步可跳過。
+
+## ⑤ 開個人排班權限給全員 —— Script 13b（10/21 教育訓練後）
+
+- 檔案：[13b-grant-shift-schedule-self-permissions.sql](../../Api/Data/Scripts/13b-grant-shift-schedule-self-permissions.sql)
+- 給全部角色 `shift-schedule:read` / `:write`。
+- 前置：① 已完成。
+- 跑完請**全員重新登入**。
+- 出勤排休總覽表（`reports-shift-schedule:read`）與跨部門檢視（`shift-schedule:view-all`）兩支都不給；
+  要開時跑完整版 [13-grant-shift-schedule-permissions.sql](../../Api/Data/Scripts/13-grant-shift-schedule-permissions.sql)（已指派者跳過）。
+
+## ⑥ 期初補休 —— Script 12（10/31 晚上）
+
+- 檔案：[12-seed-compensatory-opening-lots.sql](../../Api/Data/Scripts/12-seed-compensatory-opening-lots.sql)
+- 把每人現有補休餘額做成一筆「期初補休」（到期 2027-06-30）。**不用手動輸入時數**，腳本執行當下自動計算。
+- 不跑的話，11/1 起全公司補休餘額歸零。
+- 確認 `@SwitchDate = '2026-11-01'`（與 ⑦ 要設的切換日相同；不同時腳本會中止）。
+
+步驟：
+1. **空跑**，看報表：
+   - 「⚠ 切換日前、簽核中的補休制加班單 / 補休假」—— **有單就先請主管簽完再繼續**（切換後才結案的話：加班不會產生補休、退回的補休假不會還回）
+   - 「切換後補休假扣抵」的「⚠ 期初不足」—— 記下來交人事確認
+   - 「⚠ 切換後補休假，但無期初餘額」—— 同上
+   - 「合計」人數與時數是否合理
+2. 改 `@Commit = 1` 正式跑
+3. **立刻接 ⑦**，中間不要隔天
+
+## ⑦ 設定切換日（緊接 ⑥）
+
+- 後台〈系統設定〉→「四週彈性工時切換日」設為 **2026-11-01** → 儲存（這張卡片自己送出，不跟上方表單一起）。
+- 只接受「未來某月 1 號」，所以最晚 10/31 要設。
+- 設定後：補休餘額改由期初補休與新制計算；11/1 起打卡、請假、加班、提醒全部改走新制。
+- 出事要退回：同一張卡片按「退回舊制」，隨時可關。
+
+---
+
+## ⑧ 11/1 上線後檢查
+
+- [ ] 一般帳號打上班卡正常；09:30 後打卡會要求填遲到原因
+- [ ] 打卡提醒（上班 08:58、下班依個人時間）有推播，到〈打卡提醒推播紀錄〉確認
+- [ ] 個人資訊頁的補休時數與 10/31 期初報表一致
+- [ ] 送一張補休假，餘額有扣在期初補休上
+- [ ] 送一張改班申請，簽核關卡解析到正確的人
+- [ ] 〈系統設定〉的上下班時間為 09:00 / 18:00（上班提醒時點讀這個值）
+
+## 確認用 SQL（唯讀）
+
+```sql
+-- 權限碼指派狀況（Roles = 0 表示尚未給任何角色）
+SELECT p.Code,
+       (SELECT COUNT(*) FROM RolePermissions rp WHERE rp.PermissionId = p.Id) AS Roles
+FROM Permissions p
+WHERE p.Code LIKE 'shift-schedule:%' OR p.Code LIKE 'activity-days:%'
+   OR p.Code = 'reports-shift-schedule:read';
+
+-- 切換日
+SELECT FlexibleWorkStartDate FROM SystemSettings;
+
+-- 期初補休
+SELECT COUNT(*) AS 人數, SUM(Hours) AS 期初時數, SUM(RemainingHours) AS 剩餘
+FROM CompensatoryLots WHERE IsOpening = 1;
+
+-- 改班申請簽核流程
+SELECT ai.Id, ai.Name, d.Name AS 部門
+FROM ApprovalItems ai LEFT JOIN Departments d ON d.Id = ai.DepartmentId
+WHERE ai.ApplicationType = 'shift_change';
+```
