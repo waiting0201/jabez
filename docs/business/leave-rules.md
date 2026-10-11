@@ -155,6 +155,10 @@
 - **開 lot 的三個條件**（缺一不可）：加班單**終局核准** ＋ 補償方式為補休 ＋ **加班日 ≥ 切換日**。
   第三個條件是為了不與期初 lot 重複計算 —— 切換日之前的餘額由
   [`Api/Data/Scripts/12`](../../Api/Data/Scripts/12-seed-compensatory-opening-lots.sql) 整批做成**一筆期初 lot**。
+  期初只算**切換日之前**的單（加班看 `OvertimeDate`、補休假看 `StartDate`，時數同取 `SettledHours ?? EstimatedHours`）；
+  切換前就先送出、起始日 ≥ 切換日的補休假，由腳本直接寫 `CompensatoryUsages` 扣抵期初 lot（＝ `SyncUsageAsync` 的 FIFO 結果），
+  加班日 ≥ 切換日的加班單則留給新制結算時自行開 lot —— 兩者若也算進期初，切換後會被新制再算一次（2026-10-11 修正）。
+  腳本與切換日之間若有單據結案會對不上（切換後不再回看舊聚合），故腳本報表列出切換日前仍在簽核中的單，**跑完當場設切換日**。
 - **時數取給付基準 `OvertimeSettlement.BillableHours`（`SettledHours ?? EstimatedHours`，未截斷）**，不是加班費那條路徑的 `PayableHours` ——
   現行補休路徑本來就沒有計酬上限，改用截斷值會把既有餘額追溯砍掉。2026-10 起新單的 lot 於終局核准後依實際加班打卡結算
   （結算時數 0 不開 lot；打加班結束卡 / 管理者修改出缺勤時 `OvertimeSettlementService` 重算，既有 lot 走等比調整、已被請掉的補休不還原）。
