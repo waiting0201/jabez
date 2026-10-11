@@ -26,6 +26,7 @@
 > 正式站 App Setting `ShiftScheduleReminderCron` 尚未建立（不存在時 Function 註冊失敗）／
 > 切換同時放寬兩站的 `AttendanceReminderCron`／建 6 個 `shift_change` ApprovalItem／
 > 匯入 2027 年行事曆／跑 `Api/Data/Scripts/12` 建期初補休 lot。
+> **正式站上線的逐步執行清單見 [flexible-work-go-live.md](flexible-work-go-live.md)**。
 >
 > **來源**：115.09.14 會議結論 `e化彈性工時相關修正0914結論.docx`（final），
 > ＋ **2026-09-16 客戶就〈客戶確認版〉規格書回覆的 21 項意見**（見 [§10.6](#106-2026-09-16-客戶回覆-21-項的定案)）。

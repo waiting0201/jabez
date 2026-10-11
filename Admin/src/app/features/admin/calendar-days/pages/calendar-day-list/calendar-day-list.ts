@@ -92,10 +92,11 @@ export class CalendarDayList implements OnInit {
 
     this.importing.set(true);
     this.svc.importYear(year).subscribe({
-      next: (data) => {
-        this.days.set(data);
-        this.toastr.success(`已匯入 ${year} 年行事曆，共 ${data.length} 筆`);
+      next: (result) => {
+        // 回傳的是摘要而非日期清單，清單一律重新查詢
+        this.toastr.success(`已匯入 ${year} 年行事曆，共 ${result.totalDays} 天（假日 ${result.holidays} 天）`);
         this.importing.set(false);
+        this.loadData();
       },
       error: () => {
         this.toastr.error('匯入失敗，請確認網路連線或稍後再試');
