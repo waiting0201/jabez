@@ -77,8 +77,10 @@ SQL 端的判定片段收斂於 `LeaveRevocationService.NotRevokedClause`，EF �
 診斷腳本：[Api/Data/Scripts/17-diagnose-automated-clock-punching.sql](../../Api/Data/Scripts/17-diagnose-automated-clock-punching.sql)（唯讀）。
 
 ### 規則（四個本人打卡動作共用，單一真相 `Api/Services/AttendancePunchGuard.cs`）
-1. **強制 GPS**：`latitude` / `longitude` 缺漏、超出範圍或為 (0,0) 一律 400「無法取得定位，請開啟…定位權限」。
-   原本「無法取得定位（打卡仍有效）」的行為**已取消**。
+1. **GPS 選填**（2026-10-11 由強制改回選填）：地下室等收不到定位的地方，部分手機會整個取不到座標而完全無法打卡。
+   有帶座標照常記錄於打卡紀錄與 `AttendancePunchLogs`；取不到時照常打卡，畫面顯示黃字「無法取得定位（打卡仍有效）」。
+   前端取定位會先要高精度（8 秒），失敗再降級一次（不要求高精度、接受 5 分鐘內快取位置，改用 Wi-Fi／基地台定位），
+   使用者拒絕授權時不重試。`no_gps` 擋下原因代碼已停用，保留供判讀既有紀錄。
 2. **一次性打卡挑戰碼**：送出前須先 `POST /attendances/clock-challenge { action }` 取碼，
    碼以 HMAC（由 `Jwt:Secret` 衍生的專用金鑰）簽章綁定「使用者 + 動作 + 簽發時間 + nonce」：
    - 簽發後**至少 3 秒**（`MinAgeMs`）才能使用 —— 擋掉「取碼後立刻打卡」；
