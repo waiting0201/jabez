@@ -72,6 +72,7 @@ az functionapp config appsettings set -n jabez-api -g WeyproUS \
 
 - 現值：`0 */1 23,0-1,8-10 * * *` → 新值：`0 */1 23,0-13 * * *`
 - 改 App Setting 會讓 Function App 重啟一次（數秒）。
+- **執行狀態**：✅ 2026-10-11 已改為 `0 */1 23,0-13 * * *`。
 
 ## ④ 開活動日權限給主管 —— Script 13a（10 月中旬）
 
