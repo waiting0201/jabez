@@ -190,9 +190,12 @@ public sealed class PayrollHandler(IPayrollReadService reader, AppDbContext db, 
     {
         var fmt = (decimal n) => n.ToString("N0");
         var hireDateStr = emp.HireDate?.ToString("yyyy/MM/dd") ?? "---";
+        // ⚠ 須與 earningsRows 實際印出的每一列一一對應，否則「應發合計」會少算 —— 這裡原本就漏了
+        // 國定假日加倍工資與補休未休完津貼兩項（2026-09 新增時未同步更新），一併補上。
         var totalEarnings = emp.BaseSalary + emp.MealAllowance + emp.OvertimePay + emp.CalculatedOvertimePay
                           + emp.OtherAllowanceAmount + emp.AdjustmentDifference
-                          + emp.HolidayAllowance + emp.OtherAddition;
+                          + emp.HolidayAllowance + emp.PublicHolidayDoublePay
+                          + emp.CompensatorySettlementAmount + emp.OtherAddition;
         var totalDeductions = emp.LaborInsurance + emp.HealthInsurance
                             + emp.PersonalLeaveDeduction + emp.SickLeaveDeduction + emp.MenstrualLeaveDeduction
                             + emp.FamilyCareLeaveDeduction
@@ -245,11 +248,31 @@ public sealed class PayrollHandler(IPayrollReadService reader, AppDbContext db, 
             <tr{holidayBg}><td style="padding:8px 12px">假日津貼（{emp.HolidayTravelDays.ToString("0.#")} 天）</td><td style="padding:8px 12px;text-align:right">{fmt(emp.HolidayAllowance)}</td></tr>
             """;
         rowIdx++;
+        // 國定假日出勤加倍工資（四週彈性工時 §6.3.1）。切換日前恆為 0，故整列跳過而非印 0。
+        // ⚠ 斑馬色靠 rowIdx 累加，新增列一定要 rowIdx++，否則其後每一列的底色全反過來。
+        if (emp.PublicHolidayWorkDays > 0)
+        {
+            var phBg = rowIdx % 2 == 1 ? " style=\"background:#FDFAF5\"" : "";
+            earningsRows += $"""
+            <tr{phBg}><td style="padding:8px 12px">國定假日出勤加倍工資（{emp.PublicHolidayWorkDays} 天）</td><td style="padding:8px 12px;text-align:right">{fmt(emp.PublicHolidayDoublePay)}</td></tr>
+            """;
+            rowIdx++;
+        }
+        // 補休到期未休完轉津貼（依 lot 上的原始加班費率換算）。只在結算月（8 月 / 隔年 2 月）出現。
+        if (emp.CompensatorySettlementAmount > 0)
+        {
+            var csBg = rowIdx % 2 == 1 ? " style=\"background:#FDFAF5\"" : "";
+            var csLabel = emp.CompensatorySettlementNote ?? "補休未休完加班津貼";
+            earningsRows += $"""
+            <tr{csBg}><td style="padding:8px 12px">{System.Net.WebUtility.HtmlEncode(csLabel)}（{emp.CompensatorySettlementHours.ToString("0.#")} 小時）</td><td style="padding:8px 12px;text-align:right">{fmt(emp.CompensatorySettlementAmount)}</td></tr>
+            """;
+            rowIdx++;
+        }
         if (emp.OtherAddition > 0)
         {
             var addBg = rowIdx % 2 == 1 ? " style=\"background:#FDFAF5\"" : "";
             earningsRows += $"""
-            <tr{addBg}><td style="padding:8px 12px">其他加項{(emp.OtherAdditionNote is not null ? $"（{emp.OtherAdditionNote}）" : "")}</td><td style="padding:8px 12px;text-align:right">{fmt(emp.OtherAddition)}</td></tr>
+            <tr{addBg}><td style="padding:8px 12px">其他加項{(emp.OtherAdditionNote is not null ? $"（{System.Net.WebUtility.HtmlEncode(emp.OtherAdditionNote)}）" : "")}</td><td style="padding:8px 12px;text-align:right">{fmt(emp.OtherAddition)}</td></tr>
             """;
         }
 
@@ -280,7 +303,7 @@ public sealed class PayrollHandler(IPayrollReadService reader, AppDbContext db, 
             """;
         if (emp.OtherDeduction > 0)
             deductionRows += $"""
-            <tr><td style="padding:8px 12px">其他扣項{(emp.OtherDeductionNote is not null ? $"（{emp.OtherDeductionNote}）" : "")}</td><td style="padding:8px 12px;text-align:right">{fmt(emp.OtherDeduction)}</td></tr>
+            <tr><td style="padding:8px 12px">其他扣項{(emp.OtherDeductionNote is not null ? $"（{System.Net.WebUtility.HtmlEncode(emp.OtherDeductionNote)}）" : "")}</td><td style="padding:8px 12px;text-align:right">{fmt(emp.OtherDeduction)}</td></tr>
             """;
         if (emp.LaborPensionSelfDeduction > 0)
             deductionRows += $"""
@@ -289,7 +312,7 @@ public sealed class PayrollHandler(IPayrollReadService reader, AppDbContext db, 
 
         var noteSection = string.IsNullOrWhiteSpace(emp.Note) ? "" : $"""
             <div style="margin-top:16px;padding:12px 16px;background:#F5F2ED;border-radius:6px;color:#8C7355;font-size:13px">
-                <strong>備註：</strong>{emp.Note}
+                <strong>備註：</strong>{System.Net.WebUtility.HtmlEncode(emp.Note)}
             </div>
             """;
 
@@ -303,11 +326,11 @@ public sealed class PayrollHandler(IPayrollReadService reader, AppDbContext db, 
                 <table style="width:100%;border-collapse:collapse;margin:16px 0;font-size:14px">
                     <tr style="background:#F5F2ED">
                         <td style="padding:8px 12px;font-weight:bold;width:40%">姓名</td>
-                        <td style="padding:8px 12px">{emp.EmployeeName}</td>
+                        <td style="padding:8px 12px">{System.Net.WebUtility.HtmlEncode(emp.EmployeeName)}</td>
                     </tr>
                     <tr>
                         <td style="padding:8px 12px;font-weight:bold">部門 / 職稱</td>
-                        <td style="padding:8px 12px">{emp.DepartmentName ?? "---"} / {emp.JobTitleName ?? "---"}</td>
+                        <td style="padding:8px 12px">{System.Net.WebUtility.HtmlEncode(emp.DepartmentName ?? "---")} / {System.Net.WebUtility.HtmlEncode(emp.JobTitleName ?? "---")}</td>
                     </tr>
                     <tr style="background:#F5F2ED">
                         <td style="padding:8px 12px;font-weight:bold">到職日</td>

@@ -33,6 +33,9 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<OvertimeRequestProject> OvertimeRequestProjects { get; set; }
     public DbSet<AttendanceRecord> AttendanceRecords { get; set; }
     public DbSet<AttendancePunchLog> AttendancePunchLogs { get; set; }
+    public DbSet<LoginAttempt> LoginAttempts { get; set; }
+    public DbSet<AttendanceAuditLog> AttendanceAuditLogs { get; set; }
+    public DbSet<UserAuditLog> UserAuditLogs { get; set; }
     public DbSet<SystemSetting>    SystemSettings    { get; set; }
     public DbSet<InsuranceBracket>    InsuranceBrackets    { get; set; }
     public DbSet<EscalationOverride>  EscalationOverrides  { get; set; }
@@ -53,6 +56,21 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<TravelPaymentRequestItem>   TravelPaymentRequestItems  { get; set; }
     public DbSet<AttendanceReminderLog>      AttendanceReminderLogs     { get; set; }
     public DbSet<PaymentReminderLog>         PaymentReminderLogs        { get; set; }
+
+    // 四週彈性工時：個人排班 + 主管活動日
+    public DbSet<ShiftScheduleDay>           ShiftScheduleDays          { get; set; }
+    public DbSet<ShiftScheduleMonth>         ShiftScheduleMonths        { get; set; }
+    public DbSet<ActivityDay>                ActivityDays               { get; set; }
+    public DbSet<ActivityDayAssignee>        ActivityDayAssignees       { get; set; }
+    public DbSet<ShiftScheduleAdjustment>    ShiftScheduleAdjustments   { get; set; }
+
+    // 四週彈性工時：改班申請（開放期結束後的班表異動，走簽核流程）
+    public DbSet<ShiftChangeRequest>         ShiftChangeRequests        { get; set; }
+    public DbSet<ShiftChangeRequestDate>     ShiftChangeRequestDates    { get; set; }
+
+    // 四週彈性工時：補休逐筆 lot（取代現行純聚合 SUM 的補休池）
+    public DbSet<CompensatoryLot>            CompensatoryLots           { get; set; }
+    public DbSet<CompensatoryUsage>          CompensatoryUsages         { get; set; }
 
     // 分期撥款
     public DbSet<PaymentRequestInstallment>      PaymentRequestInstallments      { get; set; }

@@ -6,6 +6,8 @@ using Jabez.Api.Services.Dapper;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
 
 namespace Jabez.Api.Handlers;
 
@@ -35,6 +37,8 @@ public sealed class RoleHandler(AppDbContext db, IRoleReadService reader)
 
         if (await db.Roles.AnyAsync(r => r.Id == roleId))
             throw AppException.Conflict($"Role id '{roleId}' already exists.");
+
+        EnsurePermissionsWithinOperator(req.HttpContext.User, body.PermissionCodes ?? [], []);
 
         var role = new Role
         {
@@ -70,6 +74,14 @@ public sealed class RoleHandler(AppDbContext db, IRoleReadService reader)
             .FirstOrDefaultAsync(r => r.Id == id)
             ?? throw AppException.NotFound("Role");
 
+        await EnsureNotOwnRoleAsync(req.HttpContext.User, role.Id);
+        if (body.PermissionCodes is not null)
+        {
+            var currentCodes = await db.RolePermissions.Where(rp => rp.RoleId == role.Id)
+                .Select(rp => rp.Permission.Code).ToListAsync();
+            EnsurePermissionsWithinOperator(req.HttpContext.User, body.PermissionCodes, currentCodes);
+        }
+
         if (body.Name        is not null) role.Name        = body.Name;
         if (body.Description is not null) role.Description = body.Description;
 
@@ -90,14 +102,41 @@ public sealed class RoleHandler(AppDbContext db, IRoleReadService reader)
         return new OkObjectResult(ApiResponse.Ok(dto, "Role updated."));
     }
 
-    public async Task<IActionResult> DeleteAsync(string id)
+    public async Task<IActionResult> DeleteAsync(HttpRequest req, string id)
     {
         var role = await db.Roles.FindAsync(id)
             ?? throw AppException.NotFound("Role");
+
+        await EnsureNotOwnRoleAsync(req.HttpContext.User, role.Id);
 
         db.Roles.Remove(role);
         await db.SaveChangesAsync();
 
         return new OkObjectResult(ApiResponse.Ok($"Role '{id}' deleted."));
+    }
+
+    /// <summary>
+    /// 防提權（2026-10 安全修補）：非 Superadmin 不可新增 / 修改 / 刪除**自己所屬**的角色 ——
+    /// 否則持 roles:write 者可替自己的角色加上任何權限。與 UserHandler.EnsureCanAssignRolesAsync 同一套規則。
+    /// </summary>
+    private async Task EnsureNotOwnRoleAsync(ClaimsPrincipal op, string roleId)
+    {
+        if (op.FindFirst("is_superadmin")?.Value == "true") return;
+        if (!Guid.TryParse(op.FindFirst(JwtRegisteredClaimNames.Sub)?.Value, out var operatorId)) return;
+        if (await db.UserRoles.AnyAsync(ur => ur.UserId == operatorId && ur.RoleId == roleId))
+            throw AppException.Forbidden("不可修改自己所屬的角色。");
+    }
+
+    /// <summary>非 Superadmin 新加入角色的權限碼必須是自身權限（JWT permissions claim）的子集合；移除權限屬降權不檢查</summary>
+    private static void EnsurePermissionsWithinOperator(
+        ClaimsPrincipal op, IEnumerable<string> requested, IEnumerable<string> current)
+    {
+        if (op.FindFirst("is_superadmin")?.Value == "true") return;
+        var own     = op.FindAll("permissions").Select(c => c.Value).ToHashSet();
+        var existed = current.ToHashSet();
+        var missing = requested.Where(c => !string.IsNullOrEmpty(c) && !existed.Contains(c) && !own.Contains(c))
+                               .Distinct().ToArray();
+        if (missing.Length > 0)
+            throw AppException.Forbidden($"不可授予超出自身權限的權限（缺少：{string.Join("、", missing)}）。");
     }
 }

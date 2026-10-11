@@ -3,6 +3,7 @@ using Jabez.Api.Handlers;
 using Jabez.Api.Services;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using System.Security.Claims;
 
@@ -15,6 +16,7 @@ namespace Jabez.Api.Routing;
 public sealed class AppRouter(
     ILogger<AppRouter>     logger,
     IJwtService            jwt,
+    Data.AppDbContext      db,
     HealthHandler          health,
     AuthHandler            auth,
     UserHandler            users,
@@ -29,9 +31,14 @@ public sealed class AppRouter(
     PaymentRequestHandler  paymentRequests,
     LeaveRequestHandler    leaveRequests,
     LeaveRevocationHandler leaveRevocations,
+    ShiftChangeRequestHandler shiftChanges,
     TravelRequestHandler   travelRequests,
     OvertimeRequestHandler overtimeRequests,
     AttendanceHandler      attendances,
+    ShiftScheduleHandler   shiftSchedules,
+    ActivityDayHandler     activityDays,
+    ShiftScheduleReportHandler shiftScheduleReport,
+    ShiftScheduleReminderAdminHandler shiftScheduleReminders,
     ApprovalTaskHandler    approvalTasks,
     InsuranceBracketHandler insuranceBrackets,
     PayrollHandler         payroll,
@@ -55,6 +62,44 @@ public sealed class AppRouter(
     EmployeeProfileHandler          employeeProfile,
     NotificationHandler             notifications)
 {
+    /// <summary>
+    /// 會燒付費額度 / 外部 API 的端點（權限表皆為 null＝登入即可）的每人速率限制。
+    /// 規則與數值集中在 <see cref="UserRateLimiter.Limits"/>。
+    /// </summary>
+    private static void EnforceRateLimit(string method, string[] segments, System.Security.Claims.ClaimsPrincipal principal)
+    {
+        UserRateLimiter.Rule[]? rules = (method, segments) switch
+        {
+            ("POST", ["invoice-ocr"]) or ("POST", ["quote-ocr"])
+                => [UserRateLimiter.Limits.OcrPerMinute, UserRateLimiter.Limits.OcrPerDay],
+            ("GET", ["vendors", "lookup-by-tax-id"])
+                => [UserRateLimiter.Limits.GcisPerMinute],
+            _ => null,
+        };
+        if (rules is null) return;
+
+        var key = principal.FindFirst(System.IdentityModel.Tokens.Jwt.JwtRegisteredClaimNames.Sub)?.Value;
+        if (string.IsNullOrEmpty(key)) throw AppException.Unauthorized();
+        UserRateLimiter.Enforce(key, rules);
+    }
+
+    private async Task EnsureSecurityStampAsync(ClaimsPrincipal principal)
+    {
+        var stampClaim = principal.FindFirst(AuthPolicy.SecurityStampClaim)?.Value;
+        if (stampClaim is null) return; // 舊 token（部署前簽發），相容放行
+
+        var sub = principal.FindFirst(System.IdentityModel.Tokens.Jwt.JwtRegisteredClaimNames.Sub)?.Value;
+        if (!Guid.TryParse(sub, out var userId) || !Guid.TryParse(stampClaim, out var tokenStamp))
+            throw AppException.Unauthorized("Invalid or missing Bearer token.");
+
+        var current = await db.Users.AsNoTracking()
+            .Where(u => u.Id == userId)
+            .Select(u => new { u.SecurityStamp, u.Status })
+            .FirstOrDefaultAsync();
+        if (current is null || current.Status == "inactive" || current.SecurityStamp != tokenStamp)
+            throw AppException.Unauthorized("Session is no longer valid. Please sign in again.");
+    }
+
     public async Task<IActionResult> RouteAsync(HttpRequest req, string route)
     {
         var method   = req.Method.ToUpper();
@@ -74,6 +119,16 @@ public sealed class AppRouter(
                 return new UnauthorizedObjectResult(
                     ApiResponse.Fail("Unauthorized.", "Invalid or missing Bearer token."));
 
+            // 安全戳記 / 帳號狀態驗證：JWT 本身無狀態，停用 / 改密碼 / 換角色 / 改部門職稱後舊 token 仍簽章有效，
+            // 故每個請求以 PK 查一次 DB（只取兩個欄位）。token 無 sstamp claim＝部署前簽發的舊 token，放行至自然過期（≤ 60 分）。
+            await EnsureSecurityStampAsync(principal);
+
+            // 首次登入強制改密碼：token 帶 pwd_change_required 時，改密碼以外的受保護端點一律 403。
+            // 放在所有權限檢查之前 —— 這道門不分角色（Superadmin 之外的人都適用；Superadmin 不會被標記）。
+            if (principal.FindFirst(AuthPolicy.PasswordChangeRequiredClaim)?.Value == "true"
+                && !IsAllowedWhilePasswordChangeRequired(method, segments))
+                throw AppException.Forbidden("首次登入必須先修改密碼，完成後才能使用系統其他功能。");
+
             // Superadmin-only 路由檢查
             if (IsSuperAdminRoute(method, segments))
                 RequireSuperAdmin(principal);
@@ -87,6 +142,9 @@ public sealed class AppRouter(
             if (requiredPermission is not null)
                 RequirePermission(principal, requiredPermission);
 
+            // 付費 / 外部 API 端點的每人速率限制（OCR → Gemini、統編查詢 → GCIS），以 JWT sub 為鍵，超限回 429
+            EnforceRateLimit(method, segments, principal);
+
             // 把 principal 寫入 HttpContext.User，讓 Handler 透過 IHttpContextAccessor 可取得
             req.HttpContext.User = principal;
         }
@@ -98,7 +156,7 @@ public sealed class AppRouter(
             ("GET",    ["health"])                    => health.Get(),
 
             // ── Files (Blob 代理) ──────────────────────────────────────────────
-            // 簽名檔、頭像為公開路由；原住民證明屬 HR 敏感資料需 JWT + users:read
+            // 頭像為公開路由；簽名檔需 JWT（登入即可，2026-10 起不再公開）；原住民證明屬 HR 敏感資料需 JWT + users:read
             ("GET",    ["files", "signatures", var fileName])        => await files.GetSignatureAsync(fileName),
             ("GET",    ["files", "avatars", var fileName])           => await files.GetAvatarAsync(fileName),
             ("GET",    ["files", "indigenous-proofs", var fileName]) => await files.GetIndigenousProofAsync(fileName),
@@ -119,13 +177,14 @@ public sealed class AppRouter(
             // ── Auth ──────────────────────────────────────────────────────────
             ("POST",   ["auth", "login"])             => await auth.LoginAsync(req),
             ("POST",   ["auth", "refresh"])           => await auth.RefreshAsync(req),
+            ("POST",   ["auth", "logout"])            => await auth.LogoutAsync(req),
             ("POST",   ["auth", "change-password"])   => await auth.ChangePasswordAsync(req),
 
             // ── Users ─────────────────────────────────────────────────────────
             ("GET",    ["users", "lookup"])           => await users.GetLookupAsync(req),
             ("GET",    ["users"])                     => await users.GetAllAsync(req),
             ("POST",   ["users"])                     => await users.CreateAsync(req),
-            ("POST",   ["users", var id, "send-credentials"]) => await users.SendCredentialsAsync(id),
+            ("POST",   ["users", var id, "send-credentials"]) => await users.SendCredentialsAsync(req, id),
             // 人事資料卡：必須在 ["users", var id] catch-all 之前
             ("GET",    ["users", var id, "profile"])  => await employeeProfile.GetByUserIdAsync(req, id),
             ("PUT",    ["users", var id, "profile"])  => await employeeProfile.UpsertAsync(req, id),
@@ -140,7 +199,7 @@ public sealed class AppRouter(
             ("GET",    ["roles", var id])             => await roles.GetByIdAsync(id),
             ("PUT",    ["roles", var id])             => await roles.UpdateAsync(req, id),
             ("PATCH",  ["roles", var id])             => await roles.UpdateAsync(req, id),
-            ("DELETE", ["roles", var id])             => await roles.DeleteAsync(id),
+            ("DELETE", ["roles", var id])             => await roles.DeleteAsync(req, id),
 
             // ── Permissions ────────────────────────────────────────────────────
             ("GET",    ["permissions"])               => await perms.GetAllAsync(),
@@ -152,9 +211,11 @@ public sealed class AppRouter(
 
             // ── Settings ───────────────────────────────────────────────────────
             ("GET",    ["settings"])                  => await settings.GetAsync(),
+            ("GET",    ["work-mode"])                 => await settings.GetWorkModeAsync(),
             ("PATCH",  ["settings"])                  => await settings.UpdateAsync(req),
 
             // ── Departments ────────────────────────────────────────────────────
+            ("GET",    ["departments", "lookup"])     => await depts.GetLookupAsync(),
             ("GET",    ["departments"])               => await depts.GetAllAsync(),
             ("POST",   ["departments"])               => await depts.CreateAsync(req),
             ("GET",    ["departments", var id])       => await depts.GetByIdAsync(id),
@@ -282,11 +343,11 @@ public sealed class AppRouter(
             ("GET",    ["holiday-travel-requests"])                        => await travelRequests.GetAllAsync(req, isHolidayTravel: true),
             ("POST",   ["holiday-travel-requests"])                        => await travelRequests.CreateAsync(req, isHolidayTravel: true),
             ("PATCH",  ["holiday-travel-requests", var id, "submit"])      => await travelRequests.SubmitAsync(req, id, isHolidayTravel: true),
-            ("PATCH",  ["holiday-travel-requests", var id, "installments"]) => await travelRequests.UpsertInstallmentsAsync(req, id),
-            ("GET",    ["holiday-travel-requests", var id])                => await travelRequests.GetByIdAsync(req, id),
+            ("PATCH",  ["holiday-travel-requests", var id, "installments"]) => await travelRequests.UpsertInstallmentsAsync(req, id, isHolidayTravel: true),
+            ("GET",    ["holiday-travel-requests", var id])                => await travelRequests.GetByIdAsync(req, id, isHolidayTravel: true),
             ("PUT",    ["holiday-travel-requests", var id])                => await travelRequests.UpdateAsync(req, id, isHolidayTravel: true),
             ("PATCH",  ["holiday-travel-requests", var id])                => await travelRequests.UpdateAsync(req, id, isHolidayTravel: true),
-            ("DELETE", ["holiday-travel-requests", var id])                => await travelRequests.DeleteAsync(req, id),
+            ("DELETE", ["holiday-travel-requests", var id])                => await travelRequests.DeleteAsync(req, id, isHolidayTravel: true),
 
             // ── Calendar Days（行事曆管理）─────────────────────────────────────────
             ("GET",    ["calendar-days"])                                  => await calendarDays.GetByYearAsync(req),
@@ -320,6 +381,18 @@ public sealed class AppRouter(
             ("DELETE", ["leave-requests", var id])                 => await leaveRequests.DeleteAsync(req, id),
 
             // ── Leave Revocations（銷假；沿用 leave-requests:* 權限） ───────────
+            // 改班申請（§3.5.2）。⚠ List Pattern 由上而下比對：
+            //    changeable-dates / submit 這類三段式必須排在兩段式 ["shift-changes", var id] 之前
+            ("GET",    ["shift-changes", "changeable-dates"])      => await shiftChanges.GetChangeableDatesAsync(req),
+            ("POST",   ["shift-changes", "preview"])               => await shiftChanges.PreviewAsync(req),
+            ("PATCH",  ["shift-changes", var scId, "submit"])      => await shiftChanges.SubmitAsync(req, scId),
+            ("GET",    ["shift-changes"])                          => await shiftChanges.GetAllAsync(req),
+            ("POST",   ["shift-changes"])                          => await shiftChanges.CreateAsync(req),
+            ("GET",    ["shift-changes", var scGetId])             => await shiftChanges.GetByIdAsync(req, scGetId),
+            ("PUT",    ["shift-changes", var scPutId])             => await shiftChanges.UpdateAsync(req, scPutId),
+            ("PATCH",  ["shift-changes", var scPatchId])           => await shiftChanges.UpdateAsync(req, scPatchId),
+            ("DELETE", ["shift-changes", var scDelId])             => await shiftChanges.DeleteAsync(req, scDelId),
+
             ("GET",    ["leave-revocations"])                      => await leaveRevocations.GetAllAsync(req),
             ("PATCH",  ["leave-revocations", var id, "submit"])    => await leaveRevocations.SubmitAsync(req, id),
             ("GET",    ["leave-revocations", var id])              => await leaveRevocations.GetByIdAsync(req, id),
@@ -359,6 +432,22 @@ public sealed class AppRouter(
             ("PUT",    ["attendances", var id])           => await attendances.UpdateAsync(req, id),
             ("PATCH",  ["attendances", var id])           => await attendances.UpdateAsync(req, id),
 
+            // 四週彈性工時：個人排班排例／休
+            ("GET",    ["shift-schedules"])               => await shiftSchedules.GetMonthAsync(req),
+            ("PUT",    ["shift-schedules"])               => await shiftSchedules.SaveMonthAsync(req),
+            ("GET",    ["shift-schedules", "adjustments"])         => await shiftSchedules.GetMyAdjustmentsAsync(req),
+            ("POST",   ["shift-schedules", "adjustments", "ack"])  => await shiftSchedules.AcknowledgeAdjustmentsAsync(req),
+
+            // 活動日（主管排定；疊加在日別之上的旗標）
+            ("POST",   ["shift-schedule-reminders", "run"]) => await shiftScheduleReminders.RunAsync(req),
+            ("POST",   ["shift-schedule-reminders", "auto-schedule"]) => await shiftScheduleReminders.AutoScheduleApplyAsync(req),
+            ("GET",    ["shift-schedule-reminders", "clock-out-preview"]) => await shiftScheduleReminders.ClockOutPreviewAsync(req),
+            ("GET",    ["shift-schedule-reminders", "auto-schedule-preview"]) => await shiftScheduleReminders.AutoSchedulePreviewAsync(req),
+            ("GET",    ["activity-days"])                 => await activityDays.GetAllAsync(req),
+            ("POST",   ["activity-days"])                 => await activityDays.CreateAsync(req),
+            ("PUT",    ["activity-days", var adId])       => await activityDays.UpdateAsync(req, adId),
+            ("DELETE", ["activity-days", var adDelId])    => await activityDays.DeleteAsync(req, adDelId),
+
             // ── Insurance Brackets ────────────────────────────────────────────
             ("GET",    ["insurance-brackets"])              => await insuranceBrackets.GetAllAsync(),
             ("GET",    ["insurance-brackets", "lookup"])    => await insuranceBrackets.LookupBySalaryAsync(req),
@@ -382,6 +471,7 @@ public sealed class AppRouter(
             ("GET",    ["reports", "payment", "export"])           => await paymentReport.GetExportAsync(req),
             ("GET",    ["reports", "payment"])                     => await paymentReport.GetAllAsync(req),
             ("GET",    ["reports", "project-water-level"])         => await projectWaterLevel.GetAllAsync(req),
+            ("GET",    ["reports", "shift-schedule"])              => await shiftScheduleReport.GetOverviewAsync(req),
 
             // ── Approval Tasks ─────────────────────────────────────────────────
             ("GET",    ["approval-tasks"])                                                      => await approvalTasks.GetAllAsync(req),
@@ -441,17 +531,27 @@ public sealed class AppRouter(
             ("GET",  ["health"]) or
             ("POST", ["auth", "login"]) or
             ("POST", ["auth", "refresh"]) or
-            // 簽名檔代理：PDF 匯出時需要直接 fetch，不帶 Authorization header
-            ("GET",  ["files", "signatures", _]) or
+            // 登出：Access Token 可能已過期，由 Refresh Token 本身證明身分；一律回 200
+            ("POST", ["auth", "logout"]) or
             // 頭像代理：topbar 顯示頭像不帶 Authorization header
             ("GET",  ["files", "avatars", _]);
+
+    /// <summary>
+    /// 帶 <c>pwd_change_required</c> claim 的 token 唯一可用的端點：改密碼本身。
+    /// refresh / logout 是公開路由、根本不會進到這個檢查，故不必列。
+    /// 刻意不放行任何讀取端點 —— 前端全域 guard 會把使用者鎖在改密碼頁，那一頁不需要任何 API 資料。
+    /// </summary>
+    private static bool IsAllowedWhilePasswordChangeRequired(string method, string[] segments) =>
+        (method, segments) is ("POST", ["auth", "change-password"]);
 
     /// <summary>根據 HTTP method + 路由 segments 決定所需的權限代碼</summary>
     private static string? GetRequiredPermission(string method, string[] segments) =>
         (method, segments) switch
         {
             // Files
-            // signatures / avatars 為公開路由（由 IsPublicRoute 攔住），此處 null 僅為保險
+            // avatars 為公開路由（由 IsPublicRoute 攔住），此處 null 僅為保險
+            // signatures（簽名檔）2026-10 起需登入：檔名＝userId 可推導，公開等於任何人可蒐集全公司簽名；
+            // 前端 PDF / 預覽改以帶 Bearer token 的 HttpClient 取 blob。登入即可（簽核者 PDF 要印所有關卡的簽名）
             ("GET", ["files", "signatures", _])         => null,
             ("GET", ["files", "avatars", _])            => null,
             // indigenous-proofs / low-income-proofs / disabled-proofs / id-cards / education-proofs / passbooks 屬 HR 敏感 PII，需 users:read 權限
@@ -461,8 +561,8 @@ public sealed class AppRouter(
             ("GET", ["files", "id-cards", _])           => PermissionCodes.UsersRead,
             ("GET", ["files", "education-proofs", _])   => PermissionCodes.UsersRead,
             ("GET", ["files", "passbooks", _])          => PermissionCodes.UsersRead,
-            // vendor-passbooks 為一般檔案（任何登入者皆可讀，與 avatars / signatures 同層）
-            ("GET", ["files", "vendor-passbooks", _])   => null,
+            // vendor-passbooks（存摺封面含匯款帳號）需 vendors:read；檔名為 {vendorId}{ext} 可被列舉，不可僅憑登入放行
+            ("GET", ["files", "vendor-passbooks", _])   => PermissionCodes.VendorsRead,
             // vendor-id-cards 屬敏感 PII（個人工作室身分證），需 vendors:read
             ("GET", ["files", "vendor-id-cards", _])    => PermissionCodes.VendorsRead,
             // quotes（報價單）/ request-attachments（整單附件）為一般業務檔案（任何登入者皆可讀，與 vendor-passbooks 同層）
@@ -495,10 +595,14 @@ public sealed class AppRouter(
             ("GET",    ["permissions"])                  => null,
 
             // Settings
+            // 輕量讀取端點：任何登入者，免 settings:read（見 SettingsHandler.GetWorkModeAsync）
+            ("GET",    ["work-mode"])                    => null,
             ("GET",    ["settings"])                     => PermissionCodes.SettingsRead,
             ("PATCH",  ["settings"])                     => PermissionCodes.SettingsWrite,
 
             // Departments
+            // lookup 不需權限，登入即可（輕量讀取端點模式，見 backend-design.md §13）
+            ("GET",    ["departments", "lookup"])        => null,
             ("GET",    ["departments", ..])              => PermissionCodes.DepartmentsRead,
             ("POST",   ["departments"])                  => PermissionCodes.DepartmentsWrite,
             ("PUT" or "PATCH", ["departments", _])       => PermissionCodes.DepartmentsWrite,
@@ -627,6 +731,13 @@ public sealed class AppRouter(
             // 銷假是請假的一部分，沿用同一組權限碼（不新增權限，既有角色免重設）
             // 注意：GET ["leave-requests", ..] 已涵蓋 revocable-dates；POST 子資源不在 ["leave-requests"] 單段內，須另列
             ("POST",   ["leave-requests", _, "revocations"]) => PermissionCodes.LeaveRequestsWrite,
+            // 改班申請沿用排班權限碼（比照銷假沿用 leave-requests:*）——
+            // 不新增權限碼，既有角色不必重新指派、也不必再上一支 migration
+            ("GET",    ["shift-changes", ..])            => PermissionCodes.ShiftScheduleRead,
+            ("POST",   ["shift-changes", ..])            => PermissionCodes.ShiftScheduleWrite,
+            ("PUT",    ["shift-changes", ..])            => PermissionCodes.ShiftScheduleWrite,
+            ("PATCH",  ["shift-changes", ..])            => PermissionCodes.ShiftScheduleWrite,
+            ("DELETE", ["shift-changes", _])             => PermissionCodes.ShiftScheduleWrite,
             ("GET",    ["leave-revocations", ..])        => PermissionCodes.LeaveRequestsRead,
             ("POST",   ["leave-revocations", ..])        => PermissionCodes.LeaveRequestsWrite,
             ("PUT",    ["leave-revocations", ..])        => PermissionCodes.LeaveRequestsWrite,
@@ -665,6 +776,21 @@ public sealed class AppRouter(
             ("GET",    ["attendances", ..])               => PermissionCodes.ReportsAttendanceRead,
             ("POST",   ["attendances", ..])               => PermissionCodes.AttendancesWrite,
 
+            // 四週彈性工時：個人排班。看別人的班表另在 Handler 內以 view-all / 部門 scope 把關
+            ("GET",    ["shift-schedules"])               => PermissionCodes.ShiftScheduleRead,
+            ("PUT",    ["shift-schedules"])               => PermissionCodes.ShiftScheduleWrite,
+            ("GET",    ["shift-schedules", ..])           => PermissionCodes.ShiftScheduleRead,
+            // 活動日覆蓋班表的通知「我知道了」：只動本人的已讀戳記，與讀取同級
+            ("POST",   ["shift-schedules", "adjustments", "ack"]) => PermissionCodes.ShiftScheduleRead,
+
+            // 活動日：讀給全員（排班月曆要顯示），寫限持有 activity-days:write 者，
+            // 可排定的部門範圍另在 Handler 內以 ProjectAccessScope 把關
+            // Superadmin 手動觸發（Handler 內另驗 is_superadmin）
+            ("POST",   ["shift-schedule-reminders", ..])  => null,
+            ("GET",    ["shift-schedule-reminders", ..])   => null,
+            ("GET",    ["activity-days", ..])             => PermissionCodes.ActivityDaysRead,
+            ("POST" or "PUT" or "DELETE", ["activity-days", ..]) => PermissionCodes.ActivityDaysWrite,
+
             // Insurance Brackets
             ("GET",    ["insurance-brackets", ..])              => PermissionCodes.InsuranceBracketsRead,
             ("POST",   ["insurance-brackets"])                  => PermissionCodes.InsuranceBracketsWrite,
@@ -685,6 +811,7 @@ public sealed class AppRouter(
             ("GET",    ["reports", "payment", "export"])           => PermissionCodes.ReportsPaymentRead,
             ("GET",    ["reports", "payment"])                     => PermissionCodes.ReportsPaymentRead,
             ("GET",    ["reports", "project-water-level"])         => PermissionCodes.ReportsProjectWaterLevelRead,
+            ("GET",    ["reports", "shift-schedule"])              => PermissionCodes.ReportsShiftScheduleRead,
 
             // Approval Tasks — 指定審核者不需要全域審核權限，改由 Handler 內部依步驟類型判斷
             // GET: 任何已登入使用者可查詢（SQL 已依職稱/指定審核過濾）

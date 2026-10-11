@@ -87,6 +87,68 @@ public static class PermissionCodes
     public const string PreReviewRequestsRead        = "pre-review-requests:read";
     public const string PreReviewRequestsWrite       = "pre-review-requests:write";
     public const string PreReviewRequestsDelete      = "pre-review-requests:delete";
+
+    // ── 四週彈性工時：個人排班 ──────────────────────────────────────────
+    // ⚠ 這四碼**刻意不進 PermissionConfiguration.HasData**：Id 1–77 已全滿無空號，
+    //   而 PermissionHandler.CreateAsync 以 max(Id)+1 配號，正式站 78+ 很可能已被
+    //   UI 建立的權限占用 —— 寫死就撞 PK，而 Program.cs 啟動時的 MigrateAsync 一拋例外
+    //   整個 Function App 就起不來。改由 raw SQL migration 以 Code 為準動態取號，
+    //   與「UI 建立的權限」同一處置（同樣不受 EF seed 管理）。
+
+    /// <summary>檢視個人排班月曆。一般同仁即持有此碼。</summary>
+    public const string ShiftScheduleRead    = "shift-schedule:read";
+    /// <summary>排定／修改自己的班表。</summary>
+    public const string ShiftScheduleWrite   = "shift-schedule:write";
+    /// <summary>
+    /// 檢視**全公司**排班。未持有者的可見範圍退回 ProjectAccessScope（部門可見性四旗標）。
+    /// ⚠ 刻意以權限碼判定，**不得硬編 JobTitle.Level ≤ 3**（組織改制後職級對應會漂移，
+    /// 前例見 DepartmentCodes 的 'FIN' 硬編碼事故）。
+    /// </summary>
+    public const string ShiftScheduleViewAll = "shift-schedule:view-all";
+    /// <summary>進入〈出勤／排休總覽表〉報表頁。</summary>
+    public const string ReportsShiftScheduleRead = "reports-shift-schedule:read";
+
+    /// <summary>檢視活動日清單。</summary>
+    public const string ActivityDaysRead = "activity-days:read";
+    /// <summary>
+    /// 排定／改期活動日並勾選預定人力（規格上是「各部門協理主管」）。
+    /// ⚠ 同樣以權限碼判定，**不得硬編 `JobTitle.Level ≤ 3`** —— 組織改制後職級對應會漂移。
+    /// 可排定的部門範圍另由 <c>ProjectAccessScope</c> 控管（只能排自己看得到的部門）。
+    /// </summary>
+    public const string ActivityDaysWrite = "activity-days:write";
+}
+
+/// <summary>
+/// 非正式環境的訊息標記（例：<c>【測試站｜此為測試訊息】</c>）。**正式站不設此值**，輸出完全不變。
+///
+/// 設定鍵 <c>App:EnvironmentLabel</c>（Azure App Setting <c>App__EnvironmentLabel</c>）。
+///
+/// <b>為什麼要有</b>：測試站與正式站送的是同一批真實員工看得懂的訊息，
+/// 收件人手機／信箱上完全分不出哪一則是測試 —— 2026-09 曾因此讓 29 位同仁
+/// 各收到 2 則測試 LINE 推播而無從判斷真偽，且**訊息送出後收不回來**。
+///
+/// <b>為什麼 LINE 與 Email 共用同一個設定鍵</b>：拆成兩個鍵的必然結果是有人只設了一邊，
+/// 症狀是「LINE 標了、Email 沒標」而且不會有任何錯誤。一個概念就給一個鍵。
+///
+/// 兩個通道各自的套用位置（都是該通道的**唯一收斂點**，故日後新增模板自動涵蓋）：
+///   · LINE  → <c>LineFlexMessageBuilder.BuildBubble</c>（altText ＋ header 第一行）
+///   · Email → <c>EmailService.SendAsync</c>（主旨前綴 ＋ 內文頂端橫幅）
+///
+/// ⚠ **Email 的曝險比 LINE 大**：`SystemSetting.ApprovalEmailEnabled` 只管簽核通知，
+///   **帳號通知信（UserHandler）與薪資明細信（PayrollHandler）完全不受它管制**，
+///   關掉那個開關並不會讓測試站停止寄信給真實員工。
+/// </summary>
+public static class EnvironmentLabel
+{
+    public const string ConfigKey = "App:EnvironmentLabel";
+
+    /// <summary>目前值；空字串＝正式環境。由 <c>Program.cs</c> 於啟動時寫入。</summary>
+    public static string Value { get; set; } = "";
+
+    public static bool HasValue => !string.IsNullOrWhiteSpace(Value);
+
+    /// <summary>加在標題 / 主旨前面；無標記時原樣回傳。</summary>
+    public static string Prefix(string text) => HasValue ? $"{Value}{text}" : text;
 }
 
 public static class RoleNames
@@ -112,6 +174,88 @@ public static class WorkdayHours
     public const int LunchEndHour   = 13;
     public const int EndHour        = 17;
     public const int FullDayHours   = 8;   // 全日實際工時（EndHour - StartHour - 午休 1 小時）
+
+    // ── 四週彈性工時：時段版本化（flexible-work-hours.md §10.2）──────────────
+    // 上面 5 個 const 是**舊制**的值，等同 Legacy，保留供尚未遷移的消費點使用。
+    // 新消費點一律改吃 For(date, switchDate) 取回的 WorkdaySchedule。
+
+    /// <summary>舊制：08:00–17:00、午休 12:00–13:00、半天 am 08:00–12:00 / pm 13:00–17:00。</summary>
+    public static readonly WorkdaySchedule Legacy = new(
+        Start:          new TimeOnly(8, 0),
+        LunchStart:     new TimeOnly(12, 0),
+        LunchEnd:       new TimeOnly(13, 0),
+        End:            new TimeOnly(17, 0),
+        HalfDayAmEnd:   new TimeOnly(12, 0),
+        HalfDayPmStart: new TimeOnly(13, 0),
+        FullDayHours:   8m);
+
+    /// <summary>
+    /// 新制（四週彈性工時）：09:00–18:00、午休 12:30–13:30、半天**全假別統一** am 09:00–13:00 / pm 13:00–18:00。
+    /// 半天分界點 13:00 刻意落在午休（12:30–13:30）之中，好處是上下午接得起來、不重疊也不留空檔。
+    /// 舊制「補休上午 09:00–13:00」的假別特例在新制取消（全假別統一，見 §10.2）。
+    /// </summary>
+    public static readonly WorkdaySchedule Flexible = new(
+        Start:          new TimeOnly(9, 0),
+        LunchStart:     new TimeOnly(12, 30),
+        LunchEnd:       new TimeOnly(13, 30),
+        End:            new TimeOnly(18, 0),
+        HalfDayAmEnd:   new TimeOnly(13, 0),
+        HalfDayPmStart: new TimeOnly(13, 0),
+        FullDayHours:   8m);
+
+    /// <summary>
+    /// 依「該筆資料自己的日期」選用時段，**不是依今天**。
+    /// <paramref name="switchDate"/> 來自 <c>SystemSetting.FlexibleWorkStartDate</c>；
+    /// null（尚未切換）或 date 早於切換日 → 舊制。
+    ///
+    /// 呼叫端傳的 date：請假單傳 <c>StartDate</c>、打卡傳 <c>RecordDate</c>、報表傳該列日期。
+    /// 舊資料不遷移（§10.2），拿新制時段去比對舊單會生出不存在的「未打卡」與錯誤的請假時段顯示。
+    /// </summary>
+    public static WorkdaySchedule For(DateTime date, DateTime? switchDate) =>
+        IsFlexible(date, switchDate) ? Flexible : Legacy;
+
+    /// <summary>
+    /// 該日期是否已套用四週彈性工時。與 <see cref="For"/> 同一個判準，抽出來供
+    /// 「不是時段、但同樣以切換日分歧」的規則使用（例：國定假日是否另立第四種加班日別）。
+    /// </summary>
+    public static bool IsFlexible(DateTime date, DateTime? switchDate) =>
+        switchDate is { } s && date.Date >= s.Date;
+}
+
+/// <summary>
+/// 一組「每日工作時段」。四週彈性工時上線後系統內同時存在新舊兩套（舊單不遷移），
+/// 故時段不能再是編譯期 const int —— 且新制午休 12:30 本來就表達不了整點。
+/// 取得方式一律走 <see cref="WorkdayHours.For"/>。
+/// </summary>
+/// <param name="Start">上班時刻。</param>
+/// <param name="LunchStart">午休開始（不計入工時）。</param>
+/// <param name="LunchEnd">午休結束。</param>
+/// <param name="End">下班時刻。</param>
+/// <param name="HalfDayAmEnd">上午半天假的訖時刻（舊制 12:00、新制 13:00）。</param>
+/// <param name="HalfDayPmStart">下午半天假的起時刻（舊制 13:00、新制 13:00）。</param>
+/// <param name="FullDayHours">全日工時，新舊皆 8 —— 時數換算不變，只有時刻平移。</param>
+public sealed record WorkdaySchedule(
+    TimeOnly Start,
+    TimeOnly LunchStart,
+    TimeOnly LunchEnd,
+    TimeOnly End,
+    TimeOnly HalfDayAmEnd,
+    TimeOnly HalfDayPmStart,
+    decimal  FullDayHours)
+{
+    /// <summary>半天假時數，恆 4 —— **刻意不由時鐘長度推導**（新制上午 09:00–13:00 看似 4 小時、
+    /// 下午 13:00–18:00 看似 5 小時，但兩者都記 4）。這些時刻是「代表時刻」，不是工時計算的分子。</summary>
+    public const decimal HalfDayHours = 4m;
+
+    /// <summary>午休長度（小時）。</summary>
+    public decimal LunchHours => (decimal)(LunchEnd - LunchStart).TotalHours;
+
+    /// <summary>
+    /// 從上班打卡到應下班的「時鐘時數」＝ 全日工時 ＋ 午休（新舊皆 9）。
+    /// 語意等同既有的 <c>AttendanceAutoClockService.AutoClockOutHours</c>，
+    /// 也是規格 §2.1「應下班時間 ＝ 實際上班打卡時刻 ＋ 9 小時」的來源，兩處應共用本屬性。
+    /// </summary>
+    public decimal ClockDayHours => FullDayHours + LunchHours;
 }
 
 /// <summary>

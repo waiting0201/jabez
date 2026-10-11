@@ -22,6 +22,35 @@ public class AttendanceRecord
     public bool      IsBusinessTrip         { get; set; }
     /// <summary>管理者於出缺勤編輯表單填寫的備註（僅編輯表單可見可填）</summary>
     public string?   Remark                 { get; set; }
+
+    /// <summary>
+    /// 曾被管理者修改過（2026-10 防灌工時）。與 <see cref="IsClockInAuto"/> / <see cref="IsClockOutAuto"/> **各自獨立**：
+    /// 管理者改時間**不再清掉**「系統補卡」旗標，報表因此同時看得出「原本是系統補的、後來被誰改過」。
+    /// 每次修改的前後值見 <see cref="AttendanceAuditLog"/>。
+    /// </summary>
+    public bool      IsManuallyAdjusted     { get; set; }
+    /// <summary>最後一次修改的管理者（刻意不設 FK：避免 Users → AttendanceRecords → 異動紀錄 的多重 cascade 路徑，且不必進 UserHandler 清洗清單）</summary>
+    public Guid?     LastAdjustedById       { get; set; }
+    public DateTime? LastAdjustedAt         { get; set; }
+
+    // ── 四週彈性工時（切換日之後才寫入；舊制一律維持 false / null）──────────
+    /// <summary>遲到（上班打卡超過 09:30）。**出差當日不判定**。</summary>
+    public bool      IsLate                 { get; set; }
+    /// <summary>早退（下班打卡早於「上班打卡 ＋ 9 小時」）。**出差當日不判定**。</summary>
+    public bool      IsEarlyLeave           { get; set; }
+    /// <summary>
+    /// 下班打卡的早退／逾時原因（上限 500 字）。
+    /// ⚠ 與 <see cref="Remark"/> **語意不同、不可互相挪用**：Remark 是管理者事後在出缺勤編輯表單
+    /// 補註的（走 reports-attendance:write），本欄是員工打卡當下自己填的。
+    /// 出差當日欄位**仍顯示但改為非必填** —— 在外仍可能有值得記錄的異常，
+    /// 讓同仁想填就能填比直接拿掉欄位有用；改的是必填性，不是可見性。
+    /// </summary>
+    public string?   ClockOutReason         { get; set; }
+    /// <summary>
+    /// 上班打卡的遲到原因（上限 500 字，2026-10-06 新增）。遲到（非出差）時必填，
+    /// 出差當日可選填；與 <see cref="ClockOutReason"/> 同為員工打卡當下自填，與 <see cref="Remark"/> 語意不同。
+    /// </summary>
+    public string?   LateReason             { get; set; }
     public DateTime? OvertimeStartTime      { get; set; }
     public double?   OvertimeStartLatitude  { get; set; }
     public double?   OvertimeStartLongitude { get; set; }

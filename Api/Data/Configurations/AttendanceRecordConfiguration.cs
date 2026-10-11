@@ -30,6 +30,16 @@ public class AttendanceRecordConfiguration : IEntityTypeConfiguration<Attendance
         builder.Property(a => a.Remark)
                .HasMaxLength(500);
 
+        // 管理者修正標記（2026-10）；LastAdjustedById 刻意不設 FK，見 AttendanceAuditLog 註解
+        builder.Property(a => a.IsManuallyAdjusted)
+               .HasDefaultValue(false);
+
+        builder.Property(a => a.ClockOutReason)
+               .HasMaxLength(500);
+
+        builder.Property(a => a.LateReason)
+               .HasMaxLength(500);
+
         builder.Property(a => a.CreatedAt)
                .HasDefaultValueSql("GETUTCDATE() AT TIME ZONE 'UTC' AT TIME ZONE 'Taipei Standard Time'");
 

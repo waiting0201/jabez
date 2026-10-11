@@ -31,7 +31,7 @@
 │       ├── payroll-formula.md        # 薪資公式
 │       ├── hr-profile.md             # 員工人事資料卡
 │       ├── notifications.md          # 通知系統清單（Email + LINE）
-│       ├── flexible-work-hours.md   # 四週彈性工時（技術規格，**尚未實作**）
+│       ├── flexible-work-hours.md   # 四週彈性工時（技術規格，**程式已全部實作、制度尚未切換**）
 │       └── flexible-work-hours-client.md # 四週彈性工時（**客戶確認版**，無技術內容、逐項寫明做法）
 │   └── tools/
 │       └── md2pdf.mjs       # 客戶版 markdown → PDF（`npx marked` ＋ Chrome headless，CSS 內嵌；**產出一律放 `output/`**（已 gitignore）；技術版不對外、勿用此腳本轉）
@@ -144,7 +144,7 @@ Bug 修復：
 - [payroll-formula.md](docs/business/payroll-formula.md) — 薪資 7 條公式 + 健保眷屬計算
 - [hr-profile.md](docs/business/hr-profile.md) — 員工人事資料卡（3 Tab + 9 子表 + 整批替換）
 - [notifications.md](docs/business/notifications.md) — 通知系統清單（9 種 Email + 9 種 LINE Flex Message + 系統開關 + 打卡提醒）
-- [flexible-work-hours.md](docs/business/flexible-work-hours.md) — **四週彈性工時（技術規格，尚未實作）**：勞基法 §30-1 框架 / 09:00–18:00＋午休 12:30–13:30 / 個人排班排例休（**例假未排滿或觸及連續 12 天・14 天 2 例假即擋存**，休假未滿只警示）/ 出勤排休總覽表（三色）/ 打卡與加班連動 / **〈改班申請〉逐部門五條簽核路線**（2026-09-17 改，取代原單一三關；「含底下部門」走既有 `ApprovalItem` 祖先部門繼承，不需新功能）/ **國定假日出勤加倍工資**（前 8 小時加發 1 日日薪 ＋ 第 9 小時起走**平日級距**，故 `OvertimePayCalculator` 不需新增級距表、只需改日別解析；**2026-09-17 改：主管的活動日旗標可壓在國定假日上**，被指定者當天解鎖上下班打卡、不需加班單，第 9 小時起才提加班申請 —— 連帶使加倍工資的取數變成「打卡紀錄 ∪ 已核准加班單」且**須依日期去重**，同仁側月曆仍唯讀、仍不佔配額）/ 補休 FIFO（**1–6 月用至 7 月底→8 月薪資結算；7–12 月用至隔年 1 月底→隔年 2 月結算**）/ 假日執行活動退場 / **與現行系統差異對照 + §10 決議（含 2026-09-16 客戶回覆 21 項、2026-09-17 回覆 2 項）**
+- [flexible-work-hours.md](docs/business/flexible-work-hours.md) — **四週彈性工時（技術規格；八個階段程式已全部實作並部署 staging，但 `SystemSetting.FlexibleWorkStartDate` 為 null ＝ 制度尚未切換，全系統行為與現行一致）**：勞基法 §30-1 框架 / 09:00–18:00＋午休 12:30–13:30 / 個人排班排例休（**例假未排滿或觸及連續 12 天・14 天 2 例假即擋存**，休假未滿只警示；**2026-09-29：例假 ≥4、例＋休合計不變，多排的例假由休假轉入** —— 滾動 14 天規則一年須 52 天例假、每月 4 天只有 48 天，一年約 4 個月必排 5 例）/ 出勤排休總覽表（三色）/ 打卡與加班連動 / **〈改班申請〉逐部門五條簽核路線**（2026-09-17 改，取代原單一三關；「含底下部門」走既有 `ApprovalItem` 祖先部門繼承，不需新功能）/ **國定假日出勤加倍工資**（前 8 小時加發 1 日日薪 ＋ 第 9 小時起走**平日級距**，故 `OvertimePayCalculator` 不需新增級距表、只需改日別解析；**2026-09-17 改：主管的活動日旗標可壓在國定假日上**，被指定者當天解鎖上下班打卡、不需加班單，第 9 小時起才提加班申請 —— 連帶使加倍工資的取數變成「打卡紀錄 ∪ 已核准加班單」且**須依日期去重**，同仁側月曆仍唯讀、仍不佔配額）/ 補休 FIFO（**1–6 月用至 7 月底→8 月薪資結算；7–12 月用至隔年 1 月底→隔年 2 月結算**）/ 假日執行活動退場 / **與現行系統差異對照 + §10 決議（含 2026-09-16 客戶回覆 21 項、2026-09-17 回覆 2 項）**
 - [flexible-work-hours-client.md](docs/business/flexible-work-hours-client.md) — 四週彈性工時**客戶確認版**（v1.4）：無技術內容與法條罰鍰，A–F 六區塊**逐項寫明實際做法**（v1.3 移除「確認」勾選欄與「修正意見」欄，改為把畫面行為／時點／擋存條件寫清楚；**v1.4 依客戶 2026-09-17 回覆 2 項**：改班申請逐部門流程、國定假日活動出勤；文末原有的「兩點請一併確認」區塊已於 2026-09-18 依客戶要求整段移除，客戶版全文已無待確認事項）。⚠️ **與上一份需人工同步**，改技術規格時要回頭確認客戶版是否受影響
 
 ---
@@ -182,10 +182,18 @@ Admin/src/app/
 │                                         #   讀失敗回 null、寫失敗改寫記憶體 fallback（儲存被封鎖者仍能在單次瀏覽期間正常登入操作）。
 │                                         #   **禁止直接呼叫 `localStorage` / `sessionStorage`**，見 [docs/frontend-design.md §15.5](docs/frontend-design.md)
 ├── shared/
-│   └── utils/
-│       └── heic.ts                       # **HEIC/HEIF 轉 JPEG 的單一入口**（2026-10）：副檔名 / MIME / ftyp 三種判定，heic-to 為主、heic2any 備援（皆 dynamic import），
-│                                         #   **轉不了丟例外、不得退回原檔**（舊版靜默存入 HEIC 導致 PR-20261001-001 無法預覽）。六支明細表單、ImageCompressionService、預覽 modal 共用；
-│                                         #   預覽 modal 遇 .heic 會經 `/files/{invoices|advance-files|write-off-invoices|travel-write-off-invoices}/{*path}` 代理取 bytes 轉檔
+│   ├── utils/
+│   │   ├── heic.ts                       # **HEIC/HEIF 轉 JPEG 的單一入口**（2026-10）：副檔名 / MIME / ftyp 三種判定，heic-to 為主、heic2any 備援（皆 dynamic import），
+│   │                                     #   **轉不了丟例外、不得退回原檔**（舊版靜默存入 HEIC 導致 PR-20261001-001 無法預覽）。六支明細表單、ImageCompressionService、預覽 modal 共用；
+│   │                                     #   預覽 modal 遇 .heic 會經 `/files/{invoices|advance-files|write-off-invoices|travel-write-off-invoices}/{*path}` 代理取 bytes 轉檔
+│   │   └── safe-url.ts                   # **預覽 iframe / 連結 URL 白名單**（2026-10 第二輪安全修補）：只認自家 API / Blob 來源，擋 `javascript:` 與外部網址；auth.interceptor 的 Bearer 亦只附加給自家 API，見 [docs/backend-design.md §4.7](docs/backend-design.md)
+│   └── services/
+│       ├── turnstile.service.ts          # **Cloudflare Turnstile 人機驗證**（2026-10，打卡用）：script 第一次呼叫才動態載入、每次 render 新 widget 取 token 後即 remove、
+│       │                                 #   `interaction-only`（平常看不到）；**取不到 token 一律回 null、不在前端擋**（由後端 `Turnstile:Mode` 決定）。sitekey 在 `environment*.ts`，CSP 須放行 challenges.cloudflare.com
+│       └── work-mode.service.ts          # **「四週彈性工時切換了沒」的前端唯一入口**（2026-09 新增）：走輕量端點 `GET /work-mode`，
+│                                         #   request-scoped 快取（切換日在一次瀏覽期間不會變）＋ in-flight 去重。
+│                                         #   **失敗時退回「尚未切換」**（安全側：寧可讓入口留著，也不要因一次網路失敗就把功能整個藏起來、
+│                                         #   使用者完全無從自救）。⚠ `isFlexibleActive` 只供 UI 開關，**不得**用於任何資料解讀
 ├── layout/
 │   ├── auth-layout/
 │   ├── main-layout/
@@ -196,7 +204,7 @@ Admin/src/app/
 │       ├── footer/
 │       └── customizer/
 └── features/
-    ├── dashboard/              # 打卡系統（即時時鐘、上下班/加班打卡、GPS；**路由需 `attendances:read`**，選單同步；未持有者由根路由 `resolveLandingUrl()` 導向個人資訊；**打卡按鈕上方有「出差（在外辦公）」勾選框**（2026-08 新增）：整天一個旗標 `AttendanceRecord.IsBusinessTrip`，四個打卡動作皆帶出並覆寫，初始值由 `/attendances/today` 帶回故不會被第二次打卡誤清，出缺勤清單以「出差」badge 呈現）；**防機器人打卡（2026-10 hotfix）**：按下打卡時並行「取 GPS＋取一次性挑戰碼」、不足 3 秒自動補等，GPS 選填（2026-10-05 取消強制），見 [docs/business/attendance-clock-rules.md §防機器人打卡](docs/business/attendance-clock-rules.md)
+    ├── dashboard/              # 打卡系統（即時時鐘、上下班/加班打卡、GPS；**路由需 `attendances:read`**，選單同步；未持有者由根路由 `resolveLandingUrl()` 導向個人資訊；**打卡按鈕上方有「出差（在外辦公）」勾選框**（2026-08 新增）：整天一個旗標 `AttendanceRecord.IsBusinessTrip`，四個打卡動作皆帶出並覆寫，初始值由 `/attendances/today` 帶回故不會被第二次打卡誤清，出缺勤清單以「出差」badge 呈現）；**防機器人打卡（2026-10 hotfix）**：按下打卡時並行「取 GPS＋取一次性挑戰碼＋取 Turnstile token」、不足 3 秒自動補等，**無 GPS 不得打卡**，見 [docs/business/attendance-clock-rules.md §防機器人打卡](docs/business/attendance-clock-rules.md)
     │   ├── models/attendance.model.ts
     │   ├── services/attendance.service.ts
     │   └── pages/dashboard/
@@ -206,7 +214,23 @@ Admin/src/app/
     │   ├── services/my-profile.service.ts   # 呼叫 /me/user + /me/profile + /me/files + /me/payroll（自助唯讀）
     │   └── pages/my-profile/                # 「個人資訊」唯讀頁：avatar 下拉進入（員工基本資料頁籤另有**補休時數卡**，走 `GET /me/compensatory-hours`，2026-10），**4 Tab** 全唯讀 —— 員工基本資料 / 人事資料卡 / 健保眷屬（前 3 個比照管理頁，含薪資）＋ **過往薪資**（2026-08 新增，走 `GET /me/payroll?months=12` 列出近 12 個月，一列一月，點「明細」展開共用元件 `<app-payroll-detail-card>`；到職前月份不列、當月標「本月尚未結算」；**薪資即時重算、無月結快照**，調薪後回溯歷史月份會用現行底薪，頁面已加註說明）
     ├── admin/
-    │   ├── users/          # 使用者管理（清單頁含**部門下拉 + 在職狀態下拉 + 勞退下拉 + 員工姓名搜尋列 + 分頁**，走 `GET /users?page=&pageSize=&search=&departmentId=&status=&hasLaborPension=`（每頁 20 筆，比照 vendors），後端以姓名模糊比對、部門 / 狀態為等值比對，四者可併用，單一擴充點為 `UserReadService.BuildFilter`；**在職狀態**（`status=active|inactive`，預設全部，白名單正規化）；**勞退**（`hasLaborPension=true|false`，有無自提二選一，SQL 以 `ISNULL(LaborPensionSelfContributionRate,0)` 正規化故 null 與 0 同屬「未自提」）**為 `payroll:read` 欄位級權限**：無權者前端不顯示該下拉、後端收到參數回 403（否則可用篩選結果反推他人自提率，繞過 `PayrollFieldAccess.Mask`）；user-form 含 3 Tab：員工基本資料 / 人事資料卡 / 健保眷屬；Tab1「員工資訊」含 **「排班制（六日與國定假日視為工作日）」** 勾選框（`isShiftWorker`，賣店 / 營業所用，清單頁姓名旁掛「排班制」badge）；含 employee-profile.service / hr-profile-pdf.service / 9 組 FormArray；**薪資為欄位級權限 `payroll:read`**：進得了員工管理（`users:read`）不等於看得到薪資，Tab1 的 8 個薪資／勞健保欄（2026-08 移除職務加給 / 主管加給 / 外派加給，加給剩其他加給 + 代扣代付款（2026-08 由「調整差額」更名，識別字仍為 `AdjustmentDifference`））、Tab2 薪資調整歷史、Tab3 健保費試算、列印 PDF 第 3 頁皆需另持 `payroll:read`，前端共用 `canSeeSalary` + `SALARY_CONTROLS`（`@if` 隱藏區塊 + `disable()` 控制項 + 送出前剔除 payload key），後端共用 [Api/Common/PayrollFieldAccess.cs](Api/Common/PayrollFieldAccess.cs) 抹除回應並拒絕寫入；薪資調整歷史改為**條件式**整批替換（`null`＝不變更）避免無權者送空陣列刪光歷史；`/me/user`、`/me/profile` 刻意全開，員工看自己的薪資不受影響）
+    │   ├── shift-schedules/  # （續）另含 **改班申請表單** `pages/shift-change-form/`（new / edit / view 三模式共用，
+    │   │                       比照銷假申請）與 `models/shift-change.model.ts`、`services/shift-change.service.ts`。
+    │   │                       **2026-09-28 改版**：月曆抽成共用元件 `shared/components/shift-month-calendar/`（個人排班 / 改班申請 /
+    │   │                       簽核詳情頁三處共用）；改班表單每點一格走 `POST /shift-changes/preview` 即時試算配額與合規檢核，
+    │   │                       不合規不得送出；個人排班頁另列「我的改班申請」。**2026-09-29**：個人排班月曆的上班日格子（已儲存、今天以後）有「請假」鈕，開 `leave-requests/new?date=` 帶入該日（請假表單切換假別時回到帶入日期而非清空）。**2026-09-29 活動日優先**：個人排班頁頂端有「班表因活動日調整」提示卡（`GET /shift-schedules/adjustments`，「我知道了」呼叫 `/ack` 並刷新鈴鐺），鈴鐺 dropdown 另有「班表異動」一項；活動日／請假鎖定格若仍排著例假／休假（歷史資料），月曆與改班表單放行點選但**只能改成上班日**（`isLockedOffCell`）。**2026-09-29 前後月對照**：個人排班月曆以淡色格顯示前後月班表（`adjacentDays`，未定案月份標「未排定」），資料與跨月檢核同一份；順帶修正跨月檢核原本讀不到前後月上班日（上班日不落地）而形同虛設。**2026-10-01**：月曆上的活動日列出全公司同日全部活動、加註「部門｜建立者」，滑鼠移上去（原生 `title`）顯示參與人員；個人排班頁預設月份於 26 日起改看下下月（次月已截止）。**2026-10-06**：開放期延為前三個月 10 日 ～ 前一個月 25 日（10–25 日可排未來三個月）。⚠ 舊排班頁曾以 `@if (loading())` 拆掉 FullCalendar，
+    │   │                       重建後吃預設月份的 `initialDate` → 選 12 月卻顯示 10 月格子（「12/25 沒顯示」的真因），共用元件已避開
+    │   ├── activity-days/    # **活動日管理（2026-09 新增）**：協理排定活動日 + 勾選預定人力，`activity-days:write` 才顯示選單。
+    │   │                       ⚠ 部門下拉的 `ngModelChange` 會清空已選人力（候選名單整組換掉），
+    │   │                       但**必須擋掉「值沒真的變」的那次觸發** —— 編輯表單載入時 select 初始化也會 emit，
+    │   │                       無條件清空會把回填的預定人力洗掉、且畫面上完全看不出來
+    │   ├── shift-schedules/  # **個人排班排例／休（四週彈性工時功能 A，2026-09 新增）**：月曆大方格頁，權限 `shift-schedule:read/write`。
+    │   │                       專案**第一個 FullCalendar 使用點**（`dayGridMonth`，套件早已安裝但從未用過）——
+    │   │                       只借月格骨架，每格狀態存在元件 signal、以 `dayCellClassNames` / `dayCellContent` 上色與標字，
+    │   │                       **不使用 event 模型**。四個踩過的坑（重繪須走 `getApi().render()`、首次渲染吃 `initialDate`、
+    │   │                       `.fc-daygrid-day-top` 不可 `display:none`、手機要橫向捲動）見 [docs/frontend-design.md §12.8](docs/frontend-design.md)。
+    │   │                       三條擋存規則**不在前端重算**（後端 `ShiftScheduleValidator` 為單一真相），畫面只顯示回傳的 blocks / warnings
+    │   ├── users/          # 使用者管理（清單頁含**部門下拉 + 在職狀態下拉 + 勞退下拉 + 員工姓名搜尋列 + 分頁**，走 `GET /users?page=&pageSize=&search=&departmentId=&status=&hasLaborPension=`（每頁 20 筆，比照 vendors），後端以姓名模糊比對、部門 / 狀態為等值比對，四者可併用，單一擴充點為 `UserReadService.BuildFilter`；**在職狀態**（`status=active|inactive`，預設全部，白名單正規化）；**勞退**（`hasLaborPension=true|false`，有無自提二選一，SQL 以 `ISNULL(LaborPensionSelfContributionRate,0)` 正規化故 null 與 0 同屬「未自提」）**為 `payroll:read` 欄位級權限**：無權者前端不顯示該下拉、後端收到參數回 403（否則可用篩選結果反推他人自提率，繞過 `PayrollFieldAccess.Mask`）；user-form 含 3 Tab：員工基本資料 / 人事資料卡 / 健保眷屬；Tab1「員工資訊」含 **「排班制（六日與國定假日視為工作日）」** 勾選框（`isShiftWorker`，賣店 / 營業所用，清單頁姓名旁掛「排班制」badge）與 **「自訂上下班時間」** 勾選框＋兩個時間欄（`hasCustomWorkHours` / `customWorkStartTime` / `customWorkEndTime`，2026-09-30，**僅四週彈性工時切換後生效**，決定該員打卡判定與 LINE 提醒時點，清單頁掛 `09:00–17:00` badge）；含 employee-profile.service / hr-profile-pdf.service / 9 組 FormArray；**薪資為欄位級權限 `payroll:read`**：進得了員工管理（`users:read`）不等於看得到薪資，Tab1 的 8 個薪資／勞健保欄（2026-08 移除職務加給 / 主管加給 / 外派加給，加給剩其他加給 + 代扣代付款（2026-08 由「調整差額」更名，識別字仍為 `AdjustmentDifference`））、Tab2 薪資調整歷史、Tab3 健保費試算、列印 PDF 第 3 頁皆需另持 `payroll:read`，前端共用 `canSeeSalary` + `SALARY_CONTROLS`（`@if` 隱藏區塊 + `disable()` 控制項 + 送出前剔除 payload key），後端共用 [Api/Common/PayrollFieldAccess.cs](Api/Common/PayrollFieldAccess.cs) 抹除回應並拒絕寫入；薪資調整歷史改為**條件式**整批替換（`null`＝不變更）避免無權者送空陣列刪光歷史；`/me/user`、`/me/profile` 刻意全開，員工看自己的薪資不受影響）
     │   ├── roles/          # 角色管理（僅 Superadmin）
     │   ├── permissions/    # 權限管理（僅 Superadmin）
     │   ├── departments/    # 部門管理
@@ -220,7 +244,9 @@ Admin/src/app/
     │   ├── projects/       # 專案管理
     │   ├── payment-requests/  # 請款申請（請款類型三選一：廠商請款 type=vendor / 一般請款 type=general / **其他 type=other**（2026-09 新增，比照一般請款不需選廠商）；明細下方皆含整單批次附件上傳，共用 shared/components/attachments-upload；**請款原因必填**）
     │   ├── pre-review-requests/ # 預審申請（事前預審，clone 自請款；無撥款、不計入報表；品項類別下拉 + 報價單 OCR；含 pre-review-pdf.service 列印合併所有上傳檔；**預審說明必填**；**`TotalAmount` ＝ 未稅小計、稅金另存整單一欄 `TaxAmount`（手動輸入、無稅別）**，與請款的 `TotalAmount`（發票金額合計 ＝ 實付總額、無稅額欄）**同名不同義**，故三處「預算總額」（清單 / 詳情 / 簽核審核頁）一律顯示 `totalAmount + (taxAmount ?? 0)`，照抄請款寫法就會印出未稅）
-    │   ├── leave-requests/    # 請假申請（**單號 `LV-yyyyMMdd-NNN`（銷假 `LVR-`），2026-09 新增**：送簽時取號、草稿為 null，清單頁首欄與表單標題旁顯示，規則見 [docs/business/application-forms.md](docs/business/application-forms.md)；除歲時祭儀假與育嬰留職停薪外的 17 種假別選起迄日後皆扣國定假日與六日並列請假日清單，走輕量端點 /leave-requests/working-days；小時單位（事假/**家庭照顧假**/病假/產檢假/陪產假）跨日逐日累加只算工作日；**家庭照顧假**（`family_care`，性平法 §20）全年 7 日／56 小時上限、比照事假全額扣薪但薪資單獨立一列，家庭成員範圍僅表單提示不入庫；產假區間仍 56 個日曆天但只計其中工作日；**半天型假別（年假 / 補休 / 高階主管假）的上午時段起點依假別**：**補休為 09:00–13:00**、其餘 08:00–12:00，單一真相為前端 `halfDayAmStartHour()` / `halfDayAmEndHour()`（leave-request.model.ts），只改存進 `StartDate` / `EndDate` 的代表時刻與顯示、**不改時數**（半天恆 4 小時），後端一律以「起 < 13:00 ＝上午、訖 > 13:00 ＝下午」分類時段（`LeaveDayExpander` 逐日展開仍取 08:00–12:00，故出缺勤 / 應出勤 / 自動補卡不受影響）；含職務代理人下拉；依天數決定簽核關卡 <3 天單位主管 / ≥3 天 +部門最高主管+總監，靠 ApprovalStep.MinDays；**已核准的假可提「銷假」**：列表／唯讀檢視頁的「銷假」按鈕進 leave-revocation-form（`:id/revoke` / `leave-revocations/:id[/edit]` 三模式共用），逐日 chip 勾選要取消的日期（只含今天以後、未被其他銷假單佔用者）+ 銷假原因 + 指定審核者，送出後重跑同一份請假簽核；核准後父單 Hours 遞減、全銷轉 `cancelled` badge「已銷假」，部分銷加註「部分銷假」badge；
+    │   ├── leave-requests/    # 請假申請（**補休池於四週彈性工時切換後改為逐筆 lot**（`CompensatoryLots` / `CompensatoryUsages`，
+    │   │                      有到期日 + 原始費率快照 + 真 FIFO），切換日 null 時仍走舊的聚合 SUM，見 [docs/business/leave-rules.md](docs/business/leave-rules.md)；
+    │   │                      **單號 `LV-yyyyMMdd-NNN`（銷假 `LVR-`），2026-09 新增**：送簽時取號、草稿為 null，清單頁首欄與表單標題旁顯示，規則見 [docs/business/application-forms.md](docs/business/application-forms.md)；除歲時祭儀假與育嬰留職停薪外的 17 種假別選起迄日後皆扣國定假日與六日並列請假日清單，走輕量端點 /leave-requests/working-days；小時單位（事假/**家庭照顧假**/病假/產檢假/陪產假）跨日逐日累加只算工作日；**家庭照顧假**（`family_care`，性平法 §20）全年 7 日／56 小時上限、比照事假全額扣薪但薪資單獨立一列，家庭成員範圍僅表單提示不入庫；產假區間仍 56 個日曆天但只計其中工作日；**半天型假別（年假 / 補休 / 高階主管假）的上午時段起點依假別**：**補休為 09:00–13:00**、其餘 08:00–12:00，單一真相為前端 `halfDayAmStartHour()` / `halfDayAmEndHour()`（leave-request.model.ts），只改存進 `StartDate` / `EndDate` 的代表時刻與顯示、**不改時數**（半天恆 4 小時），後端一律以「起 < 13:00 ＝上午、訖 > 13:00 ＝下午」分類時段（`LeaveDayExpander` 逐日展開仍取 08:00–12:00，故出缺勤 / 應出勤 / 自動補卡不受影響）；含職務代理人下拉；依天數決定簽核關卡 <3 天單位主管 / ≥3 天 +部門最高主管+總監，靠 ApprovalStep.MinDays；**已核准的假可提「銷假」**：列表／唯讀檢視頁的「銷假」按鈕進 leave-revocation-form（`:id/revoke` / `leave-revocations/:id[/edit]` 三模式共用），逐日 chip 勾選要取消的日期（只含今天以後、未被其他銷假單佔用者）+ 銷假原因 + 指定審核者，送出後重跑同一份請假簽核；核准後父單 Hours 遞減、全銷轉 `cancelled` badge「已銷假」，部分銷加註「部分銷假」badge；
     │   │                      **育嬰留職停薪（2026-08 新增，兩個代碼）**：`parental_leave`（長期留停，**連續日曆天**、每名子女合計 730 天）+ `parental_leave_daily`（彈性單日新制，強制 `EndDate = StartDate`、每人每年 30 日且併入該子女總額度）；
     │   │                      資格為「在職滿 6 個月 + 子女未滿 3 歲」（Superadmin 繞過），新增欄位 `ChildBirthDate`（額度分組鍵）/ `ContinueInsurance`（僅記錄續保意願）；
     │   │                      `parental_leave` **刻意不列入 WorkingDayLeaveTypes**（否則跨年送件會被「行事曆未匯入」擋死、逐日 chip 也會爆量），故長期留停**不開放銷假**；
@@ -228,20 +254,29 @@ Admin/src/app/
     │   │                      年資扣除留停天數（`Api/Common/SeniorityHelper.cs` 單一真相，特休額度隨之暫停累積），額度端點 `GET /leave-requests/parental-quota`）
     │   ├── travel-payment-requests/ # 出差請款申請（小額已代墊直接請款，無沖銷）
     │   ├── travel-requests/   # 出差預支申請（走沖銷流程；**預支款需求日 `advanceNeededDate`**（2026-09 新增，**必填**）：申請人希望款項撥入的日期，供財務排撥款參考，出現在申請表單 / 詳情頁 / 簽核作業詳情頁 / 列印 PDF，清單頁不列；**假日執行活動不使用此欄位**（走 multipart 分支、不解析該 key，值恆 null））
-    │   ├── holiday-travel-requests/ # 假日執行活動申請（共用 TravelRequest entity，IsHolidayTravel=true，計入假日津貼；參與人員可逐日勾選個人參與日期，未勾選＝全程參與；**每個勾選日期可再指定「全天／上午／下午」**：chip 四態循環 未選 → 全天 → 上午 → 下午 → 未選，半天以 0.5 天計入假日津貼，個人天數存 `TravelRequestParticipant.HolidayDays decimal(5,1)`；**申請人不會自動被算成參與者**（2026-09 改）：要領假日津貼須自行加入參與人員清單，加入後比照一般參與者可逐日、可半天，同一人不可重複列入（DB 唯一索引 `(TravelRequestId, UserId)` + 後端 400 + 前端下拉排除已選過的人）。舊制申請人無條件領整單 `HolidayDays`，自己又勾進清單時會被 SUM 兩次而**領雙倍**，一併修掉；歷史單以 `Api/Data/Scripts/08` 回填）
-    │   ├── overtime-requests/ # 加班申請（**單號 `OT-yyyyMMdd-NNN`，2026-09 新增**：送簽時取號、草稿為 null，清單頁首欄與表單標題旁顯示；走簽核流程；**關聯專案為必填明細（至少一列）**：FormArray 每列一個專案下拉（來源 /projects/active?all=true 全部未結案專案，支援跨部門；**下拉自動排除其他列已選過的專案**）+ 該案預估時數，欄位標題註記「同部門專案可複選；支援專案請獨立申請」（業務提示，非硬性過濾）；**預估總時數改為唯讀自動加總**（父表 `OvertimeRequest.EstimatedHours` 為 `OvertimeRequestProject` 子表的合計快取，後端 Create/Update 重算，補休時數 / 登入自動補打加班結束卡 / 通知摘要皆沿用此欄）；指定審核者卡片加註「跨部門支援時第一審核者填該專案協理、第二審核者選自部門協理」；**補償方式（補休 / 加班費）整單二擇一**（2026-08 新增，`OvertimeRequest.CompensationType`）：選「補休」時數計入補休池、選「加班費」則依勞基法**分段累進倍率**試算金額並隨**加班日次月**薪資發放，兩者互斥以免同一段工時雙重給付；選加班費時表單即時試算（走 `GET /overtime-requests/estimate`，顯示分段明細 / 平日或假日 badge / 超出上限不計酬警示 / 同日已有假日執行活動的重複給付警示），金額於送簽時算一次、終局核准時以核准當下底薪重算並落地為快照，退回 / 拒絕 / 改單則清空；**簽核詳情頁（approval-task-review）刻意不顯示金額**（2026-09 改，原為「讓審核者看得到總額」）：金額 ÷ 時數 = 時薪 × 加權倍率 → 可反推底薪，與加班報表 `reports-overtime:amount` 同一顧慮，改列**分段計酬級距** chips（`2.0 小時 × 1.34`、`1.0 小時 × 1.67`）＋「計酬 N 小時｜平日/假日加班｜超出上限不計酬」小字；級距由後端 `OvertimePayCalculator.SplitHourTiers(PayableHours, IsHolidayOvertime)` 導出並以 `OvertimeTaskDetailDto.HourTiers` 帶回，**`OvertimePayAmount` 整欄從該 DTO 移除**（前端隱藏不算擋住，payload 仍看得到）——這是「找得到資訊量為零的等價呈現時，直接換掉優於開權限碼」的案例，故不另立權限碼；申請人自己的表單試算 / 唯讀快照 / 加班申請清單頁照常顯示金額，**申請人本人從簽核詳情頁進入時同樣看不到金額，屬刻意取捨**；倍率與時薪的單一真相為 [Api/Common/OvertimePayCalculator.cs](Api/Common/OvertimePayCalculator.cs)，快照寫入的單一真相為 [Api/Services/OvertimeCompensationService.cs](Api/Services/OvertimeCompensationService.cs)）
+    │   ├── holiday-travel-requests/ # 假日執行活動申請（**四週彈性工時上線後退場，但只關寫入口、保留唯讀**（2026-09）：
+    │   │                       Create / Update / Submit 三個入口由後端 `TravelRequestHandler.GuardHolidayTravelRetiredAsync` 回 400
+    │   │                       並指向〈加班申請〉；前端「新增申請」/「編輯」/「送出申請」依 `retired()` 隱藏、
+    │   │                       `new` 與 `:id/edit` 兩條路由加掛 `holidayTravelRetiredGuard`（導回**列表**而非 403 —— 這不是權限不足、是功能退場）。
+    │   │                       **選單與刪除鈕刻意保留**：前者是歷史單的唯一入口，後者不留的話切換當下還開著的草稿永遠清不掉。
+    │   │                       **薪資的假日津貼取數、簽核台的 holiday_travel 分支、`HasHolidayTravelConflictAsync` 全部原封不動** ——
+    │   │                       薪資即時重算無月結快照，移除取數會讓歷史月份金額憑空消失（錢早就發出去了）。
+    │   │                       ⚠ 閘門以**「今天」**判斷是否已切換，是全站少數的例外（其餘一律以資料自己的日期判定）：
+    │   │                       這裡問的不是「這筆資料該用哪套規則算」而是「現在還能不能建新的單」。切換日 null 時完全不擋；
+    │   │                       共用 TravelRequest entity，IsHolidayTravel=true，計入假日津貼；參與人員可逐日勾選個人參與日期，未勾選＝全程參與；**每個勾選日期可再指定「全天／上午／下午」**：chip 四態循環 未選 → 全天 → 上午 → 下午 → 未選，半天以 0.5 天計入假日津貼，個人天數存 `TravelRequestParticipant.HolidayDays decimal(5,1)`；**申請人不會自動被算成參與者**（2026-09 改）：要領假日津貼須自行加入參與人員清單，加入後比照一般參與者可逐日、可半天，同一人不可重複列入（DB 唯一索引 `(TravelRequestId, UserId)` + 後端 400 + 前端下拉排除已選過的人）。舊制申請人無條件領整單 `HolidayDays`，自己又勾進清單時會被 SUM 兩次而**領雙倍**，一併修掉；歷史單以 `Api/Data/Scripts/08` 回填）
+    │   ├── overtime-requests/ # 加班申請（**單號 `OT-yyyyMMdd-NNN`，2026-09 新增**：送簽時取號、草稿為 null，清單頁首欄與表單標題旁顯示；走簽核流程；**關聯專案為必填明細（至少一列）**：FormArray 每列一個專案下拉（來源 /projects/active?all=true 全部未結案專案，支援跨部門；**下拉自動排除其他列已選過的專案**）+ 該案預估時數，欄位標題註記「同部門專案可複選；支援專案請獨立申請」（業務提示，非硬性過濾）；**預估總時數改為唯讀自動加總**（父表 `OvertimeRequest.EstimatedHours` 為 `OvertimeRequestProject` 子表的合計快取，後端 Create/Update 重算，補休時數 / 登入自動補打加班結束卡 / 通知摘要皆沿用此欄）；指定審核者卡片加註「跨部門支援時第一審核者填該專案協理、第二審核者選自部門協理」；**補償方式（補休 / 加班費）整單二擇一**（2026-08 新增，`OvertimeRequest.CompensationType`）：選「補休」時數計入補休池、選「加班費」則依勞基法**分段累進倍率**試算金額並隨**加班日次月**薪資發放，兩者互斥以免同一段工時雙重給付；選加班費或補休時表單皆即時試算（走 `GET /overtime-requests/estimate`，**2026-09-28 起兩種補償方式都查詢**，不再只在選「加班費」時才打 API），顯示分段明細 / **平日・假日・國定假日三值日別 badge**（2026-09 由二值改，`OvertimePayEstimateDto.DayType`）/ 同日已有假日執行活動的重複給付警示；**超出上限（上班日 4 小時 / 假日 12 小時）2026-09-28 起改為擋件**（原「截斷計酬、仍可送出」），不分補償方式一律 400 擋下並於表單常駐顯示紅字擋件訊息（`ExceedsCap` + `BlockMessage`），擋件上線前送出的歷史單另存 `OvertimeRequest.ExcessHours` 快照供簽核詳情頁顯示；**彈性休假日（原「補假」）出勤比照國定假日**（2026-09-29 改回，9/28 的「依打卡自動計酬、不得提加班申請」已撤銷，見 [docs/business/flexible-work-hours.md §6.3.3](docs/business/flexible-work-hours.md)），金額於送簽時算一次、終局核准時以核准當下底薪重算並落地為快照，退回 / 拒絕 / 改單則清空；**簽核詳情頁（approval-task-review）刻意不顯示金額**（2026-09 改，原為「讓審核者看得到總額」）：金額 ÷ 時數 = 時薪 × 加權倍率 → 可反推底薪，與加班報表 `reports-overtime:amount` 同一顧慮，改列**分段計酬級距** chips（`2.0 小時 × 1.34`、`1.0 小時 × 1.67`）＋「計酬 N 小時｜平日/假日/國定假日加班｜超出上限不計酬」小字（國定假日另加一行「前 8 小時另於薪資加發 1 日日薪，不計加班費」，否則審核者看到「8 小時申請、計酬 0 小時」會以為系統算錯；**「超出上限」的時數一律讀後端快照 `OvertimeTaskDetailDto.ExcessHours`（2026-09 新增），不可在前端用 `estimatedHours − payableHours` 現場推算**，國定假日來源 B 的申請時數含前 8 小時、來源 A（活動日預定人力）不含，是否為來源 A 屬送簽當下的事實、事後從日別反推不出來，舊寫法一律扣 8 小時對來源 A 會誤扣成負值又被 `max(0,…)` 蓋掉）；級距由後端 `OvertimePayCalculator.SplitHourTiers(PayableHours, OvertimeDayType)` 導出並以 `OvertimeTaskDetailDto.HourTiers` 帶回，**`OvertimePayAmount` 整欄從該 DTO 移除**（前端隱藏不算擋住，payload 仍看得到）——這是「找得到資訊量為零的等價呈現時，直接換掉優於開權限碼」的案例，故不另立權限碼；申請人自己的表單試算 / 唯讀快照 / 加班申請清單頁照常顯示金額，**申請人本人從簽核詳情頁進入時同樣看不到金額，屬刻意取捨**；倍率與時薪的單一真相為 [Api/Common/OvertimePayCalculator.cs](Api/Common/OvertimePayCalculator.cs)，快照寫入的單一真相為 [Api/Services/OvertimeCompensationService.cs](Api/Services/OvertimeCompensationService.cs)）
     │   ├── advance-requests/  # 預支申請（**帳務類明細「項次」一律依列序自動編號、不可輸入（2026-10 hotfix，預支 / 出差預支 / 出差請款 / 兩種沖銷共用規則；追加批次以 `seqOffset` 接續前批次；簽核作業詳情頁補上項次欄，見 [docs/frontend-design.md §7.1.5](docs/frontend-design.md)）**；已核准單可新增「追加預支」批次：/:id/supplements/new 與 /:id/supplements/:round/edit 共用 advance-form 的追加模式；詳情頁預支日期改為批次清單、費用明細加「批次」欄；共用 roundLabel() 為批次標籤單一真相；**明細金額三欄連動：總價 = 現金(預支) + 支票(月結)，任兩欄輸入自動算出第三欄，規則與預支沖銷相同**；**預支款需求日 `advanceNeededDate`**（2026-09 新增，**必填**，含追加批次）：申請人希望款項撥入的日期，供財務排撥款參考，**比照預支日期為逐批次欄位**（Round 1 存 `AdvanceRequest`、Round ≥2 存 `AdvanceRequestSupplement`，經 `BuildRounds` 合成 `AdvanceRoundDto`），出現在申請表單 / 詳情頁 / 簽核作業詳情頁 / 列印 PDF，清單頁不列）；**費用明細分類下拉 12 項**（2026-09 新增 食材進貨 / 備品耗材 / 商品進貨 / 臨時人力），值以中文字面存 DB（後端無白名單），預支與沖銷兩份 `ITEM_CATEGORIES` 常數必須同步；**列印 PDF 補上右上角單號**（2026-09，8 種紙本單裡唯一漏掉的一張，紙本寄回會計室後無法對回系統單號）
     │   ├── write-off-requests/ # 預支沖銷申請（獨立簽核流程；**清單依預支單 group，母層列操作欄「檢視」進入彙總頁 write-off-overview（`/by-advance/:advanceId`）：一頁看完預支單完整資訊 + 該單全部沖銷單完整資訊**；明細下方含整單批次附件上傳，共用 shared/components/attachments-upload；新增表單選定預支單後，於「預支單」卡片下方唯讀列出該單全批次預支費用明細（含追加，依批次分組），資料由 /write-off-requests/available-advances 一併帶回；**沖銷資訊卡改為 `<app-write-off-summary>` 列出預支各批次金額 + 各次沖銷金額 + 待沖銷餘額 / 應撥差額**；**詳情頁與簽核頁另有「預支單結案資訊」卡（共用 `<app-closure-info-card>`，`showRefund=false` + `alwaysShow=true`：只呈現關聯預支單的已結案／未結案與結案時間，撥款金額仍由該頁既有「撥款」語彙欄位負責）**；**超支差額走分期撥款**，明細另有「支票已支付」註記欄，該欄在簽核頁對所有審核者顯示，但**僅財務管理部（`DepartmentCodes.FinanceStep`，與撥款日／結案同範圍，不含總監室／會計室）/ Superadmin 可勾選**，其他人 checkbox disabled 反白；**明細金額三欄連動：總價 = 現金花費 + 支票金額，任兩欄輸入自動算出第三欄**；**2026-08 重複建單修正**：表單送出／儲存加 `saving` in-flight 鎖（按鈕 disabled + spinner，避免上傳期間連按建出多筆）、create 成功即記住 `editId` 讓送簽失敗的重送走 update 而非再建一張、表單內按 Enter 不再直接送出；**「已沖銷」一律只計已核准**（下拉與詳情頁同基準），草稿／簽核中金額改以 `pendingWriteOffTotal` 顯示「另有 N 元沖銷中」提示；發票號碼唯一性檢查排除已拒絕的沖銷單；Superadmin 可對他人預支單建沖銷（與下拉範圍一致）；`RequestNo` 補上唯一索引宣告（含 travel_write_off））；**費用明細分類下拉 12 項**（2026-09 新增 食材進貨 / 備品耗材 / 商品進貨 / 臨時人力），值以中文字面存 DB（後端無白名單），預支與沖銷兩份 `ITEM_CATEGORIES` 常數必須同步
     │   ├── travel-write-off-requests/ # 出差預支沖銷申請（獨立簽核流程；**詳情頁與簽核頁有「出差單結案資訊」卡（共用 `<app-closure-info-card>`，`showRefund=false` + `alwaysShow=true`：只呈現關聯出差單的已結案／未結案與結案時間，撥款金額仍由該頁既有「撥款」語彙欄位負責）**）
     │   ├── insurance-brackets/ # 勞健保級距維護
-    │   ├── payroll/           # 人事薪資（月薪計算 + PDF 匯出 + **Excel 總表匯出**：查詢列「匯出總表」鈕，一位員工一列 × 33 欄（基本 4 / 應發 11 / 扣項 15 / 其他 3；2026-08 新增「加班費(加班申請)」欄）+ 合計列，資料直接取自已載入的 `payroll()` signal（`GET /payroll` 本身不分頁），無後端變動）
+    │   ├── payroll/           # 人事薪資（月薪計算 + PDF 匯出 + **Excel 總表匯出**：查詢列「匯出總表」鈕，一位員工一列 × **38 欄**（基本 4 / 應發 18 / 扣項 15 / 其他 3；2026-08 新增「加班費(加班申請)」欄，2026-09 於索引 13–17 插入「國定假日出勤天數 / 國定假日加倍工資 / 補休未休完時數 / 補休未休完津貼 / 補休結算期間」5 欄，2026-09-28 曾於索引 15–16 插入「彈性休假日出勤時數 / 加班費」2 欄，**2026-09-29 隨彈性休假日改回比照國定假日而移除**）—— **插欄 / 刪欄會讓 `rawNumberCols` 的硬編索引整體位移，四處都要重算**，現值 11/13/15/22/23/25/27/29/33/35）+ 合計列，資料直接取自已載入的 `payroll()` signal（`GET /payroll` 本身不分頁），無後端變動）
     │   ├── attendance-reminder-logs/ # 打卡提醒推播紀錄（僅 Superadmin）
     │   ├── payment-reminder-logs/ # 撥款提醒推播紀錄 + 手動觸發（僅 Superadmin）
     │   ├── reports/        # 報表（出缺勤 / 加班 / **加班補休時數總表**（2026-10，`/reports/compensatory`，權限沿用 `reports-overtime:read` / `:amount`，級距於報表當下依行事曆判定，見 [docs/business/leave-rules.md §補休查詢](docs/business/leave-rules.md)）/ 款項統計 / 專案水位）；**加班紀錄的「補償方式」/「加班費」兩欄 2026-09 修正**：
     │   │                      `overtime-report.ts` 的 `fetchData()` 把 API 回應逐欄手動 map 成 `OvertimeReportRow`，
     │   │                      新增欄位時漏 map 會**靜默顯示錯值**而非型別錯誤 —— `compensationType` 為 `undefined` 時
     │   │                      badge 一律落到「補休」（選加班費的單看起來像選了補休），`overtimePayAmount` 為 `undefined` 時
-    │   │                      `!== null` 成立、金額欄印出空字串而非「—」。Excel 匯出同樣是獨立的一份 map，兩處必須一起補（**新增欄位、以及對既有欄位加上權限管制，兩種情境都算**）；**加班報表的 Excel 匯出 2026-09 另修掉「只有前 100 筆」**：前端送 `pageSize: 9999` 但後端 `Math.Clamp(ps, 1, 100)` 會壓回 100，匯出永遠截斷且無提示，改為比照出缺勤報表送 `export=true`（上限 `OvertimeReportHandler.ExportMaxPageSize = 5000`），並在 `totalCount > items.length` 時以 toastr 明講「匯出不完整」；同時 `OvertimeRequestReadService.LoadProjectsAsync` 改**分批**查詢（`ProjectLoadChunkSize = 1000`）—— Dapper 的 `IN @Ids` 會展開成逐一參數，一次 5000 筆會撞上 SQL Server 2100 參數上限而整句拋例外。**款項統計不走這條路**：它的匯出要把主表 LEFT JOIN 子表、一張單展開成多列明細，與畫面粒度不同，故早已另開專用不分頁端點 `GET /reports/payment/export`（`PaymentReportReadService.GetExportRowsAsync`），兩種做法的選用準則見 [docs/backend-design.md §4.1](docs/backend-design.md)；**出缺勤紀錄列出「打卡紀錄 ∪ 當日請假日 ∪ 缺勤日」**：全天請假沒打卡的人也會出現一列（`id=null` 虛擬列，上下班留空 + 「請假」badge + 假別 + 當日時數、不可編輯），同日多張假單合併為一列；**2026-09 三項擴充**：① **請假欄改顯示逐日精確時段**（`事假 09:00–13:00 (4h)` / `年假(特休假) 上午` / `婚假 全天`，同日多張一張一行，共用 leave-request.model 的 `formatLeaveDaySegment()`，資料來自後端 `leaves[].daySegment / dayStart / dayEnd`）；② **新增缺勤列**（`rowKind=absent`，工作日既沒打卡也沒請假，紅字「缺勤」badge、不可編輯）—— **請假列與缺勤列同樣 `id=null`，一律以 `rowKind` 分辨**，track key 分成 `a{id}` / `l{...}` / `x{...}` 三組；③ **「未打卡」badge**（有應出勤時段卻無上班時間，例如只請半天卻整天沒打卡）與**上班欄的「系統補卡」badge**（`isClockInAuto`），應出勤時段（`expectedStart/expectedEnd`）掛在上下班兩格的 tooltip、不佔欄位（維持 9 欄與 `min-w-[1040px]`）；**另有兩個 badge（2026-08 新增）**：日期欄的「出差」（`isBusinessTrip`，打卡時勾選）與下班欄的「超過 9.5 小時」（下班−上班 > 9.5h 含午休，**純前端 derived**、門檻常數 `LONG_WORKDAY_HOURS` 為單一真相，不進 DB / DTO，不影響薪資與加班時數）；**編輯 Modal 加備註欄**（`AttendanceRecord.Remark`，500 字，只在編輯表單可見可填，清單不列）；假別中文 import 自 leave-request.model 的 19 種 LEAVE_TYPE_LABELS；分頁（每頁 20）改用全站標準 pattern（手機 `‹ N / M ›` + 桌機頁碼列，共用 `buildPageNumbers()`），Excel 匯出走 `?export=true`；月篩選不再提供「全部年份 / 全部月份」（合併需有界區間）；**手機版採橫向捲動而非逐欄隱藏（2026-09）**：9 欄全數保留（原本請假 / 當日時數 / 加班開始 / 加班結束 4 欄在手機被 `hidden md:table-cell` 藏掉、且 `.table-responsive` 因 `.table` 是 `width:100%` 無 `min-width` 而從未真正捲動），改為 `<table class="… table-sticky-first min-w-[1040px]">`＋新增的 `.table-sticky-first`（釘住員工姓名欄，見 [docs/frontend-design.md §3](docs/frontend-design.md)）；篩選列同步補 `w-full sm:w-auto`。**款項統計 2026-09 新增「待撥款清單」頁籤**（兩個頁籤：統計報表／待撥款清單，欄位完全不同故不共用表格）：
+    │   │                      `!== null` 成立、金額欄印出空字串而非「—」。Excel 匯出同樣是獨立的一份 map，兩處必須一起補（**新增欄位、以及對既有欄位加上權限管制，兩種情境都算**）；**加班報表的 Excel 匯出 2026-09 另修掉「只有前 100 筆」**：前端送 `pageSize: 9999` 但後端 `Math.Clamp(ps, 1, 100)` 會壓回 100，匯出永遠截斷且無提示，改為比照出缺勤報表送 `export=true`（上限 `OvertimeReportHandler.ExportMaxPageSize = 5000`），並在 `totalCount > items.length` 時以 toastr 明講「匯出不完整」；同時 `OvertimeRequestReadService.LoadProjectsAsync` 改**分批**查詢（`ProjectLoadChunkSize = 1000`）—— Dapper 的 `IN @Ids` 會展開成逐一參數，一次 5000 筆會撞上 SQL Server 2100 參數上限而整句拋例外。**款項統計不走這條路**：它的匯出要把主表 LEFT JOIN 子表、一張單展開成多列明細，與畫面粒度不同，故早已另開專用不分頁端點 `GET /reports/payment/export`（`PaymentReportReadService.GetExportRowsAsync`），兩種做法的選用準則見 [docs/backend-design.md §4.1](docs/backend-design.md)；**出缺勤紀錄列出「打卡紀錄 ∪ 當日請假日 ∪ 缺勤日」**：全天請假沒打卡的人也會出現一列（`id=null` 虛擬列，上下班留空 + 「請假」badge + 假別 + 當日時數、不可編輯），同日多張假單合併為一列；**2026-09 三項擴充**：① **請假欄改顯示逐日精確時段**（`事假 09:00–13:00 (4h)` / `年假(特休假) 上午` / `婚假 全天`，同日多張一張一行，共用 leave-request.model 的 `formatLeaveDaySegment()`，資料來自後端 `leaves[].daySegment / dayStart / dayEnd`）；② **新增缺勤列**（`rowKind=absent`，工作日既沒打卡也沒請假，紅字「缺勤」badge、不可編輯）—— **請假列與缺勤列同樣 `id=null`，一律以 `rowKind` 分辨**，track key 分成 `a{id}` / `l{...}` / `x{...}` 三組；③ **「未打卡」badge**（有應出勤時段卻無上班時間，例如只請半天卻整天沒打卡）與**上班欄的「系統補卡」badge**（`isClockInAuto`），應出勤時段（`expectedStart/expectedEnd`）掛在上下班兩格的 tooltip、不佔欄位（維持 9 欄與 `min-w-[1040px]`）；**遲到／早退（2026-10-06）**：上班欄「遲到」、下班欄「早退」badge（後端打卡時判定的 `isLate` / `isEarlyLeave`，新制才有），員工打卡時填的遲到原因 / 早退・逾時原因以小字顯示在該格下方，Excel 備註一併匯出；**另有兩個 badge（2026-08 新增）**：日期欄的「出差」（`isBusinessTrip`，打卡時勾選）與下班欄的「超過 9.5 小時」（下班−上班 > 9.5h 含午休，**純前端 derived**、門檻常數 `LONG_WORKDAY_HOURS` 為單一真相，不進 DB / DTO，不影響薪資與加班時數）；**編輯 Modal 加備註欄**（`AttendanceRecord.Remark`，500 字，只在編輯表單可見可填，清單不列）；假別中文 import 自 leave-request.model 的 19 種 LEAVE_TYPE_LABELS；分頁（每頁 20）改用全站標準 pattern（手機 `‹ N / M ›` + 桌機頁碼列，共用 `buildPageNumbers()`），Excel 匯出走 `?export=true`；月篩選不再提供「全部年份 / 全部月份」（合併需有界區間）；**手機版採橫向捲動而非逐欄隱藏（2026-09）**：9 欄全數保留（原本請假 / 當日時數 / 加班開始 / 加班結束 4 欄在手機被 `hidden md:table-cell` 藏掉、且 `.table-responsive` 因 `.table` 是 `width:100%` 無 `min-width` 而從未真正捲動），改為 `<table class="… table-sticky-first min-w-[1040px]">`＋新增的 `.table-sticky-first`（釘住員工姓名欄，見 [docs/frontend-design.md §3](docs/frontend-design.md)）；篩選列同步補 `w-full sm:w-auto`。**款項統計 2026-09 新增「待撥款清單」頁籤**（兩個頁籤：統計報表／待撥款清單，欄位完全不同故不共用表格）：
     │                      走 `GET /reports/payment/due`，依**預計撥款日**區間查出各期、**一期一列**（同張單多期拆多列），供財務排款；
     │                      每列可**開新分頁**進簽核作業填實際撥款日。三個坑：① 回傳的 `applicationType` 是 **snake_case**
     │                      （`payment_request` / `travel_payment` / `write_off`），**與報表其餘端點的 kebab 命名（`payment` / `travel-payment` / `writeoff`）不同**，
@@ -253,7 +288,12 @@ Admin/src/app/
     │                      付款狀態篩選對它是 **no-op**；沒順手修是因為該類別的 `PaidAt` 取母預支單 `RefundedAt`＝**員工退錢給公司**，
     │                      而 `WriteOffInstallments` 是**公司補撥超支差額給員工**，兩個相反金流不能互換，要修得先釐清雙金流語意。
     │                      款項統計 1 個 endpoint 支援 全部 + 6 個類別 dropdown（全部 / 請款 / 預支 / 預支沖銷 / 出差請款 / 出差預支 / 出差預支沖銷；「全部」為 6 種 UNION ALL），權限只看 `reports-payment:read`，不需各別 `xxx-requests:read`。**專案水位表的「總專案水位」欄（分母＝契約金額，含公司保留 40%）為欄位級權限 `reports-project-water-level:total`**：只有 `reports-project-water-level:read` 者頁面照進、業務執行水位照看，但總水位整欄消失（前端 `canSeeTotal` 同時控 `<th>` / `<td>` / 空列 colspan），後端 `ProjectWaterLevelHandler` 亦把 `TotalPercentage` / `PreImportUsedAmount` / `RemainingAmount` 抹為 null / 0。**加班紀錄報表的「加班費」欄為欄位級權限 `reports-overtime:amount`（2026-09 新增，只開給財務承辦與總監）**：只有 `reports-overtime:read` 者頁面照進、時數與「補償方式」badge 照看，但加班費整欄消失（前端 `canSeeAmount` 同時控 `<th>` / `<td>` / 空列 colspan **/ Excel 匯出的 wsData 條件式 spread**——本頁兩份欄位 map 各自獨立，只藏畫面不藏匯出等於沒擋），後端 `OvertimeReportHandler` 亦把 `OvertimePayAmount` 抹為 null（`PagedResult<T>` 是 record 且 `Items` 為 `IEnumerable`，須連外層一起 `with` 重建）；`CompensationType` 與時數刻意保留——反推金額需要時薪快照 → 底薪，而底薪已受 `payroll:read` 管制。**權限碼上線時刻意不回填既有角色**（與水位表先例相反，預設全關），須由 Superadmin 到角色管理手動指派並請該員重新登入
-    │   └── settings/       # 系統設定（含 PaymentReminderDaysBefore 撥款提醒天數）
+    │   └── settings/       # 系統設定（含 PaymentReminderDaysBefore 撥款提醒天數）＋ **四週彈性工時切換日**（2026-09 新增）：
+    │                          卡片**刻意獨立於上方表單、自己送出** —— 高後果且極少動的制度開關，不該因為有人來改
+    │                          「每月加班時數限制」順手按了儲存就被一起送出去；後端 `NormalizeSwitchDate` 硬擋
+    │                          「必須是未來某月的 1 號」（不是只靠前端 `min`，設錯的症狀是歷史資料悄悄改變、畫面看不出異常），
+    │                          「退回舊制」（`clearFlexibleWorkStartDate`）刻意不驗任何條件、隨時可關。
+    │                          ⚠ `.alert` 是 flex 容器，內容必須包成**單一**子元素，否則每段文字各自變成 flex item 被擠成窄欄
     └── error/
         └── pages/ (error-403, error-404, error-500)
 ```
@@ -303,7 +343,13 @@ export const environment = {
 Api/
 ├── Functions/
 │   ├── RouterFunction.cs              # HttpTrigger，catch-all route {*route}
-│   ├── AttendanceReminderFunction.cs  # TimerTrigger：限定 7-9 / 16-18 Taipei 時段每分鐘檢查，落在「上下班前 2 分鐘起算 **30 分鐘**時間窗」內則 LINE 推播（2026-09-09 由 10 分鐘放寬，見 attendance-reminder.md）；cron 由 `AttendanceReminderCron` app setting 控制。**`IsPastDue` 不跳過**（冷啟動延遲會整天不發），改由 Service 端 `batchStart` 冪等閘去重；**公司休假日只推排班制員工**（`IsShiftWorker`，賣店照常營業），一個都沒有時維持整批跳過；休假日判定走 `WorkCalendarHelper.IsHolidayAsync`（行事曆 `IsHoliday` 優先、含國定假日 / 彈性休假日，未匯入年度退回六日）—— 2026-09 前只看六日，國定假日（中秋、教師節）照推全員
+│   ├── AttendanceReminderFunction.cs  # TimerTrigger：限定 7-9 / 16-18 Taipei 時段每分鐘檢查，落在「上下班前 2 分鐘起算 **30 分鐘**時間窗」內則 LINE 推播（2026-09-09 由 10 分鐘放寬，見 attendance-reminder.md）；cron 由 `AttendanceReminderCron` app setting 控制。**`IsPastDue` 不跳過**（冷啟動延遲會整天不發），改由 Service 端 `batchStart` 冪等閘去重；**公司休假日只推排班制員工**（`IsShiftWorker`，賣店照常營業），一個都沒有時維持整批跳過；**只推持有 `attendances:write` 者**（2026-09：約聘 / 外聘等無打卡權限的角色不收打卡提醒，申請 / 簽核通知照收）；**新制下自訂上下班時段者（賣店等，2026-09-30）改依個人時段 S−2／E−2 分推播**（不在 08:58 整批內，每人每日去重；當日有上午半天假者改收 12:55 交接提醒），見 [docs/business/attendance-reminder.md](docs/business/attendance-reminder.md)；休假日判定走 `WorkCalendarHelper.IsHolidayAsync`（行事曆 `IsHoliday` 優先、含國定假日 / 彈性休假日，未匯入年度退回六日）—— 2026-09 前只看六日，國定假日（中秋、教師節）照推全員
+│   ├── ShiftScheduleReminderFunction.cs # **排班提醒 TimerTrigger（四週彈性工時 §3.5，2026-09 新增）**：
+│   │                                    10 號 09:00 開放（**對象為第 3 個月**，2026-10-06，`ShiftScheduleWindow.OpenMonthsAhead`）／20 號 09:00 未完成／25 號 12:00 截止／26 號 09:00 已自動排班（後三者對象為次月）。
+│   │                                    cron `ShiftScheduleReminderCron` 現值 `0 0 1,4 * * *`＝**每天** UTC 01:00/04:00（台北 09:00/12:00），
+│   │                                    刻意由 Service 判斷「今天是不是那四個號碼」而非寫進 cron ——
+│   │                                    25 號是 12:00、其餘是 09:00，單一 cron 表達不出這種組合。
+│   │                                    **制度未切換時不推**（同仁還沒有排班功能可用）
 │   └── PaymentReminderFunction.cs     # TimerTrigger：每日 09:00 Taipei 跑撥款日將屆提醒；cron 由 `PaymentReminderCron` 控制；提前天數讀 `SystemSetting.PaymentReminderDaysBefore`，推給財務體系部門全員
 ├── Routing/
 │   └── AppRouter.cs                   # C# 12 List Pattern 路由分派器
@@ -326,26 +372,57 @@ Api/
 │   ├── LeaveRevocationHandler.cs      # 銷假申請 CRUD + Submit（GET /leave-requests/{id}/revocable-dates 逐日可銷清單；POST /leave-requests/{id}/revocations；/leave-revocations/*；ApprovalItem 以 "leave" 解析＝跑原本的請假簽核，簽核紀錄以 "leave_revocation" 隔離）
 │   ├── TravelRequestHandler.cs        # 出差預支申請 CRUD（單號 TR-yyyyMMdd-NNN，假日執行活動為 HTR-yyyyMMdd-NNN，**皆送簽時取號**；預支後沖銷）
 │   ├── TravelPaymentRequestHandler.cs # 出差請款申請 CRUD（單號 TPR-yyyyMMdd-NNN，**送簽時取號**；小額代墊直接請款）
-│   ├── CompensatoryReportHandler.cs   # 加班補休時數總表（2026-10，`GET /reports/compensatory`）：日別判定 / 級距切分（`OvertimePayCalculator.SplitCompensatoryTiers`，不截斷）/ 餘額（`Common/CompensatoryBalance`）/ 金額遮蔽皆在此，`CompensatoryReportReadService` 只取原料
+│   ├── CompensatoryReportHandler.cs   # 加班補休時數總表（2026-10，`GET /reports/compensatory`）：日別判定（`OvertimePayCalculator.ResolveDayContextAsync`，與加班費同源四值日別）/ 級距切分（`SplitCompensatoryTiers`，不截斷，國定假日前 8 小時不列級距）/ 餘額（切換後 `CompensatoryLotService`、切換前 `Common/CompensatoryBalance`）/ 金額遮蔽皆在此，`CompensatoryReportReadService` 只取原料
 │   ├── OvertimeRequestHandler.cs      # 加班申請 CRUD（含補償方式 compensatory / pay；`GET /overtime-requests/estimate?date=&hours=` 加班費即時試算，對象一律取 JWT sub、不接受 employeeId）
 │   ├── AdvanceRequestHandler.cs       # 預支申請 CRUD（單號 ADV-yyyyMMdd-NNN，**送簽時取號**；追加批次沿用父單單號）＋**追加預支批次**（POST/PATCH/DELETE /advance-requests/{id}/supplements[/{roundNo}]；新增即送簽、無草稿階段；有進行中批次時禁止整單編輯/刪除）
 │   ├── WriteOffRequestHandler.cs      # 預支沖銷申請 CRUD（獨立簽核流程）＋**依預支單彙總檢視**（GET /write-off-requests/by-advance/{advanceRequestId}，回傳預支單完整資訊 + 該單全部沖銷單）＋**差額撥款分期**（PATCH /write-off-requests/{id}/installments，SUM 對應 RefundDue 超支增額）＋**支票已支付註記**（PATCH /{id}/check-payments）
 │   ├── TravelWriteOffRequestHandler.cs # 出差預支沖銷申請 CRUD（獨立簽核流程）
-│   ├── AttendanceHandler.cs           # 打卡（上班/下班/加班開始/加班結束；請假時段內擋上下班打卡；**休假日（行事曆假日／六日）或當日全日請假時，加班開始免下班卡**（**排班制員工 `User.IsShiftWorker` 恆不適用休假日條件**，週六仍須先打下班卡），無紀錄則建立只含加班時間的紀錄；**2026-08 起納入權限管理**：打卡走 `attendances:read/write`（員工對自己）、出缺勤報表列表與 `PUT/PATCH /attendances/{id}` 走 `reports-attendance:read/write`（管理者對別人），後者另在 Handler 內套部門可見性 scope 控管「能改誰」）；**2026-10 防機器人打卡**：四個本人打卡動作送出前須先 `POST /attendances/clock-challenge` 取碼，並經 `Services/AttendancePunchGuard` 驗證（挑戰碼簽發後 ≥3 秒、5 分鐘內、限用一次），每次嘗試（含被擋下）寫入 `AttendancePunchLogs`（IP / UA / GPS）
+│   ├── AttendanceHandler.cs           # 打卡（上班/下班/加班開始/加班結束；請假時段內擋上下班打卡；**休假日（行事曆假日／六日）或當日全日請假時，加班開始免下班卡**（**排班制員工 `User.IsShiftWorker` 恆不適用休假日條件**，週六仍須先打下班卡），無紀錄則建立只含加班時間的紀錄；**2026-08 起納入權限管理**：打卡走 `attendances:read/write`（員工對自己）、出缺勤報表列表與 `PUT/PATCH /attendances/{id}` 走 `reports-attendance:read/write`（管理者對別人），後者另在 Handler 內套部門可見性 scope 控管「能改誰」）；**2026-10 防機器人打卡**：四個本人打卡動作送出前須先 `POST /attendances/clock-challenge` 取碼，並經 `Services/AttendancePunchGuard` 驗證（強制 GPS＋挑戰碼簽發後 ≥3 秒、5 分鐘內、限用一次），每次嘗試（含被擋下）寫入 `AttendancePunchLogs`（IP / UA / GPS）
+│   ├── ShiftChangeRequestHandler.cs  # **改班申請（四週彈性工時 §3.5.2，2026-09 新增，第 12 種申請類型）**：
+│   │                                    **2026-09-28**：`POST /shift-changes/preview` 試算；送簽與每關核准前以「現行班表＋本單」重驗合規
+│   │                                    （`ShiftChangeRequestService.EnsureValidAsync`）；**同一人同一月份同時只能有一張進行中的單**。
+│   │                                    班表定案後的異動途徑，走簽核流程、**核准後才寫入班表**（未核准前班表完全不動，故不需回滾）。
+│   │                                    ⚠ **與銷假申請的關鍵差異**：銷假借用請假的流程設定（`ResolveApprovalItemIdAsync("leave", …)`）、
+│   │                                    自己沒有 ApprovalItem；改班以**自己的 ApplicationType** 解析 ——
+│   │                                    逐部門六條簽核路線要靠管理員建 6 個 ApprovalItem，借用別型就建不出來。
+│   │                                    連帶要求前端 `approval-list.ts` 的 `appTypeOptions`（**硬式清單**）必須含 shift_change，
+│   │                                    漏改的話管理員選不到該類型、一條路線也建不出來。
+│   │                                    權限沿用 `shift-schedule:read/write`，不新增權限碼
+│   ├── ShiftScheduleHandler.cs       # **個人排班排例／休（四週彈性工時功能 A，2026-09 新增）**：GET / PUT `/shift-schedules`（整月整批替換）。
+│   │                                    **2026-09-28**：本人的活動日預定人力與簽核中／已核准請假日鎖為上班日（`lockReason` / `leaveLabel`），
+│   │                                    檢核一律走 `Services/ShiftScheduleConstraintService.EvaluateAsync`（改班申請、自動排班共用）。
+│   │                                    擋存判準與開放期各自收斂成純函式單一真相（`Api/Common/ShiftScheduleValidator.cs` / `ShiftScheduleWindow.cs`），
+│   │                                    讀寫共用同一份、前端只顯示不重算。**國定假日不入表**（唯讀、不佔配額）、**上班日不落地**（查無紀錄即上班日）
+│   ├── ShiftScheduleReportHandler.cs # **出勤／排休總覽表（四週彈性工時功能 B，2026-09 新增）**：`GET /reports/shift-schedule`，
+│   │                                    `reports-shift-schedule:read`。一人一列 × 當月每日一欄，不分頁。
+│   │                                    日別組裝走共用的 `ShiftScheduleMap`；**活動日的第三色只套在被指派為預定人力的人身上**
+│   │                                    （用 `isActivityDay` 會讓整欄的人全亮起來，看不出誰真的要出勤）；
+│   │                                    `noCoverage` 警示只在**週一至週五且非國定假日**成立
+│   ├── ActivityDayHandler.cs         # **活動日（四週彈性工時 §3.2，2026-09 新增）**：各部門協理排定活動日 + 預定人力，`activity-days:read/write`。
+│   │                                    **疊加旗標非第 5 種日別**（可壓在國定假日上）。
+│   │                                    **活動日優先（2026-09-29，推翻「不自動改寫個人班表」）**：預定人力當天排了例假／休假時，
+│   │                                    存檔即由 `Services/ActivityScheduleOverrideService` 改為上班日、少掉的那天以
+│   │                                    `Common/ActivityOverrideRelocator`（純函式）補排到當月最近的合法日子，找不到則標「待補排」，
+│   │                                    每筆落 `ShiftScheduleAdjustment` 並以鈴鐺通知本人（`GET /shift-schedules/adjustments` + `/ack`）。
+│   │                                    原設計走不通：活動日格子在月曆與改班表單都唯讀、又擋存「不可排例假／休假」＝死結。
+│   │                                    回應 `adjusted[]`（本次覆蓋）＋ `affected[]`（覆蓋後仍不合規）；改期／移除人力**不還原**
 │   ├── InsuranceBracketHandler.cs    # 勞健保級距 CRUD
 │   ├── PayrollHandler.cs             # 人事薪資查詢（月薪計算）；GetMineAsync = GET /me/payroll 員工讀自己近 N 個月薪資（免 payroll:read，逐月呼叫帶 employeeId 的同一支計算，依 HireDate 擋掉到職前月份，months clamp 1~24）
 │   ├── LineHandler.cs                # LINE 帳號綁定/解綁 + 月度推播用量查詢（line-quota:read）
 │   ├── AttendanceReminderAdminHandler.cs # 打卡提醒手動觸發（Superadmin，除錯用）
 │   ├── AttendanceReminderLogHandler.cs   # 打卡提醒推播紀錄查詢（Superadmin）
 │   ├── PaymentReminderLogHandler.cs      # 撥款提醒推播紀錄查詢 + 手動觸發（Superadmin）
-│   ├── SettingsHandler.cs
+│   ├── SettingsHandler.cs             # 系統設定 CRUD（單行模式）＋ **`GET /work-mode` 輕量端點**（2026-09 新增，任何登入者、免 `settings:read`）：
+│   │                                    只回「四週彈性工時切換了沒」兩個非敏感欄位。一般同仁為了知道制度而拿到整份系統設定
+│   │                                    （含維護模式、通知開關）等於把後台權限強加給員工。
+│   │                                    ⚠ `isFlexibleActive` 以**今天**判斷、**僅供 UI 開關**；與資料有關的判定一律以該筆資料自己的日期比對切換日
 │   └── HealthHandler.cs
 ├── Middleware/
 │   └── ExceptionMiddleware.cs         # 全域例外處理
 ├── Data/
 │   ├── AppDbContext.cs                # EF Core DbContext（含 Migration 自動套用）
 │   ├── AppDbContextFactory.cs         # 用於 CLI Migration
-│   ├── Configurations/                # EF Core 實體對應設定（34 個，新增 EmployeeProfile + 9 張子表 + 健保眷屬 + PreReviewRequest / PreReviewItem / PreReviewRequestAttachment）
+│   ├── Configurations/                # EF Core 實體對應設定（34 個，含 `UserAuditLogConfiguration.cs`（使用者帳號異動稽核）、新增 EmployeeProfile + 9 張子表 + 健保眷屬 + PreReviewRequest / PreReviewItem / PreReviewRequestAttachment）
 │   ├── Migrations/                    # EF Core Migration 檔案
 │   ├── Scripts/                       # 一次性維運 SQL（非程式）：01 診斷「送單後會卡死」的簽核關卡（唯讀，遞迴 CTE 重現流程解析優先序）、
 │   │                                  #   02 修正請假 Step2「申請人部門的協理」→ 上層級審核（@Commit 空跑開關 + MinDays 遺失防呆）、
@@ -410,6 +487,31 @@ Api/
 │   │                                  #      款項統計的部門可見性看的也是申請人部門，換專案不影響誰看得到這張單。
 │   │                                  #      閘門：單號查無 / 目標 Code 非唯一命中（Projects.Code 無唯一索引）/ 新專案已結案 /
 │   │                                  #      現有專案非預期（代表交辦後又被人改過）、
+│   │                                  #   12 四週彈性工時切換：把現行補休餘額整批做成「期初 lot」（@Commit 空跑開關，冪等可重跑）：
+│   │                                  #      `CompensatoryLotService.ApplyAsync` 只對「加班日 ≥ 切換日」的單開 lot，切換前累積的餘額
+│   │                                  #      因此完全沒有 lot —— 不補的話全公司補休餘額在切換當天直接歸零。
+│   │                                  #      依 2026-09-22 決議做成**一筆**期初 lot（`IsOpening=1`）而非逐張加班單回填：
+│   │                                  #      舊資料沒有「原始費率」可言，事後推算拿到的是現行級距、精度是假的。
+│   │                                  #      三個要點：① `EarnedDate` 壓成 2000-01-01（FIFO 必須先扣期初 lot，用今天會排到所有新 lot 之後）；
+│   │                                  #      ② `RateSnapshot` 刻意留 NULL，到期不自動換津貼、交人工（憑空給費率＝系統自行決定發多少錢）；
+│   │                                  #      ③ **必須在設定 `FlexibleWorkStartDate` 之前或同時執行**，先切換再跑的話中間那段時間
+│   │                                  #      同仁看到的補休餘額是 0。⚠ CTE 生存範圍只到下一個語句，故 Balance 必須落成暫存表、
+│   │                                  #   13 指派四週彈性工時的 6 個權限碼給角色（@Commit 空跑開關，冪等可重跑）：
+│   │                                  #      這 6 碼上線時刻意不回填既有角色，故部署完成後除 Superadmin 外**沒有人看得到**
+│   │                                  #      排班月曆 / 活動日 / 總覽表。以**角色名稱**定位（Roles.Id 各環境不同）。
+│   │                                  #      ⚠ `shift-schedule:read` 是選單與路由的判準，只給 `:write` 等於白給；
+│   │                                  #      ⚠ `:view-all` 會繞過部門可見性，刻意給最少人。指派後**須請該員重新登入**（權限在 JWT 裡）、
+│   │                                  #   14 建立〈改班申請〉的逐部門簽核流程（@Commit 空跑開關，冪等可重跑）：
+│   │                                  #      部門 / 職稱一律以**名稱**解析並接受多種寫法 —— 正式站與測試站的組織結構已漂移
+│   │                                  #      （部門 16 正式站「營運管理及發展部」／測試站「營運管理部」；職稱 7「財務協理」／「財務長」；
+│   │                                  #      「總監室專案部門」測試站不存在），寫死 Id 會建出指向錯誤部門的流程。查無者跳過並列在報表。
+│   │                                  #      ⚠ **「部門協理」關卡沒有任何現成機制能完全表達**（2026-09-22 實測）：
+│   │                                  #      `UseApplicantDepartment + JobTitleId` 只看申請人自己的部門、不往上找，該部門沒協理就擋下；
+│   │                                  #      `UseDirectSupervisor` 找的是「下一個**職級**」而非協理，店員送單會解析到**店長**、整個跳過協理。
+│   │                                  #      腳本採前者（忠於規格）—— 後者雖不會擋住，但**靜默送給錯的人比擋下來更糟**。
+│   │                                  #      連帶：沒有人掛協理的部門（發展三部 / 三家店）目前送不出改班申請，**是要回問客戶的業務問題**。
+│   │                                  #      ⚠ 空跑報表的「候選人」欄對「申請人部門」型關卡**必須逐部門展開**，
+│   │                                  #      全域計數會報出「營運管理部有 4 位協理」而實際一位也沒有（踩過）、
 │   │                                  #   15 行事曆「補假」改名為「彈性休假日」（@Commit 空跑開關，冪等可重跑）：
 │   │                                  #      搭配 `CalendarDayHandler.MapDescription` 的匯入映射。**兩個落點缺一不可** ——
 │   │                                  #      只跑腳本不改程式的話，`ImportYearAsync` 是「整年 RemoveRange 後重建」，
@@ -429,10 +531,27 @@ Api/
 │                                                                          #   **去重鍵：TaxId → IdNumber → Name**（TaxId / IdNumber 皆有 filtered unique index，只用 Name 會在廠商更名時撞索引；識別碼與名稱各自命中不同廠商則跳過交人工判讀）
 │                                                                          #   直寫 entity 繞過 Handler 的識別碼必填 / 格式驗證 / 存摺封面必填，故匯入的廠商在後台編輯儲存時仍會被擋須先補件
 ├── Models/
-│   ├── Entities/                      # 53 個資料庫實體（新增 **銷假申請 LeaveRevocation + 逐日明細 LeaveRevocationDate**（獨立子單，父單送簽期間不動；LeaveRequest 另加 OriginalHours 與 `cancelled` 終止狀態）/ **簽核步驟例外指定審核名單 ApprovalStepException** + **例外的限定職稱 ApprovalStepDesignatedJobTitle** / **預支沖銷差額分期 WriteOffInstallment**（第 5 種分期撥款子表）/ **WriteOffRecord + TravelWriteOffRecord 新增 `PendingClose`**（財務登記結案，待整張單核准才生效）/ **追加預支批次 AdvanceRequestSupplement**（只存 RoundNo≥2，Round 1 = 父單本身）/ **TravelRequestParticipantDate 參與人員個別參與日期** / EmployeeProfile / EducationRecord / EmploymentHistoryRecord / FamilyMember / ProfessionalTraining / LanguageAbility / JobTransferRecord / RewardPunishmentRecord / SalaryAdjustmentRecord / HealthInsuranceDependent / **5 個分期撥款表 PaymentRequestInstallment / AdvanceRequestInstallment / TravelRequestInstallment / TravelPaymentRequestInstallment / WriteOffInstallment** / **PaymentReminderLog** / **整單批次附件 PaymentRequestAttachment / WriteOffAttachment** / **預審申請 PreReviewRequest / PreReviewItem / PreReviewRequestAttachment**）
+│   ├── Entities/                      # 53 個資料庫實體（2026-10 第二輪新增 `UserAuditLog.cs` 使用者帳號異動稽核、`User.SecurityStamp` 欄位；新增 **銷假申請 LeaveRevocation + 逐日明細 LeaveRevocationDate**（獨立子單，父單送簽期間不動；LeaveRequest 另加 OriginalHours 與 `cancelled` 終止狀態）/ **簽核步驟例外指定審核名單 ApprovalStepException** + **例外的限定職稱 ApprovalStepDesignatedJobTitle** / **預支沖銷差額分期 WriteOffInstallment**（第 5 種分期撥款子表）/ **WriteOffRecord + TravelWriteOffRecord 新增 `PendingClose`**（財務登記結案，待整張單核准才生效）/ **追加預支批次 AdvanceRequestSupplement**（只存 RoundNo≥2，Round 1 = 父單本身）/ **TravelRequestParticipantDate 參與人員個別參與日期** / EmployeeProfile / EducationRecord / EmploymentHistoryRecord / FamilyMember / ProfessionalTraining / LanguageAbility / JobTransferRecord / RewardPunishmentRecord / SalaryAdjustmentRecord / HealthInsuranceDependent / **5 個分期撥款表 PaymentRequestInstallment / AdvanceRequestInstallment / TravelRequestInstallment / TravelPaymentRequestInstallment / WriteOffInstallment** / **PaymentReminderLog** / **整單批次附件 PaymentRequestAttachment / WriteOffAttachment** / **預審申請 PreReviewRequest / PreReviewItem / PreReviewRequestAttachment**）
 │   └── Dtos/                          # 21 個 DTO 檔案（新增 **LeaveRevocationDtos** / EmployeeProfileDtos / **InstallmentDtos** / **PreReviewRequestDtos**）
 ├── Services/
-│   ├── AttendancePunchGuard.cs        # **防機器人打卡（2026-10 hotfix）**：一次性打卡挑戰碼（GPS 選填，2026-10-05 取消強制）（HMAC，由 Jwt:Secret 衍生專用金鑰；
+│   ├── WorkdayScheduleProvider.cs     # **工作時段的版本化取用管道（四週彈性工時，2026-09 新增）**：把 `SystemSetting.FlexibleWorkStartDate`
+│   │                                    讀成 per-request 快取。`Constants.cs` 的 `WorkdayHours` 已由 5 個 `const int` 擴充為
+│   │                                    `WorkdaySchedule` record ＋ `Legacy`（08:00–17:00／午休 12:00–13:00）／`Flexible`（09:00–18:00／午休 12:30–13:30）
+│   │                                    ＋ `For(date, switchDate)`。**舊資料不遷移**故系統內同時存在兩套時段，判定基準一律是
+│   │                                    **該筆資料自己的日期**（請假看 `StartDate`、打卡看 `RecordDate`、報表看該列日期），不是今天。
+│   │                                    ⚠ **切換日必須訂在未來月初、不可回溯設定** —— 回溯會讓舊制建立的單被新制時段重新解讀，
+│   │                                    全日假憑空多出 17:00–18:00 的假性應出勤（已於 staging 實測，見 flexible-work-hours.md §10.5）。
+│   │                                    5 個 `const int` 原地保留（值等同 Legacy），故既有 18 處引用零改動
+│   ├── LoginAttemptTracker.cs         # 登入失敗鎖定（2026-10）：以 Email 為鍵、5 次 / 15 分鐘，回 429；每次嘗試寫 `LoginAttempts`（常數在 Common/AuthPolicy.cs）
+│   ├── RefreshTokenRevoker.cs         # 撤銷某人全部 refresh token 的單一入口（改密碼 / 管理員設密碼 / 寄帳號通知 / 停用 / 角色變更 / 重用偵測）；同時換新 `Users.SecurityStamp`（2026-10 第二輪）使舊 access token 立即 401；`BumpSecurityStampAsync` 只換戳記不撤 refresh（改部門 / 職稱用），見 [docs/authentication.md](docs/authentication.md)
+│   ├── UserRateLimiter.cs             # 每人速率限制（2026-10 第二輪）：記憶體滑動視窗、以 JWT sub 為鍵，AppRouter 對 OCR（`/invoice-ocr` `/quote-ocr`）與 GCIS 統編查詢套用，超限 429；每實例獨立，數值集中在 `Limits`
+│   ├── OvertimeSettlementService.cs   # 加班依實際打卡結算（2026-10）：`SettledHours` = min(核准時數, 加班打卡)，終局核准 / 打加班結束卡 / 管理者改出缺勤時冪等重算並同步加班費快照與補休 lot；
+│   │                                    給付基準單一真相 `Common/OvertimeSettlement.BillableHours`（`SettledHours ?? EstimatedHours`，舊單 null 不 backfill）；支援跨日加班結束卡（隔天 06:00 前）
+│   ├── OvertimeRequestGuard.cs        # 加班送件檢查（2026-10）：補登最多 7 天、同人同日一張、全天有薪假不可加班、每月上限 `SystemSetting.MonthlyOvertimeLimit`（送簽與核准）
+│   ├── HolidayTravelParticipantGuard.cs # 假日津貼重複給付防線（2026-10）：參與人員須在職；同人同一假日不得跨單、不得同時有已核准加班費單或有薪假
+│   ├── TurnstileVerifier.cs           # **Cloudflare Turnstile siteverify**（2026-10）：比對 success ＋ action ＋ hostname；設定 `Turnstile__SecretKey` / `Turnstile__Mode`（off 預設・log 只記錄・enforce 擋下）/ `Turnstile__AllowedHostnames`；
+│   │                                    連不到回 unavailable（打卡端 fail-open）；secret 空白強制 off；官方測試 secret 跳過 action / hostname 比對
+│   ├── AttendancePunchGuard.cs        # **防機器人打卡（2026-10 hotfix）**：強制 GPS ＋ **Turnstile 人機驗證（依 `Turnstile:Mode`）** ＋ 一次性打卡挑戰碼（HMAC，由 Jwt:Secret 衍生專用金鑰；
 │   │                                    簽發後 ≥3 秒、5 分鐘內、限用一次）＋ 每次嘗試寫 `AttendancePunchLogs`（含被擋下、IP / UA）。
 │   │                                    起因：正式站有人以排程腳本「登入 → 1 秒內打卡、不送 GPS」。⚠ 只是提高門檻＋留證據，改寫過的腳本仍可模仿
 │   ├── IJwtService.cs
@@ -441,13 +560,37 @@ Api/
 │   ├── IEscalationService.cs          # 簽核升級服務介面
 │   ├── EscalationService.cs           # 簽核升級邏輯（上層部門主管遞迴 + 代理人）＋ **上層級關卡無人時往上層部門接手**（2026-09，`FindSuperiorInAncestorDepartmentsAsync`）：`UseDirectSupervisor` 步驟在同部門找不到更高階者時，沿部門 `ParentId` 往上找 `Level <` 申請人的最接近一位並以升級審核指派，找不到才退回原本的「跳過該關」；全部 9 種申請類型適用，修正「部門最高主管送單一路跳到底 → 無人審即自動核准」；**指派前先排除「流程後續固定關卡本來就會簽到的人」**（`laterStepScopes` / `StepReviewerScope`，範圍由 `ApprovalFlowService.BuildLaterFixedStepScopes` 算出，只認固定池關卡：MinDays 擋掉 / 指定審核 / 上層級 / 全不限者皆不算），否則「Step1 升級到總監 + 最後一關固定總監」會變同一人連簽兩關，並撞上總監跨步驟去重的「全池皆已審」限縮而卡死；同職級多人再依 `HireDate` → `Id` 排序確保決定性（送單與推進兩次解析拿到同一人）；「同部門有無上級」三處判定（`ApprovalFlowService.FindNthSuperiorLevelAsync` / `ApprovalTaskHandler.AuthorizeStepAsync` / 待審清單 SQL）一律加上 `Status='active'`，離職者不再撐住一個沒人能審的層級
 │   ├── EscalationResult.cs            # 升級結果 record
+│   ├── ShiftScheduleActivityLoader.cs # **排班月曆的活動日載入（2026-10-01）**：static、唯讀，全公司活動日 + 部門 / 建立者 / 參與人員姓名，
+│   │                                    同日本人被指派者在前；`ShiftScheduleHandler` 與 `ShiftChangeRequestService` 共用（原各寫一份且同日只取一筆）
+│   ├── ActivityScheduleOverrideService.cs # **活動日覆蓋個人排班（2026-09-29）**：static、不呼叫 SaveChanges。
+│   │                                    衝突日改上班日（刪列）＋ 補排一天 ＋ 落 `ShiftScheduleAdjustment`；**不動 `ShiftScheduleMonth.Status`**
+│   │                                    （改 draft 會誤觸 20 號提醒與 26 號整月自動排班）；過去日／今天／國定假日不處理。
+│   │                                    補排候選日排除本人其他活動日與請假日、被進行中改班單佔用日（`ShiftChangeRequestService.OccupiedDatesAsync`，三處共用）
+│   ├── CompensatoryLotService.cs      # 補休「逐筆 lot」帳務（static，不呼叫 SaveChanges；四週彈性工時 §7，取代純聚合 SUM 的補休池）：
+│   │                                    `ExpiresAtFor`（1–6 月產生用至 7/31、7–12 月用至隔年 1/31 —— 比產生期間多留一個月，
+│   │                                    原「用至 6 月底」已被客戶推翻）/ `ApplyAsync`（開 lot 的三條件：**終局核准 ＋ 補償方式為補休 ＋
+│   │                                    加班日 ≥ 切換日**，第三條是為了不與期初 lot 重複計算）/ `RevokeAsync`（退回・拒絕・改單・刪單；
+│   │                                    **已被扣抵過的 lot 不刪、只歸零剩餘時數** —— 扣抵紀錄指向已核准的補休假單，且 `CompensatoryUsage.LotId`
+│   │                                    是 Cascade，刪 lot 會連稽核紀錄一起消失）/ **`SyncUsageAsync`（扣抵的唯一入口）**：對一張補休假單
+│   │                                    「先全額歸還、再重新 FIFO 扣抵」、**冪等**，六個入口（送簽 / 審核 / 退回 / 拒絕 / 刪單 / 銷假使 Hours 遞減）
+│   │                                    都只呼叫這一支 —— 增量寫法每個入口都要各自算差額，漏一個就會出現對不起來的餘額；
+│   │                                    FIFO 以「**該假單起始日**當下尚未逾期」篩選（不是今天，否則補登過去日期的補休會被誤擋）/
+│   │                                    `GetBalanceAsync`（欄位語意對齊舊聚合版，前端不必分兩套）/ `SettlementLabel`（薪資單項目名稱，含民國年期間）；
+│   │                                    時數沿用 **`EstimatedHours`（未截斷）** 而非 `PayableHours`（補休路徑本來就沒有計酬上限，
+│   │                                    改用截斷值會把既有餘額追溯砍掉）；費率快照取**加權平均**（一單一 lot 有唯一索引，
+│   │                                    而一張單可能橫跨多個級距）；期初 lot 的 `RateSnapshot` 刻意為 NULL，到期不自動換津貼、交人工
 │   ├── OvertimeCompensationService.cs # 加班補償方式共用（static，不呼叫 SaveChanges）：Compensatory / Pay 常數 + Normalize（未知→補休，安全側）
 │   │                                    + ApplyAsync（算並寫入 4 個快照欄）/ ClearSnapshot（退回・拒絕・改單）/ HasHolidayTravelConflictAsync（假日津貼重複給付警示）
 │   ├── LeaveRevocationService.cs      # 銷假共用：ApplyAsync（核准後從「該假單所有已核准銷假的 distinct 日期」整組重算父單 Hours、全銷轉 cancelled，冪等且併發安全）+ 下游「該日未銷假」共用排除片段
 │   ├── ILineService.cs               # LINE API 操作介面
 │   ├── LineService.cs                # LINE Platform REST API 封裝（token 換取 + 推播 + 月度 quota 查詢）
 │   ├── PushResult.cs                 # LINE 推播結果 record（含 ErrorCategory 分類）
-│   ├── LineFlexMessageBuilder.cs     # 6 種簽核通知 + 打卡提醒的 LINE Flex Message 模板
+│   ├── LineFlexMessageBuilder.cs     # 11 種 LINE Flex Message 模板（簽核 / 財務 / 打卡提醒 / 排班提醒）。
+│   │                                    **全部走唯一的 `BuildBubble`**，故環境標記 `EnvironmentLabel`
+│   │                                    （設定 `App:EnvironmentLabel`，**與 Email 共用同一個鍵**，見 Common/Constants.cs）
+│   │                                    只需改這一處就涵蓋全部、日後新增模板自動生效。標記同時加在 **altText**（通知列）
+│   │                                    與 **header 第一行**（點開後）—— 只加一個會出現「通知列看得出是測試、點開看不出來」；
+│   │                                    正式站不設此值，輸出完全不變。類別是 static 無 DI，由 `Program.cs` 在 composition root 設定一次
 │   ├── IAttendanceReminderService.cs # 打卡提醒服務介面
 │   ├── AttendanceReminderService.cs  # 打卡提醒協調：時間窗判斷時點（非精確等值）、`batchStart` 冪等閘（一天一槽一次）、過濾對象、推播 LINE
 │   ├── IPaymentReminderService.cs    # 撥款提醒服務介面
@@ -464,7 +607,10 @@ Api/
 │       ├── DepartmentReadService.cs
 │       ├── JobTitleReadService.cs
 │       ├── VendorReadService.cs
-│       ├── WorkPatternReadService.cs      # 員工出勤型態：IsShiftWorkerAsync（排班制旗標，request-scoped memo）；供請假 / 銷假 / 打卡以「假單所有人 / 打卡本人」解析，勿用呼叫者 id
+│       ├── ShiftScheduleReadService.cs     # **per-user 日別解析**（取代 `WorkCalendarHelper` 的 `bool ignoreHolidays` 二元旗標）：
+│       │                                    三段退回「個人排班 → 國定假日 → 舊制行事曆判定」。批次版一次撈回整區間全部人（單次 SQL）——
+│       │                                    per-user 後出缺勤報表原本「依 IsShiftWorker 分兩組、整趟最多 2 次工作日計算」的 memo 會失效
+│       ├── WorkPatternReadService.cs      # 員工出勤型態：IsShiftWorkerAsync（排班制旗標，request-scoped memo）＋ GetClockProfileAsync（自訂上下班時段 → ClockProfile）；供請假 / 銷假 / 打卡以「假單所有人 / 打卡本人」解析，勿用呼叫者 id
 │       ├── ApprovalReadService.cs
 │       ├── ProjectReadService.cs
 │       ├── PaymentRequestReadService.cs
@@ -492,6 +638,10 @@ Api/
 │   ├── AttachmentProcessor.cs         # 整單批次附件共用：multipart 解析 + magic-byte 驗證 + 上傳 request-attachments（一般請款 / 預支沖銷共用）
 │   ├── DesignatedReviewerHelper.cs    # 申請人指定審核者共用：BuildEntities / ReadForFlowAsync / ValidateAndNormalizeAsync / GetSuppressedDesignatedStepOrdersAsync（一條流程多個指定步驟，以 ApprovalStepOrder 綁定步驟；9 種申請類型共用；第一指定步驟＝所選部門最高職稱時抑制其後指定步驟：驗證免填 + 簽核乾淨跳過）；**例外指定審核的兩個真相**：送單前查例外表 `GetEffectiveDesignatedStepOrdersAsync`、送單後看 designee 快照 `EffectiveDesignatedStepOrders`，ValidateAndNormalizeAsync 另負責剔除非法 designee 綁定（防提權）與**限定職稱驗證**（例外命中且有設限定職稱時，designee 職稱不符丟 400）
 │   ├── FlexibleDateTimeJsonConverter.cs # 寬鬆日期解析（人事資料卡 payload 用；Safari 不支援 input type=month 手打年月字串）
+│   ├── EmployeeWorkdays.cs            # **「某位員工哪幾天算工作日」單一真相（2026-09-29 新增）**：切換日前走下方 WorkCalendarHelper（公司行事曆 + IsShiftWorker），
+│   │                                  #   切換日起只有個人排班為 `work` 的日子算工作日（例假／休假／國定假日皆不算請假日），區間跨切換日兩段各自判定。
+│   │                                  #   由 `Services/EmployeeWorkdaysFactory.cs`（scoped）以**假單所有人**建立；請假 / 銷假 / 排班鎖定 / 出缺勤報表 / 自動補卡全部共用，
+│   │                                  #   `LeaveDayExpander.ExpandAsync` 改吃它（並依假單 StartDate 自選新舊制時段）。已知限制：送簽後把假期間內的休假日改排上班，Hours 不會跟著變
 │   ├── WorkCalendarHelper.cs          # 公司行事曆共用判定（「有行事曆用 CalendarDay.IsHoliday、沒資料退回六日」的單一真相）：區間版 ComputeWorkingDatesAsync 供 LeaveRequestHandler 算請假日／時數，單日版 IsHolidayAsync 供 AttendanceHandler 判休假日免下班卡。
 │   │                                  #   **區間版另須表態 `CalendarScope`（2026-09 新增，刻意必填無預設值）**：同一批行事曆在「出勤」與
 │   │                                  #   「請假」兩個脈絡下答案不同，差別只有**彈性休假日**（原行事曆的「補假」，見 `Constants.CalendarDescriptions`）——
@@ -535,15 +685,68 @@ Api/
 │   │                                    請款查沖銷表 / 出差沖銷的兩個跨表查詢都漏加 `!= 'rejected'`（已拒絕的單**永久佔號**、無從自救），
 │   │                                    出差請款則完全未檢查。DB 無唯一索引故改規則免 migration；歷史重複診斷見 Scripts/10
 │   ├── OvertimePayCalculator.cs       # 勞基法加班費「倍率 / 時薪 / 分段累進」單一真相（純函式）：
-│   │                                    平日 1–2h ×1.34、3h 起 ×1.67（上限 4h）；假日 1–2h ×1.34、3–8h ×1.67、9h 起 ×2.67（上限 12h）；
+│   │                                    **日別為 `WorkDayTypes` 四值、不是 `bool`（2026-09 四週彈性工時改版）** ——
+│   │                                    上班日 1–2h ×1.34、3h 起 ×1.67（上限 4h）；休假日 / 例假日 1–2h ×1.34、3–8h ×1.67、9h 起 ×2.67（上限 12h）；
+│   │                                    **國定假日前 8 小時不計加班費**（改走薪資加項「國定假日出勤加倍工資」，落點 `PayrollReadService`），
+│   │                                    第 9 小時起**沿用上班日級距** —— 故級距表仍只有兩份、不必新增；
 │   │                                    時薪＝ROUND(底薪 ÷ 240, 2)；金額只在總額捨入一次（AwayFromZero）；
-│   │                                    日別走 WorkCalendarHelper.IsHolidayAsync，**排班制員工恆判平日**；超出上限截斷計酬但不擋送出；
-│   │                                    另出 **`SplitHourTiers(hours, isHoliday)`**（只切分段時數、不算錢，供簽核詳情頁顯示級距而不洩金額）
-│   │                                    與 `CapHoursFor(isHoliday)`，`Calculate` 改由前者產生 Segments 再乘時薪 —— 級距表仍是唯一真相，**不得 copy 到前端**
+│   │                                    日別解析走 `IShiftScheduleReadService.ResolveDayTypeAsync`（個人排班 → 國定假日 → 舊制行事曆），
+│   │                                    **切換日之前一律由 `EffectiveDayType` 把國定假日收斂回 `rest_day`**（不收斂的話地基上線當天，
+│   │                                    所有歷史國定假日加班單的級距會靜默變動）；⚠ 該收斂**不可套 `WorkDayTypes.Normalize`**——
+│   │                                    那支的語意是「員工可勾選的三值」，會把 `public_holiday` 當非法值打回 `work`；
+│   │                                    國定假日的申請時數有兩種語意（活動日預定人力只填第 9 小時起、未排活動日填當日全部），
+│   │                                    由 `ToPayableTierHours` 依 `IsActivityAssigneeAsync` 只對後者扣掉前 8 小時；
+│   │                                    超出上限截斷計酬但不擋送出；另出 **`SplitHourTiers(hours, dayType)`**
+│   │                                    （只切分段時數、不算錢，供簽核詳情頁顯示級距而不洩金額）與 `CapHoursFor(dayType)`，
+│   │                                    `Calculate` 改由前者產生 Segments 再乘時薪 —— 級距表仍是唯一真相，**不得 copy 到前端**；
+│   │                                    快照欄由 `bool? IsHolidayOvertime` 擴為 `string? OvertimeDayType`（兩欄一起寫），
+│   │                                    既有列**刻意不 backfill**，讀取端統一走 `SnapshotDayType` 退回舊欄
 │   ├── LeaveDayExpander.cs            # 請假單「逐日展開」單一真相（Date + Hours + **Segment / Start / End 逐日時段**，2026-09 新增）：供銷假逐日勾選、核准後重算 Hours、出缺勤報表請假合併與時段顯示；時段代碼 full / am / pm / partial（`Constants.LeaveDaySegments`）一律 clamp 在 08:00–17:00，Hours 沿用既有整點差語意故與 End−Start 不必然等長；假別分類常數 WorkingDayLeaveTypes / TimeUnitMap 亦收斂於此，LeaveRequestHandler 轉引
 │   ├── ExpectedWorkWindow.cs          # 「該日應出勤（可打卡）時段」單一真相（2026-09 新增，純函式無 I/O，比照 OvertimePayCalculator）：以 08:00–17:00 扣掉當日請假時段，含跨午休正規化（上午假 08–12 → 13:00 開工、下午假 13–17 → 12:00 下班），中段小時假刻意不縮；Start/End 為 null＝當日免出勤。**兩個 AdjustedByLeave 旗標不可省**：無請假時 End 恆為 17:00，補下班卡若無條件取 min 會把 09:00 上班者從 18:00 壓成 17:00。消費點：出缺勤報表應出勤欄 + 未打卡判定、登入自動補卡
 │   ├── AttendanceLeaveMerger.cs       # 出缺勤報表「打卡 ∪ 當日請假日 ∪ **缺勤日**」合併單一真相：(員工, 日期) 一列，以 **`RowKind`（clock / leave / absent）** 標示種類 —— 請假列與缺勤列同樣 Id=null，**前端不可再用 Id 判斷**；缺勤列＝工作日無打卡且無請假（今天與未來不算、依 HireDate/ResignDate 夾邊界、展開上限 AbsenceMaxCells=60000）；每列另帶 ExpectedStart/End（走 ExpectedWorkWindow，無請假的工作日為 08:00–17:00、休假日為 null）；逐日時數與時段走 LeaveDayExpander，故採「區間全量載入 → 記憶體合併 → 記憶體切頁」，區間跨度上限 MaxRangeDays=400 天、匯出 pageSize 上限 ExportMaxPageSize=5000。**缺勤判定必須用 leavesByDay 的 Remove 前快照**，否則「有打卡又有請假」的日子會被誤判成缺勤
-│   └── Constants.cs
+│   ├── ActivityOverrideRelocator.cs   # **活動日覆蓋後的補排（純函式，2026-09-29）**：一次只搬一天、不重排整月；
+│   │                                    候選＝當月上班日（扣 blockedDates），依「離衝突日最近 → 同距離取較晚」試排，
+│   │                                    過 `ShiftScheduleValidator` 即採用（覆蓋前本就不合規的暫存班表改以「擋存原因不變多」為準）；
+│   │                                    全不過回 `RelocatedTo=null`（待補排）—— **不可硬塞仍違法的日子**
+│   ├── AutoShiftScheduler.cs          # **逾期未排班者的自動排班（§3.5.1，純函式，2026-09 新增）**：
+│   │                                    候選日優先序 週日→週六→平日、跳過國定假日與活動日、取 4 例 4（或 5）休，
+│   │                                    再跑三條檢核、不過就遞補。⚠ **遞補必須補在違規視窗的「尾端」** ——
+│   │                                    滾動視窗每次往後移一天，補在開頭的例假馬上掉出下一個視窗，
+│   │                                    於是每個視窗都要再補一次（實測會從 4 天例假一路補到 11 天）。
+│   │                                    ⚠ **排不出合法班表時一律留白不寫入**，交人工處理 —— 例假違規罰鍰 2 萬～100 萬。
+│   │                                    **2026-09-29**：視窗補救優先把休假改例假（例假由休假轉入）、視窗含前後月已定案日子
+│   │                                    （原只掃當月，跨月違規會亂補月初）、通過後把超出合計的休假改回上班日
+│   ├── ClockRules.cs                  # **四週彈性工時的打卡規則（純函式，2026-09 新增）**：打卡窗 08:30／準時界線 09:30（超過仍可打、只記遲到）／
+│   │                                    **＋ `ClockProfile`（2026-09-30）：個人打卡參數單一真相** —— 員工設有自訂上下班時段（賣店等，`User.CustomWorkStartTime/EndTime`）時，
+│   │                                    開放 S−30 分／準時 S+2 分／應下班固定 E／正常下班 [E, E+5 分]／提醒 S−2、E−2，未設定走 `ClockProfile.Company`（現值不變）；
+│   │                                    打卡端（AttendanceHandler）與提醒端（AttendanceReminderService）共用，僅新制生效／
+│   │                                    應下班時間＝實際上班打卡＋9 小時（請上午半天假者＋4 小時，午休已過不再扣）／
+│   │                                    下班三態（早退・正常・逾時，以 T 與 T+30 分為界）／半天假 13:00 交接容許帶 ±5 分／**遲到界線 `LateThreshold`（2026-10-06：公司 09:30・自訂 S+2 分・上午請假 13:05，超過須填遲到原因 `LateReason`）**。
+│   │                                    ＋ `ClockDayPolicy`：**日別鎖定的單一真相**（例假日全鎖連加班申請都不給提、休假日鎖上下班、
+│   │                                    國定假日僅活動日預定人力解鎖）。⚠ 全部只在切換日之後生效，切換日前呼叫端不會走到這裡
+│   ├── ShiftScheduleMap.cs            # **排班「整月日別組裝」與「國定假日載入」共用實作**（2026-09 新增）：
+│   │                                    規格 §10.4 明訂月曆讀取／整月寫入／配額重算**必須共用同一支 helper**，
+│   │                                    加上總覽表與活動日改期重跑檢核共 4 個消費點，全部收斂於此。
+│   │                                    ⚠ 「查無紀錄即上班日」與 `ShiftScheduleReadService` 的三段退回**刻意不同** ——
+│   │                                    後者服務執行期判定（打卡 / 請假扣假日），沒排班要退回舊制行事曆；
+│   │                                    本 helper 回答「這個人這個月排了什麼」，沒排就是沒排，不該替他補上週末＝休假
+│   ├── WorkDayType.cs                 # **四週彈性工時的四值日別**（work / rest_day / statutory_off / public_holiday）＋
+│   │                                    **`PublicHolidayRule`：國定假日 ＝ `IsHoliday` 且 `Description` 非空**。
+│   │                                    行事曆把週六日也標成 `IsHoliday=1`（Description 為空），只看旗標會讓 2026-10 的 11 天全變唯讀格
+│   │                                    （實際國定假日只有 4 天），員工**永遠排不滿 4 例 4 休**。必須用 `GetByYearAsync` 而非 `GetHolidayDatesAsync`。
+│   │                                    月曆讀取／整月寫入／配額重算三個消費點共用此判準。**彈性休假日比照國定假日**（2026-09-29 改回；9/28 曾改為可排班，已撤銷）。
+│   │                                    日別解析 `ShiftScheduleReadService` 同步改為**國定假日優先於個人排班**（與月曆同一優先序），
+│   │                                    9/28–9/29 間殘留在彈性休假日上的例假／休假紀錄因此不會生效
+│   ├── ShiftScheduleValidator.cs      # 排班「能不能存」單一真相（純函式）：`例假 ≥4 天 ∧ 連續上班 ≤12 天 ∧ 任意 14 天內 ≥2 例假` ⇒ 可存；
+│   │                                    休假未排滿只警示，應排天數 `RequiredRestDaysFor(y, m, 已排例假)` ＝ 合計 8／9 − max(4, 例假)（多排的例假由休假轉入）。滾動 14 天視窗**跨月**（併入前後月已定案班表，次月未排則該側不檢核）。
+│   │                                    ⚠ 空白月曆第一次儲存必然被擋，為預期行為，UI 須一進畫面就提示
+│   ├── ShiftScheduleWindow.cs         # 排班開放期單一真相（純函式）：**每個月份開放期＝前三個月 10 日 ～ 前一個月 25 日**（2026-10-01 由「10–25 日只排次月」放寬為兩個月，2026-10-06 再延為三個月，常數 `OpenMonthsAhead`：10–25 日可排未來三個月、26 日起次月鎖定）／當月僅當日 08:30 前改當天／歷史唯讀／
+│   │                                    當月到職者自 `User.CredentialsSentAt` 起 3 個工作天寬限（以 `CalendarDay` 判定，**刻意不用個人班表**）
+│   └── Constants.cs                   # 含 **`EnvironmentLabel`（非正式環境的訊息標記，LINE 與 Email 共用）**：
+│                                        設定鍵 `App:EnvironmentLabel`。拆成兩個鍵的必然結果是有人只設一邊、
+│                                        症狀是「LINE 標了、Email 沒標」且不會有任何錯誤。
+│                                        ⚠ **關掉 `ApprovalEmailEnabled` / `ApprovalLineEnabled` 不等於安全** ——
+│                                        那兩個開關只管簽核通知，帳號通知信 / 薪資明細信 / 三支 TimerTrigger 全都不受管制
 ├── host.json
 ├── local.settings.json                # 本地開發設定（不進版控）
 └── Api.csproj
@@ -590,6 +793,18 @@ dotnet ef database update               # 套用 Migration
 > 詳情顯示「（送簽後產生）」），送簽當下與單號同時蓋章、退回重送不改。清單頁欄名一律「申請日期」，
 > 詳情頁 / 簽核頁 / 列印 PDF / 款項統計報表（含**日期區間篩選**）皆改讀 `submittedAt`；
 > `CreatedAt` 保留原義（建立草稿時間），不再用於顯示。
+>
+> **防濫用安全修補（2026-10）**：客戶發現員工以排程腳本打卡、灌加班時數、自己簽自己的單後全面補強 ——
+> 打卡強制 GPS + 一次性挑戰碼（`AttendancePunchGuard`）；**加班費 / 補休改依實際加班打卡結算**（`SettledHours`，舊單不變）、不再自動補加班結束卡、非工作日的上班卡不自動補下班卡（2026-10-07 拿掉「上班時間須在應出勤起點 −2h～+3h」的檢查，改為報表紅字「未打下班卡」→ HR 於編輯填原因後轉綠字留存）；
+> 加班補登 ≤7 天 / 同日一張 / 每月上限；半天制假別時數改由後端計算；**簽核一律禁止自審**、指定審核者不可是本人 / 離職者 / 低階者、流程 ID 只由後端解析；
+> 沖銷退款日限財務關卡；明細金額不可為負、發票號碼正規化比對；後端強制首次改密碼、登入失敗鎖定、refresh token 30 天上限與重用偵測、簽名檔改需登入；
+> 角色管理不可改自己所屬角色、不可授出超出自身的權限；出缺勤不可改自己的、修改留 `AttendanceAuditLogs`。
+> **第二輪（2026-10，21 項，commit `0bda4907` / `a1b3c621`）**：使用者管理防提權（禁改自己部門 / 職稱 / 薪資、調財務部或高職級限 Superadmin、改他人密碼須權限子集，異動留 `UserAuditLogs`）；
+> **`Users.SecurityStamp`**（JWT `sstamp`，AppRouter 每請求比對，停用 / 改密碼 / 換角色 / 改部門職稱即讓舊 token 失效）；簽核詳情檢視加部門 scope、送簽自審判準與推進一致、指定審核者須嚴格高於申請人、
+> 撥款明細逐列驗證且申請人不可動自己的、已撥款單退回後仍鎖定；輕量端點最小揭露（`/projects/active` 不回金額、`/vendors/lookup` 身分證遮罩、存摺封面需 `vendors:read`）；
+> 明細附件 FileUrl 只認 DB 既有值、上傳 magic-byte＋10MB、通知信 HtmlEncode、前端 CSP / URL 白名單；加班開始卡時間下限、加班 × 假日活動互斥、假別額度依假期年度、OCR / GCIS 每人速率限制（`UserRateLimiter`）、
+> 出差打卡須有已核准出差單、出缺勤修改範圍與職級檢查、銷假 / 改班核准時重驗日期。逐項規則見 backend-design.md §4.7。
+> 規範總表見 [docs/backend-design.md §4.7 / §9.6](docs/backend-design.md)，業務規則見 attendance-clock-rules / approval-flow / authentication。
 >
 > **日期欄位年份防呆（2026-09）**：所有使用者填寫的日期欄位（加班日期 / 請假起迄 / 出差起迄 /
 > 預支日期與需求日 / 發票日期 / 品項日期 / 子女出生日期）限制在**今日 ±3 年**，前端以日期 input 的

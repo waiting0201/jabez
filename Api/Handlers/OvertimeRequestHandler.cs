@@ -27,7 +27,10 @@ public sealed class OvertimeRequestHandler(
     IApprovalNotificationService notifier,
     IApprovalFlowService approvalFlow,
     ICalendarDayReadService calendarReader,
-    IWorkPatternReadService workPattern)
+    IWorkPatternReadService workPattern,
+    IShiftScheduleReadService shiftSchedule,
+    IWorkdayScheduleProvider scheduleProvider,
+    IEmployeeWorkdaysFactory workdaysFactory)
 {
     public async Task<IActionResult> GetAllAsync(HttpRequest req)
     {
@@ -93,6 +96,12 @@ public sealed class OvertimeRequestHandler(
         // 關聯專案明細（必填，至少一列）；父表 EstimatedHours 為其合計快取
         var projectRows = await BuildProjectsAsync(body.Projects);
 
+        // 超出加班上限一律於此擋下（見 GuardOvertimeHoursAsync）
+        await GuardOvertimeHoursAsync(employeeId, body.OvertimeDate, projectRows.Sum(r => r.EstimatedHours));
+
+        // 送件檢查：補登期限 / 同日唯一 / 有薪全日假 / 每月上限（見 OvertimeRequestGuard）
+        await GuardSubmissionRulesAsync(employeeId, body.OvertimeDate, projectRows.Sum(r => r.EstimatedHours), excludeId: null);
+
         // 指定審核者存在性驗證
         if (body.DesignatedReviewers is { Length: > 0 })
         {
@@ -105,9 +114,12 @@ public sealed class OvertimeRequestHandler(
         var item = new OvertimeRequest
         {
             EmployeeId     = employeeId,   // 強制使用 JWT 身分，忽略 body.EmployeeId
-            ApprovalItemId = body.ApprovalItemId,
+            // ApprovalItemId 不採用前端值：一律於 SubmitAsync 依申請人部門解析（防止竄改流程）
             OvertimeDate   = body.OvertimeDate,
             EstimatedHours = projectRows.Sum(r => r.EstimatedHours),
+            // 防灌工時（2026-10）：新單的給付基準＝依實際加班打卡結算，建立時為 0（沒打加班卡＝不給付）。
+            // 舊單此欄為 null（沿用 EstimatedHours），見 OvertimeSettlement。
+            SettledHours   = 0m,
             // 補償方式二擇一；未知值正規化為補休（安全側，寧可少發現金也不可雙重給付）
             CompensationType = OvertimeCompensationService.Normalize(body.CompensationType),
             Reason         = body.Reason,
@@ -185,8 +197,17 @@ public sealed class OvertimeRequestHandler(
         if (body.CompensationType is not null)
             item.CompensationType = OvertimeCompensationService.Normalize(body.CompensationType);
 
+        // 超出加班上限一律於此擋下（見 GuardOvertimeHoursAsync）
+        await GuardOvertimeHoursAsync(item.EmployeeId!.Value, item.OvertimeDate, item.EstimatedHours);
+
+        // 送件檢查（編輯自己這張不算同日重複，故排除 item.Id）
+        await GuardSubmissionRulesAsync(item.EmployeeId!.Value, item.OvertimeDate, item.EstimatedHours, excludeId: item.Id);
+
         // 日期 / 時數 / 補償方式任一可能已變動 → 舊的加班費快照必須失效，重新送簽時再算一次
         OvertimeCompensationService.ClearSnapshot(item);
+
+        // 補休 lot 同理收掉（進得來的只有 draft / returned，理論上不該有 lot，此處為防呆）
+        await CompensatoryLotService.RevokeAsync(db, item.Id);
 
         await db.SaveChangesAsync();
 
@@ -218,6 +239,12 @@ public sealed class OvertimeRequestHandler(
         db.RequestDesignatedReviewers.RemoveRange(
             await db.RequestDesignatedReviewers.Where(r => r.RequestType == "overtime" && r.RequestId == item.Id).ToListAsync());
 
+        // 補休 lot：SourceOvertimeRequestId 的 FK 是 NoAction，殘留列會擋住刪單。
+        // 已被扣抵過的 lot 由 RevokeAsync 保留、只歸零剩餘時數（扣抵紀錄指向已核准的補休假單，
+        // 刪掉會讓那張假單變成憑空來的補休）—— 但那種 lot 的來源單必為 approved，
+        // 而 approved 的加班單本來就刪不掉，故此處實際上一律是直接刪除。
+        await CompensatoryLotService.RevokeAsync(db, item.Id);
+
         db.OvertimeRequests.Remove(item);
         await db.SaveChangesAsync();
 
@@ -240,6 +267,20 @@ public sealed class OvertimeRequestHandler(
         if (item.ApprovalStatus != "draft" && item.ApprovalStatus != "returned")
             throw AppException.BadRequest("Only draft or returned overtime requests can be submitted.");
 
+        // 超出加班上限一律於此擋下（見 GuardOvertimeHoursAsync）。
+        // Create / Update 已擋過一次，這裡是最後一道防線 —— 例如活動日排定於建單後才變動，
+        // 或退回（returned）重送時日別已與建單當下不同。
+        await GuardOvertimeHoursAsync(item.EmployeeId!.Value, item.OvertimeDate, item.EstimatedHours);
+
+        // 送件檢查：Create / Update 之後日期可能過期（草稿放了幾天）、同日可能已另有一張、請假或月上限可能已變動，
+        // 這裡是最後一道防線。
+        await GuardSubmissionRulesAsync(item.EmployeeId!.Value, item.OvertimeDate, item.EstimatedHours, excludeId: item.Id);
+
+        // 上線前建立的草稿 / 退回單（SettledHours 為 null）在此併入新制：它們還沒核准過、沒有任何給付歷史，
+        // 併入不會改動歷史月份薪資；若留 null，同一個漏洞（只填申請單、不打卡也領錢）會一直開著。
+        // 已送簽（pending）的舊單不在此列 —— 它們不經過這裡，維持 null。
+        item.SettledHours ??= 0m;
+
         // 送簽時才取號：單號日期＝送簽日，草稿不佔號。
         // 退回（returned）重送時已有單號，不可重新配號，否則已流通的單號會被改掉。
         if (string.IsNullOrEmpty(item.RequestNo))
@@ -250,35 +291,34 @@ public sealed class OvertimeRequestHandler(
         item.SubmittedAt ??= Clock.Now;
 
         // 退回重送時清除舊審核記錄，重置指定審核者狀態，重新走流程
-        if (item.ApprovalStatus == "returned")
+        // 2026-10 安全修正：不論 draft 或 returned 送出一律清空舊簽核足跡（原只清 returned）。
+        // 殘留的舊 approved 紀錄會讓後續關卡誤判「此人已審過」而被自動代簽，未經審核即核准。
+        var oldRecords = await db.ApprovalRecords
+            .Where(r => r.ApplicationType == "overtime" && r.ApplicationId == item.Id)
+            .ToListAsync();
+        db.ApprovalRecords.RemoveRange(oldRecords);
+
+        var oldOverrides = await db.EscalationOverrides
+            .Where(o => o.ApplicationType == "overtime" && o.ApplicationId == item.Id)
+            .ToListAsync();
+        db.EscalationOverrides.RemoveRange(oldOverrides);
+
+        // 重置指定審核者狀態為 pending
+        var rdrsToReset = await db.RequestDesignatedReviewers
+            .Where(r => r.RequestType == "overtime" && r.RequestId == item.Id)
+            .ToListAsync();
+        foreach (var rdr in rdrsToReset)
         {
-            var oldRecords = await db.ApprovalRecords
-                .Where(r => r.ApplicationType == "overtime" && r.ApplicationId == item.Id)
-                .ToListAsync();
-            db.ApprovalRecords.RemoveRange(oldRecords);
-
-            var oldOverrides = await db.EscalationOverrides
-                .Where(o => o.ApplicationType == "overtime" && o.ApplicationId == item.Id)
-                .ToListAsync();
-            db.EscalationOverrides.RemoveRange(oldOverrides);
-
-            // 重置指定審核者狀態為 pending
-            var rdrsToReset = await db.RequestDesignatedReviewers
-                .Where(r => r.RequestType == "overtime" && r.RequestId == item.Id)
-                .ToListAsync();
-            foreach (var rdr in rdrsToReset)
-            {
-                rdr.Status     = "pending";
-                rdr.ReviewedAt = null;
-                rdr.Comment    = null;
-            }
+            rdr.Status     = "pending";
+            rdr.ReviewedAt = null;
+            rdr.Comment    = null;
         }
 
         // 加班費快照：在所有核准分支之前算一次，讓「一般送審 / Superadmin 自動核准 / 全自審自動核准」
         // 三個出口都帶著快照。送審中的單也必須寫 —— 簽核台顯示的**分段計酬級距**是由
         // PayableHours + IsHolidayOvertime 導出的，不寫這兩欄，審核者連時數結構都看不到。
         // （2026-09 起簽核台刻意不顯示金額本身，見 OvertimeTaskDetailDto 註解。）
-        await OvertimeCompensationService.ApplyAsync(db, calendarReader, workPattern, item);
+        await OvertimeCompensationService.ApplyAsync(db, shiftSchedule, scheduleProvider, item);
 
         // Superadmin 無部門歸屬，直接自動核准
         var submitter = await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == userId);
@@ -289,6 +329,9 @@ public sealed class OvertimeRequestHandler(
             item.ReviewedAt       = Clock.Now;
             item.ReviewedById     = userId;
             item.ReviewNote       = "系統自動核准（Superadmin）";
+            // 已改為 approved：以結算時數（新單為 0）重算加班費快照，覆蓋上面以申請時數算的送簽預估值
+            await OvertimeCompensationService.ApplyAsync(db, shiftSchedule, scheduleProvider, item);
+            await CompensatoryLotService.ApplyAsync(db, shiftSchedule, scheduleProvider, item);
             await db.SaveChangesAsync();
             var saDto = await reader.GetByIdAsync(item.Id);
             return new OkObjectResult(ApiResponse.Ok(saDto, "Overtime request auto-approved."));
@@ -322,6 +365,14 @@ public sealed class OvertimeRequestHandler(
             item.ApprovalStatus   = "pending";
             item.CurrentStepOrder = startStep;
         }
+
+        // 已改為 approved（全自審自動核准）：以結算時數重算加班費快照，覆蓋送簽時以申請時數算的預估值
+        if (item.ApprovalStatus == "approved")
+            await OvertimeCompensationService.ApplyAsync(db, shiftSchedule, scheduleProvider, item);
+
+        // 補休 lot：只有終局核准（此處為「全自審自動核准」出口）才開，pending 不開 ——
+        // 未核准的加班時數還不是已賺得的補休。ApplyAsync 內部自行判斷狀態，故無條件呼叫。
+        await CompensatoryLotService.ApplyAsync(db, shiftSchedule, scheduleProvider, item);
 
         // 升級審核：記錄指派的審核者
         if (escalation is not null)
@@ -397,7 +448,7 @@ public sealed class OvertimeRequestHandler(
             .FirstOrDefaultAsync();
 
         var estimate = await OvertimePayCalculator.CalculateAsync(
-            calendarReader, workPattern, baseSalary ?? 0m, userId, date, hours);
+            shiftSchedule, scheduleProvider, baseSalary ?? 0m, userId, date, hours);
 
         // 同日已有已核准的假日執行活動 → 假日津貼與加班費可能就同一段工時雙重給付，前端顯示警示
         var conflict = await OvertimeCompensationService.HasHolidayTravelConflictAsync(db, userId, date);
@@ -406,6 +457,37 @@ public sealed class OvertimeRequestHandler(
     }
 
     // ── Helper ──────────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// 加班申請 Create / Update / Submit 共用擋件：加班時數超出計酬上限
+    /// （四週彈性工時 2026-09 起改為擋件，不分補休或加班費 ——
+    /// 工時上限是勞基法規範本身，與員工選擇補休或領加班費無關，不擋等於系統放行違法排班）。
+    /// 與切換日無關：ResolveDayContextAsync 內部本就把切換日前的日別收斂回 work / rest_day，
+    /// 沿用相同的 4 / 12 小時上限。
+    /// </summary>
+    private async Task GuardOvertimeHoursAsync(Guid ownerId, DateTime overtimeDate, decimal hours)
+    {
+        var (dayType, isAssignee) = await OvertimePayCalculator.ResolveDayContextAsync(
+            shiftSchedule, scheduleProvider, ownerId, overtimeDate);
+
+        if (OvertimePayCalculator.ExceedsCap(hours, dayType, isAssignee))
+            throw AppException.BadRequest(OvertimePayCalculator.CapMessage(dayType, isAssignee));
+    }
+
+    /// <summary>
+    /// 加班申請送件檢查（Create / Update / Submit 共用，2026-10 防灌工時）：
+    /// 補登期限（7 天）→ 同日唯一 → 當日有薪全日假 → 每月上限。規則細節見 <see cref="OvertimeRequestGuard"/>。
+    /// <paramref name="excludeId"/>＝編輯 / 送簽中的單自己（Create 為 null）。
+    /// </summary>
+    private async Task GuardSubmissionRulesAsync(Guid ownerId, DateTime overtimeDate, decimal hours, int? excludeId)
+    {
+        OvertimeRequestGuard.EnsureBackdate(overtimeDate);
+        await OvertimeRequestGuard.EnsureNoDuplicateAsync(db, ownerId, overtimeDate, excludeId);
+        await OvertimeRequestGuard.EnsureNotOnPaidFullDayLeaveAsync(db, workdaysFactory, ownerId, overtimeDate);
+        await OvertimeRequestGuard.EnsureMonthlyLimitAsync(db, ownerId, overtimeDate, hours, excludeId);
+        // 反向重複給付：同日已列為假日執行活動參與人員者不可申請加班（含補休型）
+        await HolidayTravelParticipantGuard.EnsureNoOvertimeConflictAsync(db, calendarReader, ownerId, overtimeDate);
+    }
 
     /// <summary>
     /// 驗證並建立關聯專案明細（Create / Update 共用）。

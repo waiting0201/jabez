@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using Jabez.Api.Common;
+using Jabez.Api.Data;
 using Jabez.Api.Models.Dtos;
 using Jabez.Api.Services;
 using Jabez.Api.Services.Dapper;
@@ -16,12 +17,18 @@ namespace Jabez.Api.Handlers;
 /// 部門可見性由 IProjectAccessResolver 在這裡收斂。
 ///
 /// 日別判定：補休單核准時**不寫**日別 / 級距快照（OvertimeCompensationService 只對加班費單寫），
-/// 故於報表當下依行事曆判定，語意同 <see cref="WorkCalendarHelper.IsHolidayAsync"/>：
-/// 排班制恆為平日、該年度行事曆未匯入則退回六日。整個區間只查一次行事曆。
+/// 故於報表當下解析，走與加班費同一支 <see cref="OvertimePayCalculator.ResolveDayContextAsync"/>
+/// （個人排班 → 國定假日 → 舊制行事曆，切換日前國定假日收斂回休假日）。
+/// 國定假日未排活動日者前 8 小時屬「國定假日出勤加倍工資」不列入級距，故該類加班的級距加總會小於期間合計。
+///
+/// 待補休：四週彈性工時切換後以逐筆 lot 為準（<see cref="CompensatoryLotService.GetBalanceAsync"/>，同請假表單），
+/// 切換日為 null 時走聚合版 <see cref="CompensatoryBalance.Compute"/>。
 /// </summary>
 public sealed class CompensatoryReportHandler(
     ICompensatoryReportReadService reader,
-    ICalendarDayReadService calendarReader,
+    IShiftScheduleReadService shiftSchedule,
+    IWorkdayScheduleProvider scheduleProvider,
+    AppDbContext db,
     IProjectAccessResolver access)
 {
     /// <summary>查詢區間跨度上限（天），比照出缺勤報表 AttendanceLeaveMerger.MaxRangeDays。</summary>
@@ -42,7 +49,7 @@ public sealed class CompensatoryReportHandler(
         var employees = await reader.GetEmployeesAsync(scope, dateFrom, dateTo);
         var overtimes = await reader.GetPeriodOvertimesAsync(scope, dateFrom, dateTo);
 
-        var holidays = await LoadHolidayResolverAsync(dateFrom, dateTo);
+        bool lotMode = await scheduleProvider.GetSwitchDateAsync() is not null;
         var byEmployee = overtimes.GroupBy(o => o.EmployeeId).ToDictionary(g => g.Key, g => g.ToList());
         bool canSeeAmount = CanSeeAmount(req.HttpContext.User);
         var now = Clock.Now;
@@ -50,11 +57,13 @@ public sealed class CompensatoryReportHandler(
         var rows = new List<CompensatoryReportRowDto>();
         foreach (var e in employees)
         {
-            decimal t134 = 0m, t167 = 0m, t267 = 0m, weighted = 0m;
+            decimal t134 = 0m, t167 = 0m, t267 = 0m, weighted = 0m, earned = 0m;
             foreach (var o in byEmployee.GetValueOrDefault(e.EmployeeId, []))
             {
-                bool isHoliday = !e.IsShiftWorker && holidays(o.OvertimeDate);
-                foreach (var tier in OvertimePayCalculator.SplitCompensatoryTiers(o.EstimatedHours, isHoliday))
+                earned += o.BillableHours;   // 給付基準（ISNULL(SettledHours, EstimatedHours)），非申請時數
+                var (dayType, isAssignee) = await OvertimePayCalculator.ResolveDayContextAsync(
+                    shiftSchedule, scheduleProvider, e.EmployeeId, o.OvertimeDate);
+                foreach (var tier in OvertimePayCalculator.SplitCompensatoryTiers(o.BillableHours, dayType, isAssignee))
                 {
                     weighted += tier.Hours * tier.Multiplier;
                     switch (tier.Multiplier)
@@ -66,9 +75,10 @@ public sealed class CompensatoryReportHandler(
                 }
             }
 
-            var balance = CompensatoryBalance.Compute(e.OpeningHours, e.EarnedHours, e.UsedHours, now);
-            var earned  = t134 + t167 + t267;
-            if (earned == 0m && e.PeriodUsedHours == 0m && balance.AvailableHours == 0m) continue;
+            var available = lotMode
+                ? (await CompensatoryLotService.GetBalanceAsync(db, e.EmployeeId)).AvailableHours
+                : CompensatoryBalance.Compute(e.OpeningHours, e.EarnedHours, e.UsedHours, now).AvailableHours;
+            if (earned == 0m && e.PeriodUsedHours == 0m && available == 0m) continue;
 
             // 金額只在總額捨入一次（比照 OvertimePayCalculator.Calculate）；底薪未設定者無從換算
             decimal? amount = canSeeAmount && e.BaseSalary is > 0m
@@ -77,28 +87,10 @@ public sealed class CompensatoryReportHandler(
 
             rows.Add(new CompensatoryReportRowDto(
                 e.EmployeeId, e.EmployeeName, e.DepartmentId, e.DepartmentName,
-                t134, t167, t267, earned, e.PeriodUsedHours, balance.AvailableHours, amount));
+                t134, t167, t267, earned, e.PeriodUsedHours, available, amount));
         }
 
         return new OkObjectResult(ApiResponse.Ok(rows));
-    }
-
-    /// <summary>
-    /// 一次載入區間行事曆，回傳「該日是否休假日」判定函式（非排班制員工用）。
-    /// 已匯入行事曆的年度看 IsHoliday；未匯入的年度退回六日 —— 與 WorkCalendarHelper.IsHolidayAsync 逐日判定等價。
-    /// </summary>
-    private async Task<Func<DateTime, bool>> LoadHolidayResolverAsync(DateTime from, DateTime to)
-    {
-        var yearsWithData = new HashSet<int>();
-        for (var y = from.Year; y <= to.Year; y++)
-            if (await calendarReader.HasDataForRangeAsync(new DateTime(y, 1, 1), new DateTime(y, 12, 31)))
-                yearsWithData.Add(y);
-
-        var holidaySet = (await calendarReader.GetHolidayDatesAsync(from, to)).Select(d => d.Date).ToHashSet();
-
-        return d => yearsWithData.Contains(d.Year)
-            ? holidaySet.Contains(d.Date)
-            : d.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday;
     }
 
     /// <summary>是否可看金額：Superadmin 全通過，否則需持有 reports-overtime:amount（同加班紀錄報表）。</summary>

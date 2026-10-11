@@ -175,6 +175,16 @@ public sealed record LeaveRevocationTaskDetailDto(
     LeaveRevocationDateDto[] Dates,
     string?  RequestNo = null);   // LVR-yyyyMMdd-NNN
 
+/// <summary>改班申請詳情（§3.5.2）。逐日「從什麼改成什麼」，簽核者不必自己去查班表。</summary>
+public sealed record ShiftChangeTaskDetailDto(
+    int      ShiftChangeRequestId,
+    int      Year,
+    int      Month,
+    string   Reason,
+    ShiftChangeDateDto[] Dates,
+    string?  RequestNo = null,    // SC-yyyyMMdd-NNN
+    ShiftChangeMonthViewDto? View = null);   // 套用後整月月曆 + 系統檢核（ApprovalTaskHandler 於單筆詳情補上）
+
 /// <summary>
 /// 假日活動每位人員（申請人 + 參與者）的參與明細。
 /// Days = 個人假日天數：參與者取 COALESCE(個人, 整單)（逐日勾選上/下半天者為 0.5 的倍數），申請人固定為整單。
@@ -230,10 +240,19 @@ public sealed record OvertimeTaskDetailDto(
     // ⚠ 申請人本人經 RequestViewAccess 進到簽核詳情頁時同樣看不到金額，這是刻意取捨，勿「修回來」。
     string   CompensationType  = "compensatory",  // compensatory | pay
     decimal? PayableHours      = null,
-    bool?    IsHolidayOvertime = null,
+    bool?    IsHolidayOvertime = null,   // 舊快照欄；日別請讀 OvertimeDayType
+    string?  OvertimeDayType   = null,   // WorkDayTypes 四值（既有列由 SnapshotDayType 還原）
     string?  RequestNo         = null,            // OT-yyyyMMdd-NNN
     // 分段計酬級距（僅 pay 且已有快照時有值）；由 PayableHours + 日別純函式導出，不新增可反推面。
-    OvertimeHourTierDto[]? HourTiers = null);
+    OvertimeHourTierDto[]? HourTiers = null,
+    // 超出上限、不計酬的時數快照（讀 OvertimeRequest.ExcessHours，2026-09 新增）。
+    // ⚠ 前端不可用 estimatedHours − payableHours 現場推算：國定假日來源 B 的申請時數含前 8 小時，
+    // 是否為活動日預定人力屬「送簽當下」的事實，事後從 dayType 反推不出來，只能讀這個快照欄。
+    // 2026-09 起超出上限已改為擋件，新單恆為 0；有值代表擋件上線前送出的歷史單。
+    decimal? ExcessHours      = null,
+    // 結算時數（給付基準，2026-10 防灌工時）；null ＝ 舊單。審核者看到的 EstimatedHours 是「申請時數」，
+    // 實際給付以打卡結算為準，兩者需分開呈現。
+    decimal? SettledHours     = null);
 
 /// <summary>出差請款申請審核任務詳情 DTO</summary>
 public sealed record TravelPaymentTaskDetailDto(
@@ -277,7 +296,10 @@ public sealed record ApprovalTaskDto(
     TravelPaymentTaskDetailDto? TravelPaymentDetail     = null,   // 出差請款申請詳情
     PreReviewTaskDetailDto?     PreReviewDetail         = null,   // 預審申請詳情
     LeaveRevocationTaskDetailDto? LeaveRevocationDetail = null,   // 銷假申請詳情
-    StepReviewersDto[]?         StepReviewers           = null);  // 各關卡實際可簽核的人（僅 pending 單計算）
+    StepReviewersDto[]?         StepReviewers           = null,  // 各關卡實際可簽核的人（僅 pending 單計算）
+    // ⚠ 本 record 是**位置參數**，新欄位一律加在最後 ——
+    //    插在中間會讓 PaymentRequestReadService 裡 11 個 new ApprovalTaskDto(...) 的佔位 null 全部要重排。
+    ShiftChangeTaskDetailDto?   ShiftChangeDetail       = null);  // 改班申請詳情
 
 /// <summary>
 /// 一個簽核關卡的可簽核者（簽核流程時間軸用）。

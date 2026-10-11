@@ -127,6 +127,9 @@ public sealed class PaymentRequestHandler(
         // 年份合理性（擋民國年誤植）
         RequestDateGuard.EnsureEach(invoices, i => i.InvoiceDate, "發票日期");
 
+        // 金額合理性（2026-10 安全稽核）：明細允許負數列（折讓 / 退款 / 扣款，2026-09 業務決議），但合計不可為負
+        AmountGuard.EnsureTotalNotNegative(invoices.Sum(i => i.Amount), "請款發票明細");
+
         var today = Clock.Now;
 
         // 發票號碼唯一性（批次內去重 + 跨四張明細表；規則與訊息格式見 InvoiceUniquenessChecker）
@@ -141,10 +144,7 @@ public sealed class PaymentRequestHandler(
             if (inv.FileIndex >= 0 && inv.FileIndex < files.Count)
             {
                 var file = files[inv.FileIndex];
-                var ext = Path.GetExtension(file.FileName);
-                var blobName = $"{Clock.Now:yyyy/MM}/{Guid.NewGuid()}{ext}";
-                using var stream = file.OpenReadStream();
-                fileUrl = await blob.UploadAsync(ContainerName, blobName, stream, file.ContentType);
+                fileUrl = await AttachmentProcessor.UploadItemFileAsync(file, blob, ContainerName);
             }
 
             invoiceItems.Add(new InvoiceItem
@@ -178,7 +178,7 @@ public sealed class PaymentRequestHandler(
         {
             var attMetas    = JsonSerializer.Deserialize<AttachmentProcessor.AttachmentMetadata[]>(attachmentsJson, JsonOpts) ?? [];
             var attFiles    = form.Files.GetFiles("attachmentFiles");
-            var resolvedAtt = await AttachmentProcessor.ResolveAsync(attMetas, attFiles, blob);
+            var resolvedAtt = await AttachmentProcessor.ResolveAsync(attMetas, attFiles, blob, AttachmentProcessor.NoOwnedUrls);
             pr.Attachments  = resolvedAtt.Select((a, i) => new PaymentRequestAttachment
             {
                 FileName  = a.FileName,
@@ -216,6 +216,9 @@ public sealed class PaymentRequestHandler(
 
         if (pr.ApprovalStatus != "draft" && pr.ApprovalStatus != "returned")
             throw AppException.BadRequest("Only draft or returned payment requests can be edited.");
+        // 2026-10 安全修正：財務已填撥款日（PaidAt）的單據即使被退回，也不可再修改 / 刪除（已撥款是事實，不可被抹除；Superadmin 亦同）
+        if (await db.PaymentRequestInstallments.AsNoTracking().AnyAsync(i => i.PaymentRequestId == pr.Id && i.PaidAt != null))
+            throw AppException.BadRequest("此申請單已有撥款紀錄，不可修改或刪除，請洽財務。");
 
         var form = await req.ReadFormAsync();
 
@@ -301,7 +304,7 @@ public sealed class PaymentRequestHandler(
             var attMetas    = JsonSerializer.Deserialize<AttachmentProcessor.AttachmentMetadata[]>(form["attachments"].ToString(), JsonOpts) ?? [];
             var attFiles    = form.Files.GetFiles("attachmentFiles");
             var oldAttUrls  = pr.Attachments.Where(a => !string.IsNullOrEmpty(a.FileUrl)).Select(a => a.FileUrl!).ToHashSet(StringComparer.OrdinalIgnoreCase);
-            var resolvedAtt = await AttachmentProcessor.ResolveAsync(attMetas, attFiles, blob);
+            var resolvedAtt = await AttachmentProcessor.ResolveAsync(attMetas, attFiles, blob, oldAttUrls);
             var newAttUrls  = resolvedAtt.Where(a => !string.IsNullOrEmpty(a.FileUrl)).Select(a => a.FileUrl!).ToHashSet(StringComparer.OrdinalIgnoreCase);
             db.PaymentRequestAttachments.RemoveRange(pr.Attachments);
             pr.Attachments = resolvedAtt.Select((a, i) => new PaymentRequestAttachment
@@ -323,6 +326,9 @@ public sealed class PaymentRequestHandler(
             // 年份合理性（擋民國年誤植，比照 CreateAsync）
             RequestDateGuard.EnsureEach(invoices, i => i.InvoiceDate, "發票日期");
 
+            // 金額合理性（2026-10 安全稽核）：允許負數列，合計不可為負
+            AmountGuard.EnsureTotalNotNegative(invoices.Sum(i => i.Amount), "請款發票明細");
+
             // 發票號碼唯一性（排除自身明細；規則與訊息格式見 InvoiceUniquenessChecker）
             await InvoiceUniquenessChecker.EnsureUniqueAsync(
                 db, invoices.Select(i => i.InvoiceNo),
@@ -341,14 +347,11 @@ public sealed class PaymentRequestHandler(
 
             foreach (var inv in invoices)
             {
-                string? fileUrl = inv.FileUrl; // 保留既有 URL
+                string? fileUrl = AttachmentProcessor.KeepExistingUrl(inv.FileUrl, oldFileUrls); // 保留既有 URL：僅限本單 DB 既有值
                 if (inv.FileIndex >= 0 && inv.FileIndex < files.Count)
                 {
                     var file = files[inv.FileIndex];
-                    var ext = Path.GetExtension(file.FileName);
-                    var blobName = $"{Clock.Now:yyyy/MM}/{Guid.NewGuid()}{ext}";
-                    using var stream = file.OpenReadStream();
-                    fileUrl = await blob.UploadAsync(ContainerName, blobName, stream, file.ContentType);
+                    fileUrl = await AttachmentProcessor.UploadItemFileAsync(file, blob, ContainerName);
                 }
                 if (!string.IsNullOrEmpty(fileUrl))
                     newFileUrls.Add(fileUrl);
@@ -411,6 +414,9 @@ public sealed class PaymentRequestHandler(
 
         if (pr.ApprovalStatus != "draft" && pr.ApprovalStatus != "returned")
             throw AppException.BadRequest("Only draft or returned payment requests can be deleted.");
+        // 2026-10 安全修正：財務已填撥款日（PaidAt）的單據即使被退回，也不可再修改 / 刪除（已撥款是事實，不可被抹除；Superadmin 亦同）
+        if (await db.PaymentRequestInstallments.AsNoTracking().AnyAsync(i => i.PaymentRequestId == pr.Id && i.PaidAt != null))
+            throw AppException.BadRequest("此申請單已有撥款紀錄，不可修改或刪除，請洽財務。");
 
         // 收集要刪除的 blob（發票 + 整單附件）
         var blobNames = pr.InvoiceItems
@@ -468,28 +474,27 @@ public sealed class PaymentRequestHandler(
         pr.SubmittedAt ??= Clock.Now;
 
         // 退回重送時清除舊審核記錄，重置指定審核者狀態，重新走流程
-        if (pr.ApprovalStatus == "returned")
+        // 2026-10 安全修正：不論 draft 或 returned 送出一律清空舊簽核足跡（原只清 returned）。
+        // 殘留的舊 approved 紀錄會讓後續關卡誤判「此人已審過」而被自動代簽，未經審核即核准。
+        var oldRecords = await db.ApprovalRecords
+            .Where(r => r.ApplicationType == "payment_request" && r.ApplicationId == pr.Id)
+            .ToListAsync();
+        db.ApprovalRecords.RemoveRange(oldRecords);
+
+        var oldOverrides = await db.EscalationOverrides
+            .Where(o => o.ApplicationType == "payment_request" && o.ApplicationId == pr.Id)
+            .ToListAsync();
+        db.EscalationOverrides.RemoveRange(oldOverrides);
+
+        // 重置指定審核者狀態為 pending（重送需重新走指定審核流程）
+        var rdrsToReset = await db.RequestDesignatedReviewers
+            .Where(r => r.RequestType == "payment_request" && r.RequestId == pr.Id)
+            .ToListAsync();
+        foreach (var rdr in rdrsToReset)
         {
-            var oldRecords = await db.ApprovalRecords
-                .Where(r => r.ApplicationType == "payment_request" && r.ApplicationId == pr.Id)
-                .ToListAsync();
-            db.ApprovalRecords.RemoveRange(oldRecords);
-
-            var oldOverrides = await db.EscalationOverrides
-                .Where(o => o.ApplicationType == "payment_request" && o.ApplicationId == pr.Id)
-                .ToListAsync();
-            db.EscalationOverrides.RemoveRange(oldOverrides);
-
-            // 重置指定審核者狀態為 pending（重送需重新走指定審核流程）
-            var rdrsToReset = await db.RequestDesignatedReviewers
-                .Where(r => r.RequestType == "payment_request" && r.RequestId == pr.Id)
-                .ToListAsync();
-            foreach (var rdr in rdrsToReset)
-            {
-                rdr.Status     = "pending";
-                rdr.ReviewedAt = null;
-                rdr.Comment    = null;
-            }
+            rdr.Status     = "pending";
+            rdr.ReviewedAt = null;
+            rdr.Comment    = null;
         }
 
         var submitter = await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == userId);
@@ -611,6 +616,10 @@ public sealed class PaymentRequestHandler(
                          .FirstOrDefaultAsync(p => p.Id == intId)
                  ?? throw AppException.NotFound("PaymentRequest");
 
+        // 2026-10 安全修正：申請人不可操作自己單據的撥款明細（Superadmin 例外）
+        if (!user.IsSuperAdmin && pr.SubmittedById == userId)
+            throw AppException.Forbidden("不可設定自己申請單的撥款明細。");
+
         if (pr.ApprovalStatus != "approved")
             return new BadRequestObjectResult(ApiResponse.Fail("只有已核准的請款申請可以設定撥款明細。"));
 
@@ -622,15 +631,6 @@ public sealed class PaymentRequestHandler(
         var newlyPaid = InstallmentUpsertService.Apply(
             db, pr.Installments, body.Installments, pr.TotalAmount, userId,
             () => new PaymentRequestInstallment { PaymentRequestId = pr.Id });
-
-        // 3. 狀態（可選）
-        if (!string.IsNullOrWhiteSpace(body.ApprovalStatus))
-        {
-            var allowed = new[] { "draft", "pending", "approved", "returned", "rejected" };
-            if (!allowed.Contains(body.ApprovalStatus))
-                return new BadRequestObjectResult(ApiResponse.Fail($"不合法的狀態值：{body.ApprovalStatus}"));
-            pr.ApprovalStatus = body.ApprovalStatus;
-        }
 
         await db.SaveChangesAsync();
 

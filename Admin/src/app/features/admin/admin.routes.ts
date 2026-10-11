@@ -1,5 +1,6 @@
 import {Routes} from '@angular/router';
 import {permissionGuard} from '@core/auth/guards/permission.guard';
+import {holidayTravelRetiredGuard} from '@core/auth/guards/holiday-travel-retired.guard';
 import {UserList} from './users/pages/user-list/user-list';
 import {UserForm} from './users/pages/user-form/user-form';
 import {RoleList} from './roles/pages/role-list/role-list';
@@ -146,8 +147,10 @@ export const ADMIN_ROUTES: Routes = [
 
   // 假日執行活動申請
   {path: 'holiday-travel-requests',          canActivate: [permissionGuard], data: {title: '假日執行活動申請',       permission: 'holiday-travel-requests:read'}, loadComponent: () => import('./holiday-travel-requests/pages/holiday-travel-request-list/holiday-travel-request-list').then(m => m.HolidayTravelRequestList)},
-  {path: 'holiday-travel-requests/new',      canActivate: [permissionGuard], data: {title: '新增假日執行活動申請',   permission: 'holiday-travel-requests:write'}, loadComponent: () => import('./holiday-travel-requests/pages/holiday-travel-request-form/holiday-travel-request-form').then(m => m.HolidayTravelRequestForm)},
-  {path: 'holiday-travel-requests/:id/edit', canActivate: [permissionGuard], data: {title: '編輯假日執行活動申請',   permission: 'holiday-travel-requests:read'}, loadComponent: () => import('./holiday-travel-requests/pages/holiday-travel-request-form/holiday-travel-request-form').then(m => m.HolidayTravelRequestForm)},
+  // 新增 / 編輯另掛 holidayTravelRetiredGuard：四週彈性工時上線後本申請別退場（§8），
+  // **只關寫入口、保留唯讀**，故列表與詳情兩條路由刻意不掛
+  {path: 'holiday-travel-requests/new',      canActivate: [permissionGuard, holidayTravelRetiredGuard], data: {title: '新增假日執行活動申請',   permission: 'holiday-travel-requests:write'}, loadComponent: () => import('./holiday-travel-requests/pages/holiday-travel-request-form/holiday-travel-request-form').then(m => m.HolidayTravelRequestForm)},
+  {path: 'holiday-travel-requests/:id/edit', canActivate: [permissionGuard, holidayTravelRetiredGuard], data: {title: '編輯假日執行活動申請',   permission: 'holiday-travel-requests:read'}, loadComponent: () => import('./holiday-travel-requests/pages/holiday-travel-request-form/holiday-travel-request-form').then(m => m.HolidayTravelRequestForm)},
   {path: 'holiday-travel-requests/:id',      canActivate: [permissionGuard], data: {title: '假日執行活動申請詳情',   permission: 'holiday-travel-requests:read'}, loadComponent: () => import('./holiday-travel-requests/pages/holiday-travel-detail/holiday-travel-detail').then(m => m.HolidayTravelDetail)},
 
   // 行事曆管理
@@ -155,6 +158,17 @@ export const ADMIN_ROUTES: Routes = [
 
   // 加班申請
   {path: 'overtime-requests',             component: OvertimeRequestList, canActivate: [permissionGuard], data: {title: '加班申請',       permission: 'overtime-requests:read'}},
+  {path: 'shift-schedules',               canActivate: [permissionGuard], data: {title: '個人排班', permission: 'shift-schedule:read'},
+   loadComponent: () => import('./shift-schedules/pages/shift-schedule-calendar/shift-schedule-calendar').then(m => m.ShiftScheduleCalendar)},
+  // 改班申請（沿用排班權限碼；三模式共用一個元件）
+  {path: 'shift-changes/new',             canActivate: [permissionGuard], data: {title: '改班申請', permission: 'shift-schedule:write', mode: 'new'},
+   loadComponent: () => import('./shift-schedules/pages/shift-change-form/shift-change-form').then(m => m.ShiftChangeForm)},
+  {path: 'shift-changes/:id/edit',        canActivate: [permissionGuard], data: {title: '編輯改班申請', permission: 'shift-schedule:write', mode: 'edit'},
+   loadComponent: () => import('./shift-schedules/pages/shift-change-form/shift-change-form').then(m => m.ShiftChangeForm)},
+  {path: 'shift-changes/:id',             canActivate: [permissionGuard], data: {title: '改班申請詳情', permission: 'shift-schedule:read', mode: 'view'},
+   loadComponent: () => import('./shift-schedules/pages/shift-change-form/shift-change-form').then(m => m.ShiftChangeForm)},
+  {path: 'activity-days',                 canActivate: [permissionGuard], data: {title: '活動日管理', permission: 'activity-days:read'},
+   loadComponent: () => import('./activity-days/pages/activity-day-list/activity-day-list').then(m => m.ActivityDayList)},
   {path: 'overtime-requests/new',         component: OvertimeRequestForm, canActivate: [permissionGuard], data: {title: '新增加班申請',   permission: 'overtime-requests:write'}},
   {path: 'overtime-requests/:id/edit',    component: OvertimeRequestForm, canActivate: [permissionGuard], data: {title: '編輯加班申請',   permission: 'overtime-requests:read'}},
 
@@ -164,6 +178,8 @@ export const ADMIN_ROUTES: Routes = [
 
   // 統計報表
   {path: 'reports/attendance',   component: AttendanceReport, canActivate: [permissionGuard], data: {title: '出缺勤紀錄', permission: 'reports-attendance:read'}},
+  {path: 'reports/shift-schedule',         canActivate: [permissionGuard], data: {title: '出勤排休總覽表', permission: 'reports-shift-schedule:read'},
+   loadComponent: () => import('./reports/pages/shift-schedule-report/shift-schedule-report').then(m => m.ShiftScheduleReport)},
   {path: 'reports/overtime',    component: OvertimeReport,   canActivate: [permissionGuard], data: {title: '加班紀錄',   permission: 'reports-overtime:read'}},
   {path: 'reports/compensatory', component: CompensatoryReport, canActivate: [permissionGuard], data: {title: '加班補休時數總表', permission: 'reports-overtime:read'}},
   {path: 'reports/payment',    component: PaymentReport,    canActivate: [permissionGuard], data: {title: '款項統計',   permission: 'reports-payment:read'}},

@@ -1,13 +1,16 @@
-import {Component, computed, inject, signal, OnInit, OnDestroy, ChangeDetectionStrategy} from '@angular/core';
+import {Component, computed, inject, signal, OnInit, OnDestroy, ChangeDetectionStrategy, ElementRef, viewChild} from '@angular/core';
+import {NgbModal} from '@ng-bootstrap/ng-bootstrap';
+import {ConfirmModal, ConfirmModalResult} from '@/app/shared/components/confirm-modal';
 import {DatePipe, DecimalPipe} from '@angular/common';
 import {firstValueFrom, Observable} from 'rxjs';
 import {AuthService} from '@core/auth/services/auth.service';
 import {AttendanceService} from '../../services/attendance.service';
 import {LineQuotaService} from '../../services/line-quota.service';
+import {TurnstileService} from '@/app/shared/services/turnstile.service';
 import {LineQuota} from '../../models/line-quota.model';
 import {OvertimeRequestService} from '@features/admin/overtime-requests/services/overtime-request.service';
 import {OvertimeRequest} from '@features/admin/overtime-requests/models/overtime-request.model';
-import {TodayAttendance, ClockActionType, ActiveLeave} from '../../models/attendance.model';
+import {TodayAttendance, ClockActionType, ActiveLeave, SHIFT_DAY_TYPE_LABELS} from '../../models/attendance.model';
 import {LEAVE_TYPE_LABELS} from '@features/admin/leave-requests/models/leave-request.model';
 
 const DAY_NAMES = ['日', '一', '二', '三', '四', '五', '六'];
@@ -21,8 +24,13 @@ const DAY_NAMES = ['日', '一', '二', '三', '四', '五', '六'];
 export class Dashboard implements OnInit, OnDestroy {
   private auth = inject(AuthService);
   private attendanceService = inject(AttendanceService);
+  private modal = inject(NgbModal);
   private overtimeService = inject(OvertimeRequestService);
   private lineQuotaService = inject(LineQuotaService);
+  private turnstile = inject(TurnstileService);
+
+  /** Cloudflare Turnstile 容器：平常為空、看不到；Cloudflare 起疑時才浮出勾選框 */
+  private turnstileBox = viewChild<ElementRef<HTMLElement>>('turnstileBox');
 
   private timerId: ReturnType<typeof setInterval> | null = null;
 
@@ -103,13 +111,27 @@ export class Dashboard implements OnInit, OnDestroy {
   /** Button enable states */
   canClockIn = computed(() => {
     const r = this.todayRecord();
-    return !r?.clockInTime && !this.loading() && !this.currentLeave();
+    // canClockInOut 是後端依當日日別算好的旗標（例假全鎖 / 休假鎖 / 國定假日僅活動日預定人力解鎖）。
+    // 前端不自行重組規則，只吃旗標 —— 規則變動時只要改後端一處。
+    return !r?.clockInTime && !this.loading() && !this.currentLeave() && this.dayAllowsClock();
   });
 
   canClockOut = computed(() => {
     const r = this.todayRecord();
-    return !!r?.clockInTime && !r?.clockOutTime && !this.loading() && !this.currentLeave();
+    return !!r?.clockInTime && !r?.clockOutTime && !this.loading() && !this.currentLeave() && this.dayAllowsClock();
   });
+
+  /** 當日日別是否允許上下班打卡（舊制恆 true） */
+  private dayAllowsClock = computed(() => this.todayRecord()?.canClockInOut !== false);
+
+  /** 今日日別的中文標籤（新制才有） */
+  dayTypeLabel = computed(() => {
+    const r = this.todayRecord();
+    return r?.flexibleEnabled && r.dayType ? SHIFT_DAY_TYPE_LABELS[r.dayType] : '';
+  });
+
+  /** 不可打卡時的說明（來自後端） */
+  clockLockReason = computed(() => this.todayRecord()?.clockLockReason ?? '');
 
   canOvertimeStart = computed(() => {
     const r = this.todayRecord();
@@ -224,35 +246,139 @@ export class Dashboard implements OnInit, OnDestroy {
   }
 
   /**
-   * 打卡：同時「取得 GPS」與「向後端取一次性挑戰碼」→ 不足挑戰碼最短停留時間則補等 → 送出。
-   * 防機器人打卡（後端 AttendancePunchGuard）：挑戰碼不合規一律擋下；GPS 為選填，取不到仍照常打卡。
+   * 上班打卡：超過遲到界線（後端 `lateAfter`：公司 09:30、自訂上下班時段 S+2 分、請上午半天假者 13:05）
+   * 時先跳對話框填遲到原因，出差當日改為非必填；未遲到直接打卡（不增加一般情況的操作步驟）。
+   * 舊制（尚未切換）一律直接打卡。
    */
-  async performAction(type: ClockActionType) {
+  async confirmAndClockIn(): Promise<void> {
+    const r = this.todayRecord();
+    const lateAfter = r?.flexibleEnabled && r.lateAfter ? new Date(r.lateAfter) : null;
+    const now = new Date();
+    if (!lateAfter || now <= lateAfter) {
+      this.performAction('clock-in');
+      return;
+    }
+
+    const lateMin = Math.max(1, Math.round((now.getTime() - lateAfter.getTime()) / 60000));
+    const ref = this.modal.open(ConfirmModal, {centered: true});
+    const ci = ref.componentInstance as ConfirmModal;
+    ci.title = '確認上班打卡';
+    ci.message = '今日上班打卡已逾時';
+    ci.confirmText = '確定打卡';
+    ci.tone = 'warning';
+    ci.detail = `已超過上班準時時間（${this.timeText(lateAfter)}）${lateMin} 分鐘，將記為遲到。`;
+    ci.reasonLabel = '遲到原因';
+    ci.reasonRequired = !this.isBusinessTrip();
+
+    let result: ConfirmModalResult;
+    try {
+      result = await ref.result;            // 按「取消」會 reject → 不產生任何紀錄
+    } catch {
+      return;
+    }
+    this.performAction('clock-in', result.reason);
+  }
+
+  /**
+   * 下班打卡一律先跳確認對話框（防誤觸），早退／逾時的必填原因**併入同一個視窗**
+   * （規格明訂不另開第二個視窗）。三種情況以應下班時間 T 為界，互斥且涵蓋全部：
+   * `< T` 早退必填原因、`[T, T+30分]` 正常只需確認、`> T+30分` 逾時必填原因
+   * （自訂上下班時段者 T 為固定下班時刻、容許帶 5 分，界線皆由後端 `normalClockOutUntil` 帶回）。
+   * 出差當日原因欄位仍顯示但改為非必填。
+   *
+   * 舊制（尚未切換）不跳對話框，行為與原本完全一致。
+   */
+  async confirmAndClockOut(): Promise<void> {
+    const r = this.todayRecord();
+    if (!r?.flexibleEnabled || !r.clockInTime) {
+      this.performAction('clock-out');
+      return;
+    }
+
+    const now = new Date();
+    const clockIn = new Date(r.clockInTime);
+    const worked = Math.max(0, now.getTime() - clockIn.getTime());
+    const workedText = `${Math.floor(worked / 3600000)} 小時 ${Math.floor((worked % 3600000) / 60000)} 分`;
+
+    const expected = r.expectedClockOutTime ? new Date(r.expectedClockOutTime) : null;
+    const diffMin = expected ? Math.round((expected.getTime() - now.getTime()) / 60000) : 0;
+    const isEarly = !!expected && now < expected;
+    // 逾時界線由後端依個人打卡參數算好（公司預設 +30 分、自訂上下班時段 +5 分），不在前端寫死
+    const normalUntil = r.normalClockOutUntil ? new Date(r.normalClockOutUntil) : null;
+    const isOvertime = !!normalUntil && now > normalUntil;
+    const businessTrip = this.isBusinessTrip();
+
+    const ref = this.modal.open(ConfirmModal, {centered: true});
+    const ci = ref.componentInstance as ConfirmModal;
+    ci.title = '確認下班打卡';
+    ci.message = `目前出勤 ${workedText}`;
+    ci.confirmText = '確定打卡';
+
+    if (isEarly) {
+      ci.tone = 'warning';
+      ci.detail = `今日出勤未達應下班時間（${this.timeText(expected!)}），尚差 ${diffMin} 分鐘。`;
+      ci.reasonLabel = '早退原因';
+      ci.reasonRequired = !businessTrip;
+    } else if (isOvertime) {
+      ci.tone = 'warning';
+      ci.detail = `已超過應下班時間（${this.timeText(expected!)}）${Math.abs(diffMin)} 分鐘。`;
+      ci.reasonLabel = '逾時原因';
+      ci.reasonRequired = !businessTrip;
+    } else if (expected) {
+      ci.detail = `應下班時間 ${this.timeText(expected)}，屬正常下班。`;
+    }
+
+    let result: ConfirmModalResult;
+    try {
+      result = await ref.result;            // 按「取消」會 reject → 不產生任何紀錄
+    } catch {
+      return;
+    }
+    this.performAction('clock-out', result.reason);
+  }
+
+  private timeText(d: Date): string {
+    return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+  }
+
+  /**
+   * 打卡：同時「取得 GPS」「向後端取一次性挑戰碼」「取得 Turnstile token」→ 不足挑戰碼最短停留時間則補等 → 送出。
+   * 防機器人打卡（後端 AttendancePunchGuard）：沒有 GPS 或挑戰碼不合規一律擋下，
+   * 前端先擋 GPS 是為了給明確指引，不是唯一防線。Turnstile token 取不到時送 null，放不放行由後端模式決定。
+   */
+  async performAction(type: ClockActionType, reason: string | null = null) {
     if (this.loading()) return;
     this.loading.set(true);
     this.gpsStatus.set('locating');
 
     try {
-      const [coords, challenge] = await Promise.all([
+      const [coords, challenge, turnstileToken] = await Promise.all([
         this._getGps(),
         firstValueFrom(this.attendanceService.getChallenge(type)),
+        this.turnstile.getToken(this.turnstileBox()?.nativeElement, type),
       ]);
       const challengeReceivedAt = Date.now();
 
       this.gpsCoords.set(coords);
       this.gpsStatus.set(coords ? 'success' : 'failed');
+      if (!coords) {
+        this.showToast('無法取得定位，請開啟手機／瀏覽器的定位權限後再打卡。', 'error');
+        return;
+      }
 
       // 挑戰碼簽發後須停留 minWaitMs；以「收到回應」起算並多留緩衝，避免與後端時間差擦邊被擋
       const waitMs = challenge.minWaitMs + 300 - (Date.now() - challengeReceivedAt);
       if (waitMs > 0) await new Promise(resolve => setTimeout(resolve, waitMs));
 
       const body = {
-        latitude: coords?.lat,
-        longitude: coords?.lng,
-        accuracy: coords?.accuracy,
+        latitude: coords.lat,
+        longitude: coords.lng,
+        accuracy: coords.accuracy,
         overtimeRequestId: type === 'overtime-start' ? (this.selectedOvertimeId() ?? undefined) : undefined,
         isBusinessTrip: this.isBusinessTrip(),
+        reason: type === 'clock-in' || type === 'clock-out' ? reason : undefined,
         challengeToken: challenge.token,
+        turnstileToken: turnstileToken ?? undefined,
       };
 
       let obs$: Observable<TodayAttendance>;
@@ -269,7 +395,7 @@ export class Dashboard implements OnInit, OnDestroy {
         'clock-in': '上班打卡', 'clock-out': '下班打卡',
         'overtime-start': '加班開始', 'overtime-end': '加班結束',
       };
-      this.showToast(`${labels[type]}成功！`, coords ? 'success' : 'warning');
+      this.showToast(`${labels[type]}成功！`, 'success');
     } catch (err: any) {
       // 後端 ApiResponse.Fail 在 ExceptionMiddleware 包成 { success:false, message, errors } 結構
       const message = err?.error?.message ?? err?.message ?? '打卡失敗，請稍後重試';

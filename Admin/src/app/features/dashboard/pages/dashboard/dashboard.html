@@ -106,6 +106,18 @@
             </div>
           }
 
+          <!-- 今日日別（四週彈性工時；舊制不顯示）。鎖定原因來自後端，前端不自行判斷規則 -->
+          @if (dayTypeLabel()) {
+            <div class="alert border-0 mb-3"
+                 [class.alert-secondary]="!clockLockReason()"
+                 [class.alert-warning]="!!clockLockReason()">
+              <div class="fw-600">今日為{{ dayTypeLabel() }}</div>
+              @if (clockLockReason()) {
+                <div class="small mt-1">{{ clockLockReason() }}</div>
+              }
+            </div>
+          }
+
           <!-- 出差註記（整天一個旗標，四個打卡動作皆帶出；已標記者重新整理仍為勾選） -->
           <div class="form-check mb-3">
             <input class="form-check-input" type="checkbox" id="isBusinessTrip"
@@ -120,8 +132,8 @@
             <div class="col-6 col-md-3">
               <button class="btn btn-primary w-100 py-3 flex flex-col items-center gap-2"
                       [disabled]="!canClockIn()"
-                      [title]="currentLeave() ? '目前在請假時段內，無法打卡' : ''"
-                      (click)="performAction('clock-in')">
+                      [title]="clockLockReason() || (currentLeave() ? '目前在請假時段內，無法打卡' : '')"
+                      (click)="confirmAndClockIn()">
                 <svg class="sa-icon sa-icon-2x" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#log-in"></use></svg>
                 <span class="fw-600">上班打卡</span>
               </button>
@@ -130,8 +142,8 @@
             <div class="col-6 col-md-3">
               <button class="btn btn-warning w-100 py-3 flex flex-col items-center gap-2"
                       [disabled]="!canClockOut()"
-                      [title]="currentLeave() ? '目前在請假時段內，無法打卡' : ''"
-                      (click)="performAction('clock-out')">
+                      [title]="clockLockReason() || (currentLeave() ? '目前在請假時段內，無法打卡' : '')"
+                      (click)="confirmAndClockOut()">
                 <svg class="sa-icon sa-icon-2x" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#log-out"></use></svg>
                 <span class="fw-600">下班打卡</span>
               </button>
@@ -156,6 +168,9 @@
               </button>
             </div>
           </div>
+
+          <!-- Cloudflare Turnstile：平常為空；Cloudflare 起疑時才在此浮出勾選框（TurnstileService） -->
+          <div #turnstileBox class="flex justify-center empty:hidden mt-3"></div>
 
           <!-- Overtime Request Selector (shown after clicking 加班開始) -->
           @if (showOvertimeSelector()) {
@@ -190,7 +205,7 @@
         <div class="card-body">
           @switch (gpsStatus()) {
             @case ('idle') {
-              <p class="text-muted small mb-0">打卡時自動取得 GPS 座標。</p>
+              <p class="text-muted small mb-0">打卡時自動取得 GPS 座標（必須開啟定位才能打卡）。</p>
             }
             @case ('locating') {
               <div class="flex items-center gap-2 text-muted">
@@ -210,12 +225,16 @@
               }
             }
             @case ('failed') {
-              <div class="flex items-center gap-2" style="color: var(--yellow)">
+              <div class="flex items-center gap-2 mb-2" style="color: var(--red)">
                 <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#alert-triangle"></use></svg>
-                <span class="small fw-500">無法取得定位（打卡仍有效）</span>
+                <span class="small fw-500">無法取得定位，未完成打卡</span>
               </div>
+              <p class="text-muted small mb-0">打卡必須開啟定位。請允許瀏覽器使用位置資訊（iPhone：設定 › 隱私權與安全性 › 定位服務），再重新打卡。</p>
             }
           }
+          <p class="text-muted small mb-0 mt-3 pt-3 border-top">
+            隱私說明：系統僅於您「主動點擊打卡」瞬間記錄位置，不會進行背景追蹤或記錄其他時間的行蹤。
+          </p>
         </div>
       </div>
 

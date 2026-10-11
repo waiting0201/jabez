@@ -1,3 +1,4 @@
+import {isSafePreviewUrl} from '@/app/shared/utils/safe-url';
 import {Component, computed, inject, OnInit, signal, viewChild} from '@angular/core';
 import {ActivatedRoute, Router, RouterLink} from '@angular/router';
 import {FormBuilder, ReactiveFormsModule, Validators} from '@angular/forms';
@@ -51,11 +52,13 @@ import {formatParticipantDates, formatParticipantDays} from '../../../holiday-tr
 const FINANCE_STEP_DEPT_CODES = new Set(['FIN', 'Financial Management Department']);
 
 import {ScrollIntoViewDirective} from '@shared/directives/scroll-into-view.directive';
+import {ShiftDayType, dateKey} from '../../../shift-schedules/models/shift-schedule.model';
+import {ShiftMonthCalendar} from '../../../../../shared/components/shift-month-calendar/shift-month-calendar';
 
 @Component({
   selector: 'app-approval-task-review',
   templateUrl: './approval-task-review.html',
-  imports: [RouterLink, ReactiveFormsModule, AsyncPipe, DatePipe, DecimalPipe, FilePreviewModal, AttachmentsList, InstallmentsEditorComponent, WriteOffSummaryComponent, ClosureInfoCardComponent, ScrollIntoViewDirective],
+  imports: [RouterLink, ReactiveFormsModule, AsyncPipe, DatePipe, DecimalPipe, FilePreviewModal, AttachmentsList, InstallmentsEditorComponent, WriteOffSummaryComponent, ClosureInfoCardComponent, ScrollIntoViewDirective, ShiftMonthCalendar],
 })
 export class ApprovalTaskReview implements OnInit {
   private service           = inject(ApprovalTaskService);
@@ -151,7 +154,11 @@ export class ApprovalTaskReview implements OnInit {
 
   previewFile: PreviewFileData | null = null;
   openPreview(name: string, url: string) {
-    this.previewFile = {name, url, safeUrl: this.sanitizer.bypassSecurityTrustResourceUrl(url)};
+    // 只有白名單內的網址才 bypass；否則不給 safeUrl（modal 亦會再驗一次，退回下載）
+    this.previewFile = {
+      name, url,
+      safeUrl: isSafePreviewUrl(url) ? this.sanitizer.bypassSecurityTrustResourceUrl(url) : undefined,
+    };
   }
   /** 私有容器（quotes 報價單 / request-attachments）需透過 JWT 代理抓 blob，不能直接丟進 iframe */
   async openProxyPreview(name: string, url: string) {
@@ -168,6 +175,26 @@ export class ApprovalTaskReview implements OnInit {
   readonly appTypeLabel   = APPLICATION_TYPE_LABELS;
   readonly appTypeClass   = APPLICATION_TYPE_CLASSES;
   readonly payTypeLabel   = PAYMENT_TYPE_LABELS;
+  /** 日別中文（改班申請詳情卡用）。與後端 WorkDayTypeNames 對應。 */
+  /**
+   * 改班簽核月曆：異動格 key → 原日別。
+   * 以來源陣列參考做快取 —— 模板每次變更偵測都會呼叫，每次回新物件會讓月曆元件的 input 一直變動而反覆重繪。
+   */
+  private shiftChangedFromCache: {src: unknown; val: Record<string, ShiftDayType>} | null = null;
+  shiftChangedFrom(dates: {date: Date | string; fromDayType: string}[]): Record<string, ShiftDayType> {
+    if (this.shiftChangedFromCache?.src !== dates) {
+      this.shiftChangedFromCache = {
+        src: dates,
+        val: Object.fromEntries(dates.map(d => [dateKey(String(d.date)), d.fromDayType as ShiftDayType])),
+      };
+    }
+    return this.shiftChangedFromCache.val;
+  }
+
+  shiftDayTypeLabel(t: string): string {
+    return ({work: '上班日', rest_day: '休假日', statutory_off: '例假日', public_holiday: '國定假日'} as Record<string, string>)[t] ?? t;
+  }
+
   readonly leaveTypeLabel = LEAVE_TYPE_LABELS;
 
   /** 依假別單位格式化時數顯示 */
@@ -485,6 +512,27 @@ export class ApprovalTaskReview implements OnInit {
     if (task.applicationType === 'travel_write_off') return '出差單結案資訊';
     return '結案資訊';
   }
+
+  /**
+   * 加班日別的顯示文字（三值語意，2026-09 四週彈性工時）。
+   * 與 overtime-request-form 的同名方法刻意各寫一份 —— 兩頁受眾不同（審核者 vs 申請人），
+   * 但**級距與日別本身仍只有後端一份真相**，這裡只做文案。
+   */
+  overtimeDayLabel(t: ShiftDayType | null | undefined): string {
+    switch (t) {
+      case 'public_holiday': return '國定假日加班';
+      case 'rest_day':
+      case 'statutory_off':  return '假日加班';
+      default:               return '平日加班';
+    }
+  }
+
+  // 超出計酬上限、不計酬的時數：直接讀後端快照 `d.excessHours`（OvertimeRequest.ExcessHours），
+  // **不可**在前端用 `estimatedHours - payableHours` 現場推算 —— 舊寫法對國定假日一律扣 8 小時，
+  // 但那 8 小時只在「未排活動日」（來源 B）才該扣，活動日預定人力（來源 A）的申請時數本來就不含
+  // 前 8 小時，會被誤扣成負值又被 max(0, …) 蓋掉，看起來「沒超時」但其實是算錯。
+  // 是否為活動日預定人力屬送簽當下的事實，前端事後從 overtimeDayType 反推不出來，
+  // 故 2026-09 起改由後端於送簽 / 核准當下算好存進 ExcessHours 快照，模板直接讀 `d.excessHours ?? 0`。
 
   /**
    * 結案 / 退款資訊（`<app-closure-info-card>` 的資料來源）。

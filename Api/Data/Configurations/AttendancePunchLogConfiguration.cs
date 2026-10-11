@@ -15,6 +15,7 @@ public class AttendancePunchLogConfiguration : IEntityTypeConfiguration<Attendan
         builder.Property(l => l.IpAddress).HasMaxLength(64);
         builder.Property(l => l.UserAgent).HasMaxLength(512);
         builder.Property(l => l.ChallengeNonce).HasMaxLength(64);
+        builder.Property(l => l.TurnstileResult).HasMaxLength(16);
 
         builder.HasIndex(l => new { l.UserId, l.AttemptedAt });
 

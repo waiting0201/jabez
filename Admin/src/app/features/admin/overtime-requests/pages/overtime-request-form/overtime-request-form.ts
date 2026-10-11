@@ -25,6 +25,7 @@ import {ApprovalFlowStepSummary} from '../../../approvals/models/approval.model'
 
 import {ScrollIntoViewDirective} from '@shared/directives/scroll-into-view.directive';
 import {MAX_REQUEST_DATE, MIN_REQUEST_DATE} from '@shared/utils/date-bounds';
+import {ShiftDayType} from '../../../shift-schedules/models/shift-schedule.model';
 
 @Component({
   selector: 'app-overtime-request-form',
@@ -83,11 +84,43 @@ export class OvertimeRequestForm implements OnInit {
   /** 唯讀模式顯示的加班費快照（核准當下寫入，不重新試算） */
   snapshotPayAmount: number | null = null;
   snapshotPayableHours: number | null = null;
-  snapshotIsHoliday: boolean | null = null;
+  snapshotDayType: ShiftDayType | null = null;
+
+  /**
+   * 加班日別 badge 的文字與配色。三值語意（2026-09 四週彈性工時）：
+   * 上班日＝平日級距、休假日／例假日＝假日級距、國定假日＝平日級距 ＋ 薪資端另加發 1 日日薪。
+   * 文案刻意寫「加班」而非日別本身，因為使用者在意的是「我這張單算哪一種」。
+   */
+  overtimeDayLabel(t: ShiftDayType | null | undefined): string {
+    switch (t) {
+      case 'public_holiday': return '國定假日加班';
+      case 'rest_day':
+      case 'statutory_off':  return '假日加班';
+      default:               return '平日加班';
+    }
+  }
+
+  overtimeDayBadgeClass(t: ShiftDayType | null | undefined): string {
+    switch (t) {
+      case 'public_holiday': return 'bg-danger-subtle text-danger-emphasis';
+      case 'rest_day':
+      case 'statutory_off':  return 'bg-warning-subtle text-warning-emphasis';
+      default:               return 'bg-secondary-subtle text-secondary';
+    }
+  }
 
   /** 目前是否選擇「加班費」（模板用，避免在 template 重複取值） */
   get isPayMode(): boolean {
     return this.form.get('compensationType')?.value === 'pay';
+  }
+
+  /**
+   * 送出 / 儲存是否應被擋下——超出加班上限。
+   * **與補償方式無關**（2026-09 起兩種補償方式一律擋，見後端 GuardOvertimeHoursAsync），
+   * 故試算改為兩種模式都查詢（見下方 valueChanges pipeline），不再只在 isPayMode 時才打 API。
+   */
+  get isBlocked(): boolean {
+    return !!this.estimate()?.blockMessage;
   }
 
   /** 指定審核者相關 */
@@ -185,7 +218,10 @@ export class OvertimeRequestForm implements OnInit {
     // 同一 tick 內若尚未重算會拿到舊值。
     this.projectsArray.valueChanges.subscribe(() => this.recomputeTotalHours());
 
-    // 加班費即時試算（僅 pay 模式）。範式比照 user-form 的底薪 → 勞健保級距 lookup。
+    // 加班時數試算（**兩種補償方式都查**，2026-09 改）：超出上限
+    // 這兩種擋件與補償方式無關，補休模式若只在切到「加班費」才查，使用者選補休送出時
+    // 完全看不到擋件訊息，只能等後端 400 才發現。金額 / 分段明細仍只在 isPayMode 顯示（見 template）。
+    // 範式比照 user-form 的底薪 → 勞健保級距 lookup。
     this.form.valueChanges.pipe(
       takeUntilDestroyed(this.destroyRef),
       map(() => ({
@@ -196,7 +232,7 @@ export class OvertimeRequestForm implements OnInit {
       debounceTime(300),
       distinctUntilChanged((a, b) => a.date === b.date && a.type === b.type && a.hours === b.hours),
       switchMap(v => {
-        if (this.isReadOnly || v.type !== 'pay' || !v.date || v.hours <= 0) return of(null);
+        if (this.isReadOnly || !v.date || v.hours <= 0) return of(null);
         this.estimateLoading.set(true);
         return this.service.estimatePay(v.date, v.hours).pipe(catchError(() => of(null)));
       }),
@@ -250,7 +286,7 @@ export class OvertimeRequestForm implements OnInit {
         // 唯讀模式顯示核准當下寫入的快照，不重新試算（避免調薪後金額與已發放的不符）
         this.snapshotPayAmount    = r.overtimePayAmount ?? null;
         this.snapshotPayableHours = r.payableHours ?? null;
-        this.snapshotIsHoliday    = r.isHolidayOvertime ?? null;
+        this.snapshotDayType      = r.overtimeDayType ?? null;
         this.readonlyProjects = r.projects ?? [];
         this.projectsArray.clear();
         this.readonlyProjects.forEach(p => this.projectsArray.push(this.buildProjectGroup(p)));
@@ -296,7 +332,7 @@ export class OvertimeRequestForm implements OnInit {
   /** 儲存（草稿或更新，不改變狀態） */
   save() {
     if (this.saving()) return;
-    if (this.form.invalid || this.isReadOnly) return;
+    if (this.form.invalid || this.isReadOnly || this.isBlocked) return;
     if (this.projectsArray.length === 0) {
       this.errorMsg.set('請至少新增一筆關聯專案。');
       return;
@@ -323,7 +359,7 @@ export class OvertimeRequestForm implements OnInit {
   /** 送出申請（先儲存再將狀態改為 pending） */
   submitForApproval() {
     if (this.saving()) return;
-    if (this.form.invalid || this.isReadOnly) return;
+    if (this.form.invalid || this.isReadOnly || this.isBlocked) return;
     if (this.projectsArray.length === 0) {
       this.errorMsg.set('請至少新增一筆關聯專案。');
       return;

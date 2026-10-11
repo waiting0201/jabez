@@ -85,7 +85,8 @@ public sealed class TravelPaymentRequestHandler(
             return new NotFoundObjectResult(ApiResponse.Fail("Travel payment request not found."));
 
         var principal = await jwtService.ValidateRequestAsync(req);
-        if (!await RequestViewAccess.CanViewAsync(db, principal, userId, "travel_payment", intId, employeeId == userId))
+        if (!await RequestViewAccess.CanViewAsync(db, principal, userId, "travel_payment", intId, employeeId == userId,
+                RequestViewAccess.StepReviewerProbe(db, approvalFlow, "travel_payment", intId, userId)))
             return new NotFoundObjectResult(ApiResponse.Fail("Travel payment request not found."));
 
         var item = await reader.GetByIdAsync(intId);
@@ -104,7 +105,6 @@ public sealed class TravelPaymentRequestHandler(
         var startDateStr = form["startDate"].ToString();
         var endDateStr   = form["endDate"].ToString();
         int? projectId   = int.TryParse(form["projectId"], out var pid) ? pid : null;
-        int? approvalItemId = int.TryParse(form["approvalItemId"], out var aiid) ? aiid : null;
 
         if (string.IsNullOrWhiteSpace(destination))
             return new BadRequestObjectResult(ApiResponse.Fail("Destination is required."));
@@ -123,6 +123,10 @@ public sealed class TravelPaymentRequestHandler(
         // 年份合理性（擋民國年誤植）
         RequestDateGuard.EnsureAll((startDate, "出差開始日"), (endDate, "出差結束日"));
         RequestDateGuard.EnsureEach(itemRequests, i => i.InvoiceDate, "發票日期");
+        // 金額合理性（2026-10 安全稽核）：不可為負數
+        AmountGuard.EnsureItems(itemRequests,
+            i => new AmountGuard.ItemAmounts(i.UnitPrice, i.TotalPrice),
+            "出差請款費用明細");
 
         // 發票號碼唯一性（批次內去重 + 跨四張明細表；規則與訊息格式見 InvoiceUniquenessChecker）
         await InvoiceUniquenessChecker.EnsureUniqueAsync(db, itemRequests.Select(i => i.InvoiceNo));
@@ -180,7 +184,7 @@ public sealed class TravelPaymentRequestHandler(
         var request = new TravelPaymentRequest
         {
             EmployeeId      = employeeId,
-            ApprovalItemId  = approvalItemId,
+            // ApprovalItemId 不採用前端值：一律於 SubmitAsync 依申請人部門解析（防止竄改流程）
             Destination     = destination,
             StartDate       = startDate,
             EndDate         = endDate,
@@ -219,6 +223,9 @@ public sealed class TravelPaymentRequestHandler(
 
         if (item.ApprovalStatus != "draft" && item.ApprovalStatus != "returned")
             throw AppException.BadRequest("Only draft or returned travel payment requests can be edited.");
+        // 2026-10 安全修正：財務已填撥款日（PaidAt）的單據即使被退回，也不可再修改 / 刪除（已撥款是事實，不可被抹除；Superadmin 亦同）
+        if (await db.TravelPaymentRequestInstallments.AsNoTracking().AnyAsync(i => i.TravelPaymentRequestId == item.Id && i.PaidAt != null))
+            throw AppException.BadRequest("此申請單已有撥款紀錄，不可修改或刪除，請洽財務。");
 
         var form = await req.ReadFormAsync();
 
@@ -284,6 +291,10 @@ public sealed class TravelPaymentRequestHandler(
                 return new BadRequestObjectResult(ApiResponse.Fail("At least one item is required."));
 
             RequestDateGuard.EnsureEach(itemRequests, i => i.InvoiceDate, "發票日期");
+            // 金額合理性（2026-10 安全稽核）：不可為負數
+            AmountGuard.EnsureItems(itemRequests,
+                i => new AmountGuard.ItemAmounts(i.UnitPrice, i.TotalPrice),
+                "出差請款費用明細");
 
             // 發票號碼唯一性（排除自身明細；規則與訊息格式見 InvoiceUniquenessChecker）
             await InvoiceUniquenessChecker.EnsureUniqueAsync(
@@ -303,7 +314,7 @@ public sealed class TravelPaymentRequestHandler(
             for (int idx = 0; idx < itemRequests.Length; idx++)
             {
                 var i = itemRequests[idx];
-                string? fileUrl  = i.FileUrl;
+                string? fileUrl  = AttachmentProcessor.KeepExistingUrl(i.FileUrl, oldFileUrls); // 僅限本單 DB 既有值
                 string? fileName = i.FileName;
                 if (i.FileIndex >= 0 && i.FileIndex < files.Count)
                 {
@@ -372,6 +383,9 @@ public sealed class TravelPaymentRequestHandler(
 
         if (item.ApprovalStatus != "draft" && item.ApprovalStatus != "returned")
             throw AppException.BadRequest("Only draft or returned travel payment requests can be deleted.");
+        // 2026-10 安全修正：財務已填撥款日（PaidAt）的單據即使被退回，也不可再修改 / 刪除（已撥款是事實，不可被抹除；Superadmin 亦同）
+        if (await db.TravelPaymentRequestInstallments.AsNoTracking().AnyAsync(i => i.TravelPaymentRequestId == item.Id && i.PaidAt != null))
+            throw AppException.BadRequest("此申請單已有撥款紀錄，不可修改或刪除，請洽財務。");
 
         // 收集要刪除的 blob
         var blobNames = item.Items
@@ -426,28 +440,27 @@ public sealed class TravelPaymentRequestHandler(
             return new BadRequestObjectResult(ApiResponse.Fail("出差請款申請至少需要一筆費用明細項目。"));
 
         // 退回重送時清除舊審核記錄，重置指定審核者狀態，重新走流程
-        if (item.ApprovalStatus == "returned")
+        // 2026-10 安全修正：不論 draft 或 returned 送出一律清空舊簽核足跡（原只清 returned）。
+        // 殘留的舊 approved 紀錄會讓後續關卡誤判「此人已審過」而被自動代簽，未經審核即核准。
+        var oldRecords = await db.ApprovalRecords
+            .Where(r => r.ApplicationType == AppType && r.ApplicationId == item.Id)
+            .ToListAsync();
+        db.ApprovalRecords.RemoveRange(oldRecords);
+
+        var oldOverrides = await db.EscalationOverrides
+            .Where(o => o.ApplicationType == AppType && o.ApplicationId == item.Id)
+            .ToListAsync();
+        db.EscalationOverrides.RemoveRange(oldOverrides);
+
+        // 重置指定審核者狀態為 pending
+        var rdrsToReset = await db.RequestDesignatedReviewers
+            .Where(r => r.RequestType == AppType && r.RequestId == item.Id)
+            .ToListAsync();
+        foreach (var rdr in rdrsToReset)
         {
-            var oldRecords = await db.ApprovalRecords
-                .Where(r => r.ApplicationType == AppType && r.ApplicationId == item.Id)
-                .ToListAsync();
-            db.ApprovalRecords.RemoveRange(oldRecords);
-
-            var oldOverrides = await db.EscalationOverrides
-                .Where(o => o.ApplicationType == AppType && o.ApplicationId == item.Id)
-                .ToListAsync();
-            db.EscalationOverrides.RemoveRange(oldOverrides);
-
-            // 重置指定審核者狀態為 pending
-            var rdrsToReset = await db.RequestDesignatedReviewers
-                .Where(r => r.RequestType == AppType && r.RequestId == item.Id)
-                .ToListAsync();
-            foreach (var rdr in rdrsToReset)
-            {
-                rdr.Status     = "pending";
-                rdr.ReviewedAt = null;
-                rdr.Comment    = null;
-            }
+            rdr.Status     = "pending";
+            rdr.ReviewedAt = null;
+            rdr.Comment    = null;
         }
 
         // Superadmin 無部門歸屬，直接自動核准
@@ -565,6 +578,10 @@ public sealed class TravelPaymentRequestHandler(
                           .Include(t => t.Installments)
                           .FirstOrDefaultAsync(t => t.Id == intId)
                   ?? throw AppException.NotFound("TravelPaymentRequest");
+
+        // 2026-10 安全修正：申請人不可操作自己單據的撥款明細（Superadmin 例外）
+        if (!user.IsSuperAdmin && tpr.EmployeeId == userId)
+            throw AppException.Forbidden("不可設定自己申請單的撥款明細。");
 
         if (tpr.ApprovalStatus != "approved")
             return new BadRequestObjectResult(ApiResponse.Fail("只有已核准的出差請款申請可以設定撥款明細。"));

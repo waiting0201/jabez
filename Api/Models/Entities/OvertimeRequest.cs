@@ -7,7 +7,17 @@ public class OvertimeRequest
     public Guid?    EmployeeId       { get; set; }
     public int?     ApprovalItemId   { get; set; }
     public DateTime OvertimeDate     { get; set; }
-    public decimal  EstimatedHours   { get; set; }   // 合計快取 = SUM(Projects[].EstimatedHours)，由 Handler 重算
+    public decimal  EstimatedHours   { get; set; }   // 合計快取 = SUM(Projects[].EstimatedHours)，由 Handler 重算（＝「申請時數」，核准的上限）
+
+    /// <summary>
+    /// 結算時數（2026-10 防灌工時）＝ min(核准的 EstimatedHours, 實際加班打卡時數)，**給付基準**。
+    /// <b>null ＝ 舊單，給付沿用 EstimatedHours</b>（歷史月份薪資不可變動 —— 本系統薪資即時重算、沒有月結快照，
+    /// 所以「該列給付基準改變」就等於「歷史月份被改寫」，既有列**絕對不可 backfill**）。
+    /// 新單（本欄上線後建立）於建立時設為 0，之後於 終局核准 / 打加班結束卡 / 管理者修改出缺勤 時重算；
+    /// 沒有加班打卡＝0。<b>所有消費點一律走 <see cref="Jabez.Api.Common.OvertimeSettlement.BillableHours(OvertimeRequest)"/></b>，
+    /// 不得直接讀 EstimatedHours 當給付時數（純顯示 / 擋件用途除外）。
+    /// </summary>
+    public decimal? SettledHours     { get; set; }
 
     /// <summary>
     /// 補償方式（整張單層級，二擇一）：compensatory＝補休 / pay＝加班費。
@@ -36,6 +46,23 @@ public class OvertimeRequest
     /// nullable 是刻意的：null＝尚未試算，false＝已算且為平日，兩者語意不同。
     /// </summary>
     public bool?    IsHolidayOvertime  { get; set; }
+
+    /// <summary>
+    /// 日別快照（<c>WorkDayTypes</c> 四值）—— 2026-09 四週彈性工時新增，取代二值的
+    /// <see cref="IsHolidayOvertime"/>（國定假日在二值下會誤落到 ×2.67 級距）。
+    /// 既有列**刻意不 backfill**（migration 只做 schema），讀取端一律走
+    /// <c>OvertimePayCalculator.SnapshotDayType</c> 退回舊欄。兩欄一起寫，舊欄保留供回溯比對。
+    /// </summary>
+    public string?  OvertimeDayType    { get; set; }
+
+    /// <summary>
+    /// 超出上限、不計酬的時數快照（2026-09 新增）。2026-09 起超出上限已改為送出前擋件
+    /// （見 OvertimeRequestHandler.GuardOvertimeHoursAsync），故新單恆為 0；有值代表擋件上線前
+    /// 送出的歷史單。讀取端（簽核詳情頁）直接用本欄，**不可**用 EstimatedHours − PayableHours
+    /// 現場推算 —— 國定假日來源 B 的申請時數含前 8 小時，是否為活動日預定人力屬送簽當下的事實，
+    /// 事後從日別反推不出來。
+    /// </summary>
+    public decimal? ExcessHours        { get; set; }
 
     public string   Reason           { get; set; } = string.Empty;
     public string   ApprovalStatus   { get; set; } = "pending";  // pending | approved | rejected | returned

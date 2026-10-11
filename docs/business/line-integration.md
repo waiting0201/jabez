@@ -109,6 +109,33 @@ LINE Messaging API 採每月「免費 + 加購」配額制（type=`limited`）�
 > - LINE Login 和 Messaging API 須在同一 Provider 下建立，LINE 才會使用相同 userId。
 > - OAuth URL 必須帶 `bot_prompt=aggressive` 參數（已內建於 `LineHandler.GetBindUrlAsync`），綁定後 LINE 才會自動導向「加 OA 為好友」畫面；否則用戶只綁定 Login 但未加好友，所有 Messaging API 推播一律失敗。
 
+### 環境隔離：測試站 / 正式站各自一組 Channel 與 OA
+
+**兩站不共用 LINE Channel**，`User.LineUserId` 也分別存在各自的 DB（`JabezDb` / `JabezDb_Staging`），故綁定資料不會互相覆蓋。
+
+| | 正式站 | 測試站 / 本機 |
+|---|---|---|
+| Login Channel Id | `2009730684` | `2010126560` |
+| Messaging OA | `@483emxpy`（雅比斯 Messaging） | `@348qgtvl`（Message Staging） |
+| `App__EnvironmentLabel` | 不設（輸出不變） | `【測試站｜此為測試訊息】` |
+
+> ⚠ **`lineOaFriendUrl` 必須跟著該環境的 Messaging Channel 走**。2026-09-23 修正：`environment.staging.ts` 與
+> `environment.ts` 的加好友連結長期指向**正式站** OA `@483emxpy`，而推播是從 staging 的 OA 發出 ——
+> 使用者照著〈加入好友〉按鈕加了正式 OA，`IsBotFriendAsync` 仍判 false、推播一律回 400，
+> **反覆加好友也解不掉、畫面上完全看不出指錯 OA**。三份 environment 檔的 OA 一律以
+> `GET https://api.line.me/v2/bot/info` 回傳的 `basicId` 為準。
+>
+> ⚠ `lineLoginChannelId` 目前**前端沒有任何使用點**（綁定 URL 由後端 `LineHandler.GetBindUrlAsync`
+> 以 `cfg["Line:LoginChannelId"]` 產生）。仍維持與後端同值，避免日後有人照著這個欄位改而以為改到了。
+>
+> ⚠ **LINE userId 以 Provider 為單位發放**。測試站 DB 是正式 DB 的複本，裡面那批 `LineUserId`
+> 是正式 Provider 發的；兩組 Channel 若不在同一 Provider，複製過來的 id 對 staging 無效、
+> 全部推播失敗，須請測試對象在測試站重新綁定。
+
+> ⚠ **`SystemSetting.ApprovalLineEnabled = 0` 不等於測試站不會推播** —— 該開關只被
+> `ApprovalNotificationService` 讀取，三支 TimerTrigger（打卡提醒 / 排班提醒 / 撥款提醒）完全不受管制，
+> 仍會依 staging 的 cron 推給 DB 內的真實員工。唯一的通用防線是 `App__EnvironmentLabel`。
+
 ---
 
 ## 跨業務關聯

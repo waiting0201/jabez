@@ -228,7 +228,7 @@ write_off / travel_write_off）與 `approval-tasks` 詳情共用這一份判準�
    但簽核詳情頁的讀者是**全公司每一位審核者**，無從整批授予 `payroll` 類權限，開權限碼等於全員關閉。
    此時先問「審核者真正需要的是什麼」——他要判斷的是「這個加班該不該准」，看的是**時數與倍率結構**而非金額。
    於是 `OvertimeTaskDetailDto` **直接移除 `OvertimePayAmount`**，改回
-   `HourTiers[]`（`OvertimePayCalculator.SplitHourTiers(PayableHours, IsHolidayOvertime)` 的純函式導出值）。
+   `HourTiers[]`（`OvertimePayCalculator.SplitHourTiers(PayableHours, OvertimeDayType)` 的純函式導出值）。
    關鍵在於**新欄位的資訊量為零**：`PayableHours` 與 `IsHolidayOvertime` 本來就在同一個 DTO 裡，
    級距只是它們的重新排版，不擴大任何可反推面 —— 所以這個換法不需要新權限碼、不需要 migration，
    也不必跟著做規則 5 的「新 token 才帶得到新碼」那套過渡。
@@ -242,7 +242,7 @@ write_off / travel_write_off）與 `approval-tasks` 詳情共用這一份判準�
 | GET | `/health` | 健康檢查 |
 | POST | `/auth/login` | 登入取得 JWT |
 | POST | `/auth/refresh` | 刷新 Token |
-| GET | `/files/signatures/{fileName}` | 簽名檔代理（PDF 匯出用） |
+| POST | `/auth/logout` | 撤銷傳入的 refresh token（access token 可能已過期，故公開；一律回 200） |
 | GET | `/files/avatars/{fileName}` | 頭像代理（topbar 顯示用） |
 
 ---
@@ -485,6 +485,48 @@ RequestDateGuard.EnsurePastWithin(body.ChildBirthDate, "子女出生日期",
 
 ---
 
+### 4.7 防濫用守門（2026-10 安全修補）
+
+員工會刻意鑽漏洞（排程腳本打卡、灌加班時數、自己簽自己的單），以下守門是單一真相，新增同類功能時一律沿用：
+
+| 守門 | 位置 | 規則 |
+|---|---|---|
+| 打卡 | `Services/AttendancePunchGuard` | 強制 GPS + Cloudflare Turnstile（`Services/TurnstileVerifier`，`Turnstile:Mode` off / log / enforce，Cloudflare 連不到 fail-open）+ 一次性挑戰碼（見 9.5）+ `AttendancePunchLogs` |
+| 簽核授權 | `ApprovalTaskHandler.AuthorizeStepAsync` | 所有審核入口（單筆 / 批次 / 指定 / 升級）的**共同授權點**：審核者＝申請人一律 403；ApprovalItemId 為 null 或查無目前關卡一律 403（**不得再加「查無就放行」的出口**） |
+| 指定審核者 | `DesignatedReviewerHelper.ValidateAndNormalizeAsync`（送簽時） | 不可指定本人、不可指定非在職者、職級須嚴格高於申請人（Level < 申請人，同級不放行；申請人為全公司最高職級時豁免）、先選部門的關卡須屬該部門 |
+| 簽核流程 ID | 各申請 Handler | **Create / Update 不得採用前端傳來的 `ApprovalItemId`**，只由 Submit 依申請人部門解析 |
+| 送簽清足跡 | 11 個 Submit 路徑 | 不論 draft 或 returned，送簽一律清掉舊 ApprovalRecords / EscalationOverrides、重置 designee |
+| 撥款端點 | `PATCH /{type}-requests/{id}/installments` | DTO **不得帶單據狀態** |
+| 金額 | `Common/AmountGuard`（與 `RequestDateGuard` 並列） | 明細金額不可為負（請款 / 預審單列可負，見 application-forms.md）；沖銷類「現金 + 支票 = 總價」 |
+| 發票號碼 | `InvoiceNoHelper.ResolveKey` + `InvoiceUniquenessChecker` | 先正規化（去空白 / 連字號、轉大寫，含中文仍抽 `[A-Z]{2}\d{8}`）再比對；SQL 粗篩的剔除字元集必須與 `Normalize` 同源（`RemovedForSql`） |
+| 假日津貼 | `Services/HolidayTravelParticipantGuard` | 參與人員須在職；同人同一假日不得跨單、不得同時有已核准加班費單或有薪假 |
+| 加班送件 | `Services/OvertimeRequestGuard` | 補登最多 7 天、同人同日一張、全天有薪假不可加班、每月上限（`SystemSetting.MonthlyOvertimeLimit`） |
+| 加班給付 | `Common/OvertimeSettlement.BillableHours` | 給付基準時數＝`SettledHours ?? EstimatedHours`；新增給付類消費點一律用它（SQL 用 `ISNULL(SettledHours, EstimatedHours)`）。`SettledHours` = min(核准時數, 實際加班打卡)，於終局核准 / 打加班結束卡 / 管理者修改出缺勤時由 `OvertimeSettlementService.SyncFromPunchesAsync` 冪等重算；**舊單 null 永不 backfill**（薪資即時重算、無月結快照） |
+| 加班打卡時段 | `AttendanceHandler.OvertimeStartAsync` + `OvertimeSettlement.ComputeSettled` | 一般上班日加班開始卡須 ≥ max(實際下班卡, 應下班時間〔`ExpectedWorkWindow`〕)，休假日 / 全日請假免；結算時扣掉與正常上班時段重疊（`RegularWindowFor`，僅工作日）。擋件門檻由 `AttendanceHandler.ComputeOvertimeNotBefore` 算出，`/attendances/today` 的 `CanStartOvertimeNow` / `OvertimeStartNotBefore` 共用同一支（前端據以停用按鈕） |
+| 加班 × 假日活動 | `HolidayTravelParticipantGuard.EnsureNoOvertimeConflictAsync` | 反向檢查：假日活動參與人員（pending / approved / returned）該日不可申請加班，補休型也擋；於加班送簽與核准兩處呼叫 |
+| 假別額度年度 | `LeaveRequestHandler.ValidateLeaveQuotaAsync` | 已用時數一律以假單 `StartDate.Year` 為年度，不用 `Clock.Now.Year` |
+| 速率限制 | `Services/UserRateLimiter`（AppRouter 呼叫） | OCR 每人每分 10 / 每日 200（兩支共用）、GCIS 每分 20，超限 429；記憶體計數、每實例獨立，數值集中在 `Limits` |
+| 明細 / 附件檔案 | `Common/AttachmentProcessor`（`UploadItemFileAsync` / `KeepExistingUrl`） | 上傳一律 10MB 上限 + magic-byte 白名單、副檔名取偵測型別；更新時「保留既有 FileUrl」只接受該單 DB 既有值（新建傳 `NoOwnedUrls`），刪 blob 只對 DB 舊值執行 |
+| 通知信 HTML | `ApprovalNotificationService.H()` / `WebUtility.HtmlEncode` | 凡進 HTML 信件的使用者可控字串（姓名、事由、摘要、地點、單號、href）一律編碼；LINE Flex 為 JSON 序列化，不需 HtmlEncode |
+| Access token 即時失效 | `Users.SecurityStamp` + `AppRouter.EnsureSecurityStampAsync` + `RefreshTokenRevoker` | token 帶 `sstamp` claim，AppRouter 每請求以 PK 比對 DB 現值與帳號狀態，不符 401；停用 / 改密碼 / 換角色（`RevokeAllAsync`）、改部門 / 職稱（`BumpSecurityStampAsync`，不撤 refresh）時換新。無 `sstamp` 的舊 token 放行至自然過期 |
+| 出差旗標 | `AttendanceHandler.ResolveBusinessTripAsync` | 勾選出差須有當日涵蓋的已核准出差預支 / 出差請款；當日紀錄已有旗標者不重驗 |
+| 出缺勤修改 | `AttendanceHandler.UpdateAsync` | 不可改自己的紀錄；新時間須在紀錄日當天至隔日 06:00 前；修改者 JobTitle.Level 須嚴格小於被修改者（Superadmin 例外）；每次實質修改寫 `AttendanceAuditLogs`；不再清除 `IsClockInAuto / IsClockOutAuto`，改設 `IsManuallyAdjusted` |
+| 核准時重驗日期 | `ApprovalTaskHandler`（leave_revocation / shift_change） | 銷假核准時剔除已過去的日期（全過去則 400）；改班核准時有已過去日期則 400 |
+| 使用者管理防提權 | `UserHandler.EnsureSelfEditAllowed` / `EnsureNoPrivilegeEscalationAsync` / `EnsureTargetIsSubordinateAsync`（Create / Update / SendCredentials / SetPassword） | 非 Superadmin：不可實質變更**自己的**部門 / 職稱 / 在職狀態 / 職務代理人 / 補休期初 / 薪資 / 簽名檔（值與現況相同＝整表回送，放行）；調動至財務體系部門、或調高職級（Level ≤ 1 或高於自身）限 Superadmin（新建帳號同防）；改他人密碼 / email、寄帳號通知，目標帳號權限須為操作者權限的子集合。皆放在 Blob 上傳 / 寫入之前。異動寫 `UserAuditLogs`（update / set_password / send_credentials；薪資只記「已變更」、密碼只記「已重設」） |
+| 簽核詳情檢視範圍 | `Common/RequestViewAccess.CanViewAsync` | `approval-tasks:read` 不再等於全公司可讀：須 `ProjectAccessScope` 涵蓋申請人部門，或為該單目前候選審核者（`StepReviewerProbe`，與 `ApprovalTaskHandler.GetByIdAsync` 同判準）；advance / travel / travel_payment / write_off / travel_write_off / shift_change 的單筆詳情（列印 PDF 取原料）共用 |
+| 送簽自審判準 | `ApprovalFlowService`（`IsApplicantOnlyReviewerOfFixedStepAsync`） | 該關固定池「排除申請人後查無他人」才算自審而跳過，與推進流程 `SkipUnreviewableStepsAsync` 同判準；池中尚有他人就停在該關（原寫法會整關略過、全跳完即自動核准） |
+| 出差 / 假日活動型別 | `TravelRequestHandler`（`isHolidayTravel` 參數） | 路由型別須與 `IsHolidayTravel` 一致，不符回 404（兩種共用一張表，不比對會互相冒用退場閘門與重複給付檢查）；AppRouter 的 `holiday-travel-requests` 路由一律傳 `isHolidayTravel: true` |
+| 撥款明細 | `InstallmentValidator` + 5 支 installments / 結案 / check-payments 端點 | 逐列金額須 > 0 且不超過總額（不只驗加總）；申請人不可操作自己單據的撥款明細（Superadmin 例外） |
+| 已撥款鎖定 | 各申請 Handler 的 Update / Delete | 任一期 `PaidAt` 非空的單據即使被退回也不可修改 / 刪除（Superadmin 亦同），請洽財務 |
+| 輕量端點最小揭露 | `ProjectLookupDto`（`/projects/active`）、`VendorReadService`（`/vendors/lookup`）、AppRouter 權限表（`/files/vendor-passbooks`） | `/projects/active` 只回 Id / Code / Name / Status / DepartmentId / DepartmentName，**不含任何金額與 Drive 連結**；`/vendors/lookup` 的個人 `IdNumber` 遮罩（前 1 後 3）；`/files/vendor-passbooks/*` 須 `vendors:read`（檔名 `{vendorId}{ext}` 可列舉） |
+| 寫入回應薪資遮罩 | `EmployeeProfileHandler`（`PUT /users/{id}/profile`） | 寫入回應與 GET 走同一道 `PayrollFieldAccess.Mask`，無 `payroll:read` 者存檔後不可拿到薪資調整歷史 |
+| 活動日預定人力 | `ActivityDayHandler.EnsureAssigneesValidAsync` | 非 Superadmin：人員部門須在 `ProjectAccessScope` 內、不得把自己列為預定人力；更新時只驗「新增」的人力（既有名單不重驗） |
+| 前端 URL / Token 防線 | `Admin/src/app/shared/utils/safe-url.ts`、`auth.interceptor.ts`、`Admin/public/staticwebapp.config.json` | 預覽 iframe 的 URL 只認白名單（`safe-url.ts`）；`Authorization: Bearer` 只附加給自家 API；SWA 設定加 CSP 與 `X-Content-Type-Options: nosniff` |
+
+稽核表若需指向 Users、又掛在 Users 的 Cascade 鏈下（例：`AttendanceAuditLogs` → AttendanceRecords → Users），**該 Users 欄位不設 FK、改存姓名快照**，避免 SQL Server 1785 multiple cascade paths，也不必加進 UserHandler 的刪除清洗清單。
+
+---
+
 ## 5. DTO 設計
 
 ### 5.1 位置與命名
@@ -657,7 +699,7 @@ RefundDue = max(0, 前次已沖銷 + 本次沖銷 − 預支總額)
 
 範例：[LeaveDayExpander](../Api/Common/LeaveDayExpander.cs)（請假單逐日展開）— 純讀取型 static helper，收 `ICalendarDayReadService`。把一張 `LeaveRequest` 攤成 `List<LeaveDay>{Date, Hours}`，展開規則與 `LeaveRequestHandler.SubmitAsync` 的權威重算一致，保證 `Σ Hours == LeaveRequest.Hours`。消費點：銷假逐日勾選（`GET /leave-requests/{id}/revocable-dates`）、銷假核准後重算父單 `Hours`、以及出缺勤報表的請假合併（`AttendanceLeaveMerger`）。假別分類常數 `WorkingDayLeaveTypes` / `TimeUnitMap` / `GetTimeUnit` / `TimeUnitToString` 一併收斂於此，`LeaveRequestHandler` 轉引同一份（避免兩地各留一份而漂移）。另提供 `ExpandAsync(calendarReader, leaveType, startDate, endDate)` overload 供 Dapper 投影使用（展開只讀這三個欄位，不必為此撈出完整 entity）。
 
-範例：[OvertimePayCalculator](../Api/Common/OvertimePayCalculator.cs)（勞基法加班費）— 純函式 static helper，倍率 / 時薪 / 分段累進的單一真相。`Calculate(baseSalary, hours, isHoliday, date)` 完全無 I/O（可直接驗算），`CalculateAsync(...)` 只多一層行事曆與排班制旗標查詢後委派給前者。**兩個消費點共用同一支**：表單試算端點 `GET /overtime-requests/estimate` 與核准寫快照的 `OvertimeCompensationService.ApplyAsync` —— 拆成兩份必然漂移成「畫面顯示 A、實發 B」。倍率級距刻意放在 helper 內的 `private static readonly (decimal UpToHour, decimal Rate)[]` 而**不放 `Constants.cs`**：級距與「分段累進」的演算法是一體的，把常數獨立出去就會出現「有人拿到級距卻整段套一個倍率」的錯用；上限 `WeekdayCapHours` / `HolidayCapHours` 才是 `public const`（前端提示文案與後端驗證共用同一來源）。金額只在**總額**捨入一次（`AwayFromZero`），各分段保留原始小數 —— 逐段捨入再加總會漂移。
+範例：[OvertimePayCalculator](../Api/Common/OvertimePayCalculator.cs)（勞基法加班費）— 純函式 static helper，倍率 / 時薪 / 分段累進的單一真相。`Calculate(baseSalary, hours, dayType, date, isActivityAssignee)` 完全無 I/O（可直接驗算），`CalculateAsync(...)` 只多一層日別解析（個人排班 → 國定假日 → 舊制行事曆）後委派給前者。**日別是 `WorkDayTypes` 四值而非 `bool`**（2026-09 四週彈性工時改版）：國定假日在二值語意下會誤落到 ×2.67 級距。收斂的單一真相是 `EffectiveDayType(dayType, date, switchDate)` —— 切換日之前一律把國定假日壓回 `rest_day`，維持舊行為；**該函式不可套 `WorkDayTypes.Normalize`**（那支的語意是「員工可勾選的三值」，會把 `public_holiday` 打回 `work`）。快照欄由 `bool? IsHolidayOvertime` 擴為 `string? OvertimeDayType`，既有列**刻意不 backfill**，讀取端統一走 `SnapshotDayType(dayType, isHoliday)` 退回舊欄。**兩個消費點共用同一支**：表單試算端點 `GET /overtime-requests/estimate` 與核准寫快照的 `OvertimeCompensationService.ApplyAsync` —— 拆成兩份必然漂移成「畫面顯示 A、實發 B」。倍率級距刻意放在 helper 內的 `private static readonly (decimal UpToHour, decimal Rate)[]` 而**不放 `Constants.cs`**：級距與「分段累進」的演算法是一體的，把常數獨立出去就會出現「有人拿到級距卻整段套一個倍率」的錯用；上限 `WeekdayCapHours` / `HolidayCapHours` 才是 `public const`（前端提示文案與後端驗證共用同一來源）。金額只在**總額**捨入一次（`AwayFromZero`），各分段保留原始小數 —— 逐段捨入再加總會漂移。
 **第三個消費點（2026-09）**：簽核詳情頁只取 `SplitHourTiers(hours, isHoliday)` —— 同一份級距表的第二個投影，只切「分段時數」不乘時薪，讓審核者看得懂計酬結構卻拿不到金額（金額 ÷ 時數 → 時薪 → 底薪）。`Calculate` 改為呼叫它再乘時薪，**級距表因此仍只有一份**；切段順序與 `> 0m` 過濾原樣保留，`raw` 的累加順序不變，總額逐位元等價。呼叫端傳的是 `PayableHours` **快照**（已截斷）而非 `EstimatedHours`；級距表本身取當下常數、非快照，日後修法時舊單的級距顯示會跟著變 —— 刻意不為此加第五個快照欄，正解是修法時給級距表加生效日。**前端不得 copy 一份級距表**（理由同上段：拿到級距卻整段套一個倍率）。
 
 範例：[AttendanceLeaveMerger](../Api/Common/AttendanceLeaveMerger.cs)（出缺勤報表「打卡 ∪ 請假日」合併）— 純讀取型 static helper，收 `IAttendanceReadService` + `ICalendarDayReadService` 為參數。合併粒度＝**(員工, 日期) 一列**：有打卡+有請假合併同列、只有請假產 `Id = null` 的虛擬列、沒打卡也沒請假不產列。**刻意不做成 SQL JOIN**：逐日請假時數必須走 `LeaveDayExpander`（C# 的行事曆 + 半天/小時規則），SQL 端複製一份必然漂移；且同日多張假單 JOIN 會產生重複列（舊實作的 `ListSql` / `CountFromSql` 因此 total 與列數不一致）。代價是分頁改為「**區間全量載入 → 記憶體合併 → 記憶體切頁**」，因此：(1) 呼叫端必須把區間收斂在 `MaxRangeDays`（400 天）內，未指定起訖時回退近一年；(2) 排序必須是 total order（日期 DESC → 姓名 Ordinal → `Id ?? int.MaxValue`），否則翻頁會漏列 / 重複列。ReadService 端配合拆成三支純原料查詢：`ListInRangeAsync`（打卡，不分頁）/ `ListApprovedLeavesInRangeAsync`（假單，**不可加銷假過濾** —— 銷假是逐日的，整張單層級過濾會誤刪部分銷假的其餘日子）/ `ListApprovedRevokedDatesAsync`（批次銷假日，空清單提前 return 避免 Dapper 產生 `IN ()`）。
@@ -674,6 +716,8 @@ RefundDue = max(0, 前次已沖銷 + 本次沖銷 − 預支總額)
 
 另一例：[AttendanceAutoClockService.ApplyAsync](../Api/Services/AttendanceAutoClockService.cs)（登入時自動補卡）— 同慣例不呼叫 `SaveChanges`。
 
+另一例：[ShiftScheduleConstraintService](../Api/Services/ShiftScheduleConstraintService.cs)（2026-09-28）— 排班「能不能存」的 **I/O 部分**：純函式 `ShiftScheduleValidator` 只看日別，本服務補上需要查 DB 的兩條鎖定（本人的**活動日預定人力**、**簽核中／已核准假單**涵蓋的日子不得排休），並以 `EvaluateAsync` 合併成一份結果。**個人排班 GET / PUT、自動排班、〈改班申請〉的試算 / 送簽 / 每關核准全部走這一支** —— 申請人、審核者、月曆看到的檢核結果因此一致；新增任何「寫入班表」的入口都必須呼叫它，不可只跑 `ShiftScheduleValidator`。跨月上下文 `LoadContextDaysAsync` 也收斂於此（原本 `ShiftScheduleHandler` 與 `AutoShiftScheduleService` 各有一份）。〈改班申請〉的整月試算在 [ShiftChangeRequestService.BuildMonthViewAsync](../Api/Services/ShiftChangeRequestService.cs)。
+
 #### 登入路徑的副作用必須與主流程分離交易
 
 `AuthHandler.LoginAsync` 原本只有一次 `SaveChangesAsync`，同時包含 `RefreshTokens.Add(...)` 與補卡的變更。
@@ -683,6 +727,8 @@ RefundDue = max(0, 前次已沖銷 + 本次沖銷 − 預支總額)
 規則：**登入 / 授權這類主流程，其附帶的業務副作用一律獨立一次 `SaveChangesAsync` 並 try/catch 吞掉**。
 主流程先存檔確保成功，副作用失敗只讓該次副作用不生效。
 前提是副作用本身必須**冪等**（補卡只在該欄為 `null` 時寫入，下次登入自然收斂）。
+
+**員工工作日判定（2026-09-29 新增）**：凡是「某位員工哪幾天算工作日」的計算（請假日 / 時數、銷假逐日、排班鎖定、出缺勤應出勤與缺勤列、自動補卡），**一律走 [EmployeeWorkdays](../Api/Common/EmployeeWorkdays.cs)**，由 scoped 的 [IEmployeeWorkdaysFactory](../Api/Services/EmployeeWorkdaysFactory.cs)`.ForAsync(假單所有人 / 打卡本人)` 建立 —— 它依切換日把區間切成兩段：切換日前呼叫下述 `WorkCalendarHelper`（舊制），切換日起以個人日別（`IShiftScheduleReadService`）只取 `work`。`LeaveDayExpander.ExpandAsync` 因此改吃 `EmployeeWorkdays`（不再收 `calendarReader` + `bool ignoreHolidays`），工作時段亦由它依假單 `StartDate` 選用，呼叫端不必再傳 `WorkdaySchedule`。逐員工迴圈（出缺勤報表）不可逐人呼叫 factory，改由 `AttendanceLeaveMerger` 以 `ResolveRangeForUsersAsync` 一次預載全部人的日別後自行組裝。`WorkCalendarHelper` 仍保留給「與個人無關」的判定（新人寬限期的工作天、打卡休假日單日版）。
 
 範例：[WorkCalendarHelper](../Api/Common/WorkCalendarHelper.cs)（公司行事曆判定）— 純讀取型 static helper，收 `ICalendarDayReadService` 為第一個參數。「**行事曆有資料 → 用 `CalendarDay.IsHoliday`；該年度無資料 → 退回週六 / 週日**」是全系統假日判定的單一真相，兩種粒度共用同一份規則：區間版 `ComputeWorkingDatesAsync`（[LeaveRequestHandler](../Api/Handlers/LeaveRequestHandler.cs) 算請假日清單 / Hour 單位時數 / Submit 擋件）與單日版 `IsHolidayAsync`（[AttendanceHandler](../Api/Handlers/AttendanceHandler.cs) 判「休假日加班免下班卡」）。新增需要判假日的功能時**一律呼叫此 helper**，不要在 Handler 內自己寫一份 `DayOfWeek` fallback。**`CalendarScope` 必填參數（2026-09 新增，僅區間版）**：同一批行事曆在「出勤」與「請假」兩個脈絡下答案不同 —— 差別只有**彈性休假日**（原行事曆的「補假」，見 `Constants.CalendarDescriptions`）：它仍是 `IsHoliday = 1`（不用上班、不用打卡、不算缺勤、假日津貼照算），但要休得自己請假，故 `CalendarScope.Leave` 不把它算進假日。`Leave` 的兩個消費點（`LeaveRequestHandler` 與 `LeaveDayExpander`）**必須一致** —— 不一致的話同一張假單送簽算 3 天、銷假重算成 2 天，`Hours` 會憑空變動；`Attendance` 則是 `AttendanceLeaveMerger`（應出勤時段 + 缺勤列）與 `AttendanceAutoClockService`（自動補上班卡）。**單日版 `IsHolidayAsync` 只有出勤語意、刻意不吃 scope**。底層 `ICalendarDayReadService.GetHolidayDatesAsync` 的 `excludeFlexibleHoliday` **預設 false**（＝原語意），因為 `TravelRequestHandler` 有 3 處假日津貼取數吃這個預設值；快取 decorator 亦須**依旗標分兩個 slot**，否則同一次合併流程裡先查到的那種語意會被另一種重用。此參數同樣刻意必填、不給預設值。**`bool ignoreHolidays` 必填參數（2026-08 新增）**：三個方法的第二個參數為排班制旗標（`User.IsShiftWorker`，賣店 / 營業所六日與國定假日照常營業），為 `true` 時整段皆為工作日、**完全不查行事曆**，且 `HasCalendarForAllYearsAsync` 恆回 `true`（送件不會被「尚未匯入行事曆」擋）。此參數**刻意必填、不給預設值** —— 新增消費點時漏傳是編譯錯誤，而不是讓某人的請假天數被靜默算成 0；[LeaveDayExpander](../Api/Common/LeaveDayExpander.cs) 的兩個 `ExpandAsync` 同此原則。旗標一律以**假單所有人 / 打卡本人**解析（單人路徑走 [WorkPatternReadService](../Api/Services/Dapper/WorkPatternReadService.cs) 的 request-scoped memo；出缺勤報表這類逐員工迴圈則由 SQL 隨資料列帶出，避免 N+1），**不可用呼叫者 id** —— Superadmin 代送、主管核准銷假時呼叫者都不是本人。搭配 [Constants.cs](../Api/Common/Constants.cs) 的 `WorkdayHours`（08:00–17:00，午休 12:00–13:00，`FullDayHours = 8`）為工作日時段常數單一來源 —— 消費點含請假時數計算、全日請假判定、以及 [AuthHandler](../Api/Handlers/AuthHandler.cs) 登入時的**自動補下班卡**（上班打卡時間 + `FullDayHours` + 午休 `LunchEndHour - LunchStartHour` → 一律 +9，不分上下午打卡）。與 `SystemSetting.WorkStartTime / WorkEndTime`（09:00 / 18:00）語意不同，刻意不合併：後者自 2026-08 起**只**服務打卡提醒的時點判斷，不再參與補卡。
 
@@ -875,6 +921,7 @@ builder.HasIndex(x => x.RequestNo)
 | `department_name`、`department_code` | 部門 |
 | `job_title_name`、`job_title_level` | 職稱 |
 | `avatar` | 頭像 URL |
+| `pwd_change_required` | 首次登入須改密碼（2026-10）：AppRouter 在權限檢查前攔截，除 `POST /auth/change-password` 外一律 403（`IsAllowedWhilePasswordChangeRequired`） |
 
 ### 9.3 環境變數（雙底線慣例）
 
@@ -893,7 +940,8 @@ Jwt__RefreshExpiryDays ↔ IConfiguration["Jwt:RefreshExpiryDays"]
 - 雜湊用 **BCrypt**（[BCrypt.Net-Next](https://github.com/BcryptNet/bcrypt.net) NuGet）
 - 新增 / 重設密碼 → `BCrypt.HashPassword(plain)`
 - 登入驗證 → `BCrypt.Verify(plain, hash)`
-- 預設密碼為使用者出生日期 `yyyyMMdd`（首次登入應強制改密碼，`User.MustChangePassword`）
+- 預設密碼為使用者出生日期 `yyyyMMdd`；建立使用者、管理員設定他人密碼、寄出帳號通知時一律 `MustChangePassword = true`，**後端以 JWT claim 強制**（見 9.2）
+- 自行改密碼：至少 8 碼、不可等於舊密碼、不可等於生日八碼（`AuthHandler.ChangePasswordAsync`）
 
 ### 9.5 衍生金鑰簽章（非 JWT 的短效憑證）
 
@@ -901,6 +949,17 @@ Jwt__RefreshExpiryDays ↔ IConfiguration["Jwt:RefreshExpiryDays"]
 **不要另立設定鍵、也不要直接拿 `Jwt:Secret` 簽**：以 `HMACSHA256(Jwt:Secret, "<用途字串>")` 衍生專用金鑰，
 避免同一把金鑰跨用途簽章；比對簽章一律用 `CryptographicOperations.FixedTimeEquals`；
 需要「限用一次」時由 DB 唯一索引保證（不靠記憶體快取，Functions 會多實例）。
+
+### 9.6 認證安全政策（2026-10）
+
+常數集中在 [Common/AuthPolicy.cs](../Api/Common/AuthPolicy.cs)：
+
+- **登入失敗鎖定**：同一 Email 自最近一次成功登入後、15 分鐘內累計 5 次失敗 → 鎖 15 分鐘、回 **429**（連密碼都不驗）。鎖定鍵是 **Email 而非 User**（不存在的帳號行為一致，避免從鎖定訊息反推帳號存在）；帳號不存在時仍跑一次假雜湊 BCrypt（防時間差列舉）。每次嘗試寫 `LoginAttempts`（IP / UA / 原因代碼 `bad_password` `unknown_email` `inactive` `locked`），`locked` 不計入失敗數。實作 [Services/LoginAttemptTracker.cs](../Api/Services/LoginAttemptTracker.cs)。
+- **Refresh token**：輪替時帶下原始 `SessionStartedAt`，超過 30 天必須重新登入；已撤銷的 token 被重用（超過 30 秒寬限，容許多分頁同時 refresh）→ 視為盜用、撤銷該使用者全部 token。
+- **撤銷全部 token 的單一入口** [Services/RefreshTokenRevoker.cs](../Api/Services/RefreshTokenRevoker.cs)：改密碼、管理員設密碼、寄帳號通知、停用、角色變更、重用偵測時呼叫。⚠ 只能讓 refresh token 失效；access token 的即時失效由 **`Users.SecurityStamp`** 負責（見下一點）。
+- **Access token 即時失效（SecurityStamp，2026-10）**：`Users.SecurityStamp`（Guid）隨 token 簽入 `sstamp` claim（`AuthPolicy.SecurityStampClaim`），[AppRouter](../Api/Routing/AppRouter.cs) 驗完 JWT 後 `EnsureSecurityStampAsync` **每請求以 PK 查一次 DB**（只取 SecurityStamp + Status），帳號停用或戳記不符回 401。換戳記時機：停用 / 改密碼 / 管理員設密碼 / 寄帳號通知 / 角色變更（`RefreshTokenRevoker.RevokeAllAsync`，同時撤 refresh）、改部門 / 職稱（`BumpSecurityStampAsync`，**不**撤 refresh，前端 401 後 refresh 即換到帶新 claim 的 token）。無 `sstamp` 的舊 token（部署前簽發）放行至自然過期（≤ 60 分）。
+- **角色 / 權限防提權**：非 Superadmin 不可修改自己的角色（`UserHandler.EnsureCanAssignRolesAsync`），也不可新增 / 修改 / 刪除自己所屬的角色、不可授予超出自身 `permissions` claim 的權限（`RoleHandler.EnsureNotOwnRoleAsync` / `EnsurePermissionsWithinOperator`）。
+- 取用戶端 IP / User-Agent 一律走 [Common/ClientInfo.cs](../Api/Common/ClientInfo.cs)（`X-Forwarded-For` 第一段，僅供稽核、不可作為授權依據）。
 
 ---
 
@@ -1007,7 +1066,7 @@ var allowedSignatures = new Dictionary<string, byte[][]>
 | 容器 | 內容 | 公開 / 授權 |
 |---|---|---|
 | `avatars` | 頭像 | **公開** `/files/avatars/{fileName}` |
-| `signatures` | 簽名檔 | **公開** `/files/signatures/{fileName}` |
+| `signatures` | 簽名檔 | **登入即可** `/files/signatures/{fileName}`（2026-10 由公開改為需登入：檔名＝userId 可推導，公開會讓任何人下載主管簽名偽造紙本；前端 PDF 以帶 token 的 HttpClient 取 blob） |
 | `indigenous-proofs` | 原住民證明 | 授權 `users:read` |
 | `low-income-proofs` | 低收入證明 | 授權 `users:read` |
 | `disabled-proofs` | 身心障礙證明 | 授權 `users:read` |
@@ -1097,12 +1156,14 @@ public sealed class GcisService(HttpClient http, ILogger<GcisService> logger) : 
 | `GET /projects/active` | `GET /projects`（需 `projects:read`） | 申請表「專案」下拉，僅回傳 `active` 狀態；預設依使用者部門可見範圍過濾。帶 `?all=true` 時不過濾部門，回傳全部 `active` 專案（供加班申請等跨部門支援情境瀏覽用） |
 | `GET /approval-items/active?type=<applicationType>` | `GET /approval-items`（需 `approvals:read`） | 申請表判斷流程是否含 `useApplicantDesignated` 步驟 |
 | `GET /job-titles/lookup` | `GET /job-titles`（需 `job-titles:read`） | 申請表「指定審核者」職稱下拉 |
+`GET /departments/lookup` | `GET /departments`（需 `departments:read`） | 活動日 / 排班頁的部門下拉（2026-09 新增；不該為了一個下拉就把部門管理權限給各部門協理） |
+| `GET /work-mode` | `GET /settings`（需 `settings:read`） | 「四週彈性工時切換了沒」（2026-09 新增）。只回 `flexibleWorkStartDate` 與 `isFlexibleActive` 兩個非敏感欄位 —— 讓一般同仁為了知道制度而拿到整份系統設定（含維護模式、通知開關）等於把後台權限強加給員工。⚠️ `isFlexibleActive` 是**以今天**判斷，**僅供 UI 開關**（例如〈假日執行活動申請〉的新增鈕要不要顯示）；任何與**資料**有關的判定（薪資、加班費率、請假時段）一律以**該筆資料自己的日期**比對切換日，前端不得自行重算，否則切換後歷史資料會被新制重新解讀 |
 | `GET /vendors/lookup` | `GET /vendors`（需 `vendors:read`） | 請款表單「廠商」下拉，僅回 `IsActive=true` |
 | `GET /vendors/lookup-by-tax-id?taxId=XXXXXXXX` | — | 以統編查 GCIS 公司登記資料，自動帶出廠商名稱 / 地址 / 負責人；任何登入者可用 |
 | `GET /overtime-requests/estimate?date=&hours=` | `GET /calendar-days`（需 `calendar-days:read`）＋ 薪資欄位（需 `payroll:read`） | 加班表單即時試算加班費；重用 `CalendarDayReadService` + `WorkPatternReadService`，避免把後台行事曆權限強加給申請人。**對象一律取 JWT `sub`，端點刻意不接受 `employeeId`** —— 回傳含時薪（可反推底薪），若開放指定對象等於開一條查別人薪水的側門；員工在 `GET /me/payroll` 本來就看得到自己的底薪，故無新增外洩面。權限沿用 `overtime-requests:read`，不另開權限碼 |
 | `GET /leave-requests/working-days?start=&end=&leaveType=` | `GET /calendar-days`（需 `calendar-days:read`） | 請假表單即時計算扣除國定假日與六日後的請假日清單與天數；重用 `CalendarDayReadService`，工作日型假別（除歲時祭儀假外的 16 種）才扣假日，避免把後台行事曆權限強加給請假員工；**走 `CalendarScope.Leave`，彈性休假日不列入扣除** |
 | `POST /vendors` *(無需權限)* | — | 請款表單 quick-add modal：任何登入者皆可新建廠商，避免後台 CRUD 權限被強加給請款人 |
-| `GET /files/signatures/{fileName}` / `/files/avatars/{fileName}` | — | 簽名檔 / 頭像 Blob 代理（公開路由） |
+| `GET /files/signatures/{fileName}` / `/files/avatars/{fileName}` | — | 簽名檔（登入即可，2026-10 起）/ 頭像（公開）Blob 代理 |
 | `GET /me/user` | `GET /users/{id}`（需 `users:read`） | 「個人資訊」唯讀頁：員工查看自己的帳號資料（從 JWT `sub` 取自身 id） |
 | `GET /me/profile` | `GET /users/{id}/profile`（需 `users:read`） | 「個人資訊」唯讀頁：員工查看自己的人事資料卡 + 健保眷屬 |
 | `GET /me/files/{container}/{fileName}` | `GET /files/<PII container>/{fileName}`（需 `users:read`） | 「個人資訊」唯讀頁：員工讀自己的 PII 檔案，見下方 §13.4 |
@@ -1307,6 +1368,15 @@ Line__LoginChannelId              ↔ IConfiguration["Line:LoginChannelId"]
 ### 16.3 Production（Azure）
 
 直接在 Function App → Configuration → Application Settings 設定，名稱與 `local.settings.json` 相同（雙底線格式）。
+
+**僅限測試站的開關**（正式站一律不設）：
+
+| App Setting | 作用 |
+|---|---|
+| `Turnstile__SecretKey` | Cloudflare Turnstile secret（**只放後端**）；空白＝強制 off |
+| `Turnstile__Mode` | `off`（預設）/ `log`（驗證只記錄、一律放行）/ `enforce`（missing / failed 擋下）；見 [attendance-clock-rules.md §防機器人打卡](business/attendance-clock-rules.md#防機器人打卡2026-10-hotfix) |
+| `Turnstile__AllowedHostnames` | 逗號分隔，比對 siteverify 回應的 hostname；空白＝不檢查 |
+| `App__ShiftScheduleOpenAllFutureMonths=true` | 個人排班的**所有月份**（過往月份、當月、未來月份）一律開放編輯，不受「過往唯讀」「當月僅能改當天」「開放期（前三個月 10 日 ～ 前一個月 25 日）」任何限制（2026-09-28 由「只開未來月份」擴大，供教育訓練以不同月份示範；鍵名沿用舊名以免重設）。對應 `ShiftScheduleWindow.OpenAllFutureMonths`，於 `Program.cs` 啟動時讀入，**改值後須重啟 Function App** |
 
 ### 16.4 一次性 Seeder 工具（Startup Hook 模式）
 

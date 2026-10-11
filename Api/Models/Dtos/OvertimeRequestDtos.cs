@@ -35,7 +35,7 @@ public sealed record OvertimeHourTierDto(
 /// </summary>
 public sealed record OvertimePayEstimateDto(
     DateTime OvertimeDate,
-    bool     IsHoliday,        // 日別（排班制員工恆為 false，見 OvertimePayCalculator 註解）
+    string   DayType,          // WorkDayTypes 四值；已經 EffectiveDayType 收斂（切換日前無 public_holiday）
     decimal  HourlyRate,       // ROUND(BaseSalary / 240, 2)
     decimal  RequestedHours,   // = OvertimeRequest.EstimatedHours
     decimal  PayableHours,     // = min(RequestedHours, CapHours)
@@ -44,7 +44,11 @@ public sealed record OvertimePayEstimateDto(
     decimal  Amount,           // 總額（AwayFromZero 捨入至元）
     OvertimePaySegmentDto[] Segments,
     bool     HasBaseSalary = true,          // false → 未設定底薪，Amount 必為 0，前端顯示提示而非 NT$0
-    bool     HasHolidayTravelConflict = false);  // 同日已有已核准的假日執行活動 → 可能與假日津貼雙重給付
+    bool     HasHolidayTravelConflict = false,  // 同日已有已核准的假日執行活動 → 可能與假日津貼雙重給付
+    // 2026-09 起超出上限改為擋件（不分補休或加班費）。ExceedsCap 為 true 時 BlockMessage 必有值；
+    // 前端看到 BlockMessage 非 null 一律擋 送出／儲存。
+    bool     ExceedsCap   = false,
+    string?  BlockMessage = null);
 
 public sealed record OvertimeRequestDto(
     int       Id,
@@ -67,12 +71,15 @@ public sealed record OvertimeRequestDto(
     decimal?  OvertimePayAmount    = null,
     decimal?  HourlyRateSnapshot   = null,
     decimal?  PayableHours         = null,
-    bool?     IsHolidayOvertime    = null,
-    string?   RequestNo            = null);  // OT-yyyyMMdd-NNN；送簽時取號，草稿為 null
+    bool?     IsHolidayOvertime    = null,   // 舊快照欄，僅供既有列還原日別（見 OvertimePayCalculator.SnapshotDayType）
+    string?   OvertimeDayType      = null,   // 新快照欄（WorkDayTypes 四值）；2026-09 前的列為 null
+    string?   RequestNo            = null,   // OT-yyyyMMdd-NNN；送簽時取號，草稿為 null
+    // 結算時數（給付基準，2026-10 防灌工時）＝ min(核准申請時數, 實際加班打卡時數)。
+    // null ＝ 舊單（給付沿用 EstimatedHours）。前端以「申請時數」與「結算時數」分開呈現。
+    decimal?  SettledHours         = null);
 
 public sealed record CreateOvertimeRequestRequest(
     Guid?    EmployeeId,
-    int?     ApprovalItemId       = null,
     DateTime OvertimeDate         = default,
     OvertimeProjectRequest[]? Projects = null,   // 必填，至少 1 列（Handler 驗證）
     string   Reason               = "",

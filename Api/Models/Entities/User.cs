@@ -35,13 +35,19 @@ public class User
     public bool      SendPaySlip     { get; set; }   // 是否寄送薪資表
 
     // 期初補休時數：系統上線前（115/1~6/30）以紙本累計、匯入系統的補休時數；
-    // 設定於 116/6/30 前未休完即歸零（到期日為固定常數，見 LeaveRequestHandler.CompensatoryOpeningExpiry）
+    // 設定於 116/6/30 前未休完即歸零（到期日為固定常數，見 Common/CompensatoryBalance.OpeningExpiry）
     public decimal   CompensatoryOpeningHours { get; set; } = 0m;
 
     // 排班制員工（賣店 / 營業所）：六日與國定假日照常營業，對其而言皆為工作日。
     // true 時 WorkCalendarHelper / LeaveDayExpander 一律不扣假日（不查行事曆），
     // 使其能正常請六日的假；連帶影響打卡「休假日免下班卡」與週末打卡提醒。
     public bool      IsShiftWorker { get; set; } = false;
+
+    // 自訂上下班時段（賣店等，"HH:mm"；兩者皆 null ＝ 公司預設時段）。
+    // **僅四週彈性工時切換後生效**：決定上下班 LINE 提醒時點、上班打卡開放 / 準時界線、
+    // 應下班時間與正常下班帶，推導規則單一真相為 ClockProfile（Common/ClockRules.cs）。
+    public string?   CustomWorkStartTime { get; set; }
+    public string?   CustomWorkEndTime   { get; set; }
 
     public Guid?     AgentUserId     { get; set; }
     public DateTime? Birthday        { get; set; }
@@ -63,12 +69,28 @@ public class User
     // 超管旗標：不受角色/權限異動影響，永遠擁有全系統存取權
     public bool IsSuperAdmin { get; set; } = false;
 
+    // 安全戳記：寫進 access token 的 sstamp claim，AppRouter 每個請求比對 DB 現值。
+    // 停用 / 改密碼 / 換角色 / 改部門 / 改職稱時由 RefreshTokenRevoker 換新，使舊 access token 立即失效。
+    // 刻意不給 NewGuid 初始值：HasData 種子資料會因此每次建模都產生不同值（migration 噪音）。
+    public Guid SecurityStamp { get; set; }
+
     // 首次登入須修改密碼
     public bool MustChangePassword { get; set; } = false;
 
     // LINE 綁定
     public string?   LineUserId  { get; set; }   // LINE platform userId (U 開頭 33 字元)
     public DateTime? LineLinkedAt { get; set; }   // 綁定時間
+
+    /// <summary>
+    /// 管理者於人員管理點「寄出帳號通知」的時間（<c>POST /users/{id}/send-credentials</c>）。
+    ///
+    /// 用途：四週彈性工時「當月到職者的排班寬限期」起算點 —— 自此起 3 個**工作天**可自由排定當月班表
+    /// （工作天以公司行事曆 CalendarDay 判定、排除國定假日與六日，故日曆跨度可能超過 3 天）。
+    ///
+    /// ⚠ 既有欄位一個都不能挪用：<c>UpdatedAt</c> 任何編輯都會動、
+    /// <c>MustChangePassword</c> 是布林且首次登入即被清掉、<c>HireDate</c> 是到職日不是通知寄出日。
+    /// </summary>
+    public DateTime? CredentialsSentAt { get; set; }
 
     // Navigation
     public ICollection<UserRole>     UserRoles     { get; set; } = [];

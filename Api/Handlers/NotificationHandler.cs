@@ -62,11 +62,16 @@ public sealed class NotificationHandler(
         var recentApprovals = await notificationReader.GetRecentApprovedMyRequestsAsync(
             userId, Clock.Now.AddMinutes(-10));
 
+        // ── shiftAdjustments 段：活動日覆蓋我的班表、尚未確認的筆數 ──
+        var shiftAdjustments = await db.ShiftScheduleAdjustments.AsNoTracking()
+            .CountAsync(a => a.UserId == userId && a.AcknowledgedAt == null);
+
         // 確保 9 種類型 key 都存在（缺值補 0），方便前端固定排列
         var result = new NotificationCountsDto(
             Approvals:       FillMissingTypes(approvalCounts),
             MyRequests:      FillMissingTypes(myRequestCounts),
-            RecentApprovals: recentApprovals);
+            RecentApprovals: recentApprovals,
+            ShiftAdjustments: shiftAdjustments);
 
         return new OkObjectResult(ApiResponse.Ok(result));
     }

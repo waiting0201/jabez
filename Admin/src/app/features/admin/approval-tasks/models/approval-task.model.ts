@@ -1,3 +1,4 @@
+import type {ShiftChangeMonthView} from '../../shift-schedules/models/shift-change.model';
 import {
   PaymentType, InvoiceItem, DesignatedReviewer,
   APPROVAL_STATUS_LABELS, APPROVAL_STATUS_CLASSES,
@@ -8,6 +9,7 @@ import {ApplicationType, APPLICATION_TYPE_LABELS, APPLICATION_TYPE_CLASSES} from
 import {TravelPaymentRequestItem} from '../../travel-payment-requests/models/travel-payment-request.model';
 import {PreReviewItem} from '../../pre-review-requests/models/pre-review-request.model';
 import {ParticipantDate} from '../../holiday-travel-requests/models/holiday-travel-request.model';
+import {ShiftDayType} from '../../shift-schedules/models/shift-schedule.model';
 
 export type TaskStatus = 'pending' | 'approved' | 'rejected' | 'returned';
 
@@ -146,6 +148,18 @@ export interface LeaveRevocationTaskDetail {
   dates: {date: Date; hours: number}[];
 }
 
+/** 改班申請詳情（§3.5.2）。逐日「從什麼改成什麼」，簽核者不必自己去查班表 */
+export interface ShiftChangeTaskDetail {
+  shiftChangeRequestId: number;
+  requestNo?: string | null;   // SC-yyyyMMdd-NNN
+  year: number;
+  month: number;
+  reason: string;
+  dates: {date: Date; fromDayType: string; toDayType: string}[];
+  /** 套用後整月月曆 + 系統檢核（單筆詳情才有），與申請人表單看到的同一份 */
+  view?: ShiftChangeMonthView | null;
+}
+
 export interface TravelTaskDetailItem {
   id: number;
   category: string;
@@ -243,7 +257,22 @@ export interface OvertimeTaskDetail {
    */
   hourTiers?: OvertimeHourTier[] | null;
   payableHours?: number | null;
+  /** 舊快照欄；日別請讀 overtimeDayType */
   isHolidayOvertime?: boolean | null;
+  /** 日別快照（`WorkDayTypes` 四值；既有列由後端 SnapshotDayType 還原） */
+  overtimeDayType?: ShiftDayType | null;
+  /**
+   * 超出上限、不計酬的時數快照（後端 OvertimeRequest.ExcessHours，2026-09 新增）。
+   * ⚠ 不可用 `estimatedHours − payableHours` 現場推算：國定假日來源 B 的申請時數含前 8 小時，
+   * 是否為活動日預定人力屬送簽當下的事實，事後從 overtimeDayType 反推不出來，只能讀這個快照欄。
+   * 2026-09 起超出上限已改為擋件，新單恆為 0；有值代表擋件上線前送出的歷史單。
+   */
+  excessHours?: number | null;
+  /**
+   * 結算時數（給付基準，2026-10 防灌工時）＝ min(核准的申請時數, 實際加班打卡時數)。
+   * null ＝ 舊單（給付沿用申請時數）。審核者看到的 estimatedHours 是「申請時數」，實際給付依打卡結算。
+   */
+  settledHours?: number | null;
 }
 
 export interface AdvanceTaskDetailItem {
@@ -478,6 +507,7 @@ export interface ApprovalTask {
   paymentDetail?: PaymentTaskDetail;
   leaveDetail?: LeaveTaskDetail;
   leaveRevocationDetail?: LeaveRevocationTaskDetail;
+  shiftChangeDetail?: ShiftChangeTaskDetail;
   travelDetail?: TravelTaskDetail;
   overtimeDetail?: OvertimeTaskDetail;
   advanceDetail?: AdvanceTaskDetail;

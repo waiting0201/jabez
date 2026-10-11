@@ -78,6 +78,18 @@ var host = new HostBuilder()
             c.Timeout = TimeSpan.FromSeconds(10);
         });
 
+        // 非正式環境的訊息標記（例：「【測試站｜此為測試訊息】」）。正式站不設此值即為空字串、輸出完全不變。
+        // **LINE 與 Email 共用同一個設定鍵** —— 拆成兩個鍵的必然結果是有人只設了一邊，
+        // 症狀是「LINE 標了、Email 沒標」且不會有任何錯誤。
+        // 這裡是 static 無 DI 的類別，故在 composition root 設定一次。
+        Jabez.Api.Common.EnvironmentLabel.Value =
+            ctx.Configuration[Jabez.Api.Common.EnvironmentLabel.ConfigKey] ?? "";
+
+        // 排班開放期的測試開關：所有月份（含過往與當月）一律開放（僅供測試站，正式站不設）。
+        Jabez.Api.Common.ShiftScheduleWindow.OpenAllFutureMonths =
+            bool.TryParse(ctx.Configuration[Jabez.Api.Common.ShiftScheduleWindow.OpenAllFutureMonthsConfigKey], out var openAll)
+            && openAll;
+
         // ── GCIS Service（HttpClient 注入）─────────────────────────────
         // 政府開放資料商工登記公示資料查詢；以統編查公司名稱 / 地址 / 負責人。
         // 8s timeout：查不到不快取，回 404 讓使用者手動填寫即可。
@@ -93,8 +105,15 @@ var host = new HostBuilder()
         // ── 打卡提醒服務（Timer Trigger 排程使用）──────────────────────────
         services.AddScoped<IAttendanceReminderService, AttendanceReminderService>();
 
-        // ── 防機器人打卡（挑戰碼 + 強制 GPS + 嘗試紀錄）─────────────────
+        // ── 防機器人打卡（挑戰碼 + 強制 GPS + Turnstile + 嘗試紀錄）──────
         services.AddScoped<IAttendancePunchGuard, AttendancePunchGuard>();
+
+        // Cloudflare Turnstile 人機驗證；5s timeout：連不到時 fail-open（見 AttendancePunchGuard）
+        services.AddHttpClient<ITurnstileVerifier, TurnstileVerifier>(c =>
+        {
+            c.BaseAddress = new Uri("https://challenges.cloudflare.com/");
+            c.Timeout     = TimeSpan.FromSeconds(5);
+        });
 
         // ── 簽核流程輔助服務 ────────────────────────────────────────────────
         services.AddScoped<IApprovalFlowService, ApprovalFlowService>();
@@ -115,6 +134,7 @@ var host = new HostBuilder()
         services.AddScoped<IPaymentRequestReadService, PaymentRequestReadService>();
         services.AddScoped<ILeaveRequestReadService, LeaveRequestReadService>();
         services.AddScoped<ILeaveRevocationReadService, LeaveRevocationReadService>();
+        services.AddScoped<IShiftChangeRequestReadService, ShiftChangeRequestReadService>();
         services.AddScoped<ITravelRequestReadService, TravelRequestReadService>();
         services.AddScoped<IOvertimeRequestReadService, OvertimeRequestReadService>();
         services.AddScoped<IAttendanceReadService, AttendanceReadService>();
@@ -131,6 +151,12 @@ var host = new HostBuilder()
         services.AddScoped<IProjectWaterLevelReadService, ProjectWaterLevelReadService>();
         services.AddScoped<ICalendarDayReadService, CalendarDayReadService>();
         services.AddScoped<IWorkPatternReadService, WorkPatternReadService>();
+        // 四週彈性工時：per-user 日別解析（取代 WorkCalendarHelper 的 bool ignoreHolidays）
+        services.AddScoped<IShiftScheduleReadService, ShiftScheduleReadService>();
+        services.AddScoped<IWorkdayScheduleProvider, WorkdayScheduleProvider>();
+        services.AddScoped<IEmployeeWorkdaysFactory, EmployeeWorkdaysFactory>();
+        services.AddScoped<IShiftScheduleReminderService, ShiftScheduleReminderService>();
+        services.AddScoped<IAutoShiftScheduleService, AutoShiftScheduleService>();
         services.AddScoped<ITravelPaymentRequestReadService, TravelPaymentRequestReadService>();
         services.AddScoped<IAttendanceReminderLogReadService, AttendanceReminderLogReadService>();
         services.AddScoped<IEmployeeProfileReadService, EmployeeProfileReadService>();
@@ -155,10 +181,15 @@ var host = new HostBuilder()
         services.AddScoped<PaymentRequestHandler>();
         services.AddScoped<LeaveRequestHandler>();
         services.AddScoped<LeaveRevocationHandler>();
+        services.AddScoped<ShiftChangeRequestHandler>();
         services.AddScoped<TravelRequestHandler>();
         services.AddScoped<ApprovalTaskHandler>();
         services.AddScoped<OvertimeRequestHandler>();
         services.AddScoped<AttendanceHandler>();
+        services.AddScoped<ShiftScheduleHandler>();
+        services.AddScoped<ActivityDayHandler>();
+        services.AddScoped<ShiftScheduleReportHandler>();
+        services.AddScoped<ShiftScheduleReminderAdminHandler>();
         services.AddScoped<InsuranceBracketHandler>();
         services.AddScoped<PayrollHandler>();
         services.AddScoped<OvertimeReportHandler>();

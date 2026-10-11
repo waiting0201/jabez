@@ -9,14 +9,15 @@
 | Method | Path | 說明 |
 |--------|------|------|
 | GET | `/health` | 健康檢查 |
-| POST | `/auth/login` | 登入取得 JWT |
-| POST | `/auth/refresh` | 刷新 Token |
+| POST | `/auth/login` | 登入取得 JWT（**2026-10**：同一 Email 連續失敗 5 次鎖 15 分鐘回 **429**；每次嘗試寫 `LoginAttempts`） |
+| POST | `/auth/refresh` | 刷新 Token（2026-10：登入起算超過 30 天須重新登入；已撤銷的 token 被重用 → 撤銷該使用者全部 token） |
+| POST | `/auth/logout` | 撤銷傳入的 refresh token（body `{ refreshToken }`，公開路由，一律回 200） |
 
 ## 認證（需 JWT）
 
 | Method | Path | 說明 |
 |--------|------|------|
-| POST | `/auth/change-password` | 已登入使用者修改密碼（驗證舊密碼後更新，並清除 `MustChangePassword` 旗標） |
+| POST | `/auth/change-password` | 已登入使用者修改密碼（驗證舊密碼後更新，並清除 `MustChangePassword` 旗標）。2026-10：至少 8 碼、不可等於舊密碼或生日八碼；成功後撤銷全部 refresh token。**token 帶 `pwd_change_required` 時，這是唯一放行的受保護端點**（其餘一律 403） |
 
 ## 使用者管理
 
@@ -24,7 +25,7 @@
 |--------|------|------|
 | GET | `/users?page=1&pageSize=20&search=關鍵字&departmentId=9&status=active&hasLaborPension=true` | 取得使用者列表。`search` 選填，模糊比對**姓名** `Name`；`departmentId` 選填，篩選部門；`status` 選填，在職狀態（白名單 `active` / `inactive`，非法值忽略）；`hasLaborPension` 選填，勞退自提（`true`＝自提率 > 0、`false`＝自提率為 0 或 null，非布林值忽略，**無 `payroll:read` 者送此參數回 403**，因可反推他人自提率）（四者可併用，與分頁參數正交，非數字的 `departmentId` 一律忽略）；**帶 `page` / `pageSize` 回 `PagedResult`，不帶則回平面陣列**（`pageSize` clamp 1~100，預設 20）。**欄位級權限**：無 `payroll:read` 者的 8 個薪資欄（底薪 / 伙食費 / 加班費 / 2 種加給 / 勞健保覆寫 / 勞退自提率）回 `null` |
 | GET | `/users/lookup` | **輕量端點**：免 `users:read`，回 `{id, name, jobTitleId, status, departmentId, jobTitleLevel}`，供指定審核者下拉與「部門最高層級」判定（`jobTitleLevel` 數字越小越高） |
-| POST | `/users` | 新增使用者。**欄位級權限**：無 `payroll:read` 者送的薪資欄一律忽略（存為 null），回應 DTO 亦抹除 |
+| POST | `/users` | 新增使用者。**欄位級權限**：無 `payroll:read` 者送的薪資欄一律忽略（存為 null），回應 DTO 亦抹除。**自訂上下班時段**（2026-09-30，新增 / 更新共用）：`hasCustomWorkHours=true` 時 `customWorkStartTime` / `customWorkEndTime`（HH:mm）必填，上班 07:30–09:30、下班 16:30–18:30 且晚於上班，否則 400；未勾選寫 null |
 | GET | `/users/{id}` | 取得單一使用者。**欄位級權限**：同 `GET /users`，無 `payroll:read` 者薪資欄回 `null` |
 | PUT/PATCH | `/users/{id}` | 更新使用者。**欄位級權限**：無 `payroll:read` 者的薪資欄寫入一律忽略（既有值不變，不回 403），回應 DTO 亦抹除 |
 | DELETE | `/users/{id}` | 刪除使用者 |
@@ -49,6 +50,7 @@
 
 | Method | Path | 說明 |
 |--------|------|------|
+| GET | `/departments/lookup` | 輕量部門清單（`id` / `name` / `parentId`），**免權限、登入即可**。供活動日、排班等頁面的部門下拉；比照 `/users/lookup`、`/job-titles/lookup` 的輕量讀取端點模式 —— 不該為了一個下拉就把「部門管理」的後台權限強加給各部門協理 |
 | GET/POST | `/departments` | 部門列表 / 新增 |
 | GET/PUT/PATCH/DELETE | `/departments/{id}` | 部門 CRUD |
 | GET/POST | `/job-titles` | 職稱列表 / 新增 |
@@ -58,14 +60,14 @@
 
 | Method | Path | 說明 |
 |--------|------|------|
-| GET | `/vendors/lookup` | **輕量端點**：免 `vendors:read` 權限，僅回 `IsActive=true` 的 `{id, name, taxId, idNumber}`，供請款申請下拉清單 |
-| GET | `/vendors/lookup-by-tax-id?taxId=XXXXXXXX` | **輕量端點**：以統編查 GCIS 公司登記資料，回 `{taxId, name, address, contactPerson}`，免 `vendors:read`，僅需登入 |
+| GET | `/vendors/lookup` | **輕量端點**：免 `vendors:read` 權限，僅回 `IsActive=true` 的 `{id, name, taxId, idNumber}`，供請款申請下拉清單。**`idNumber`（個人身分證字號）為遮罩值**（前 1 後 3，如 `A******789`），完整值須走 `vendors:read` 的廠商詳情 |
+| GET | `/vendors/lookup-by-tax-id?taxId=XXXXXXXX` | **輕量端點**：以統編查 GCIS 公司登記資料，回 `{taxId, name, address, contactPerson}`，免 `vendors:read`，僅需登入。**每人每分鐘 20 次速率限制**（`UserRateLimiter`），超限回 429 |
 | GET | `/vendors?page=1&pageSize=20&search=關鍵字` | 廠商列表（含使用筆數，需 `vendors:read`）；`search` 選填，模糊比對 `Name` / `TaxId` / `IdNumber` / `ContactPerson` / `Phone` / `BankAccountName`（匯款戶名常與廠商名稱不同，須可反查）；**帶 `page` / `pageSize` 回 `PagedResult`，不帶則回平面陣列**（`pageSize` clamp 1~100，預設 20） |
 | POST | `/vendors` | 新增廠商（**multipart**：text part `payload` JSON + 檔案 `bankBookImage`（**必填**）/ `idCardFront` / `idCardBack`；統編與身分證字號擇一，填身分證字號時正反面必傳；**任何登入者皆可，無需權限**） |
 | GET | `/vendors/{id}` | 取得廠商（需 `vendors:read`，回應含 `idNumber` / 匯款四欄 `bankAccountName` / `bankName` / `bankCode` / `bankAccount` / `bankBookImageUrl` / `idCardFrontUrl` / `idCardBackUrl`） |
 | PUT/PATCH | `/vendors/{id}` | 更新廠商（**multipart**：text part `payload` + 檔案 `bankBookImage` / `idCardFront` / `idCardBack` 與 remove 旗標 `removeBankBookImage` / `removeIdCardFront` / `removeIdCardBack`；存摺封面為必填、身分證字號廠商須備齊正反面；需 `vendors:write`） |
 | DELETE | `/vendors/{id}` | 刪除廠商（需 `vendors:delete`；若已被請款單引用會回 400，須改用停用；連同存摺封面與身分證影本 blob 一併刪除） |
-| GET | `/files/vendor-passbooks/{fileName}` | 廠商存摺封面代理（需 JWT，免特殊權限，與 avatars/signatures 同層的一般檔案） |
+| GET | `/files/vendor-passbooks/{fileName}` | 廠商存摺封面代理（需 JWT + **`vendors:read`**；存摺封面含匯款帳號，檔名 `{vendorId}{ext}` 可被列舉，不再是登入即可讀的一般檔案） |
 | GET | `/files/vendor-id-cards/{fileName}` | 廠商身分證影本代理（需 JWT + `vendors:read`，屬敏感 PII） |
 
 ## 簽核流程
@@ -95,7 +97,7 @@
 | Method | Path | 說明 |
 |--------|------|------|
 | GET/POST | `/projects` | 專案列表 / 新增 |
-| GET | `/projects/active` | 未結案專案下拉（輕量端點，免 `projects:read`）；預設依部門可見範圍過濾，帶 `?all=true` 不過濾（加班申請跨部門支援用） |
+| GET | `/projects/active` | 未結案專案下拉（輕量端點，免 `projects:read`；回 **`ProjectLookupDto`** `{id, code, name, status, departmentId, departmentName}`，不含合約 / 業務 / 已收 / 剩餘金額與雲端硬碟連結）；預設依部門可見範圍過濾，帶 `?all=true` 不過濾（加班申請跨部門支援用） |
 | GET/PUT/PATCH/DELETE | `/projects/{id}` | 專案 CRUD |
 
 ## 請款 / 請假 / 出差 / 加班 / 預支申請
@@ -105,7 +107,7 @@
 | GET/POST | `/payment-requests` | 請款列表 / 新增（預設 draft，multipart 含 `vendorId` — 當 `type=vendor` 時必填且必須是 IsActive=true 的廠商） |
 | GET/PUT/PATCH/DELETE | `/payment-requests/{id}` | 請款 CRUD（DTO 含 `vendorId / vendorName / vendorTaxId`） |
 | PATCH | `/payment-requests/{id}/submit` | 送出請款申請（draft → pending） |
-| PATCH | `/payment-requests/{id}/installments` | upsert 一或多筆撥款明細（**僅 ApprovalStatus == approved**；SUM 嚴格驗證 = TotalAmount；已撥款列鎖定不可改不可刪；每筆 PaidAt null→value 觸發一次「已撥款」通知含 N/M 期；僅財務體系部門：AC/FIN/Jabez HQ/CEO）。validate+diff 持久化核心由 `InstallmentUpsertService.Apply` 共用（與審核時原子寫入同一份邏輯）。 |
+| PATCH | `/payment-requests/{id}/installments` | upsert 一或多筆撥款明細（**2026-10：request 不再接受 `approvalStatus`**；**僅 ApprovalStatus == approved**；SUM 嚴格驗證 = TotalAmount；已撥款列鎖定不可改不可刪；每筆 PaidAt null→value 觸發一次「已撥款」通知含 N/M 期；僅財務體系部門：AC/FIN/Jabez HQ/CEO）。validate+diff 持久化核心由 `InstallmentUpsertService.Apply` 共用（與審核時原子寫入同一份邏輯）。 |
 | GET/POST | `/leave-requests` | 請假列表 / 新增（預設 draft） |
 | GET/PUT/PATCH/DELETE | `/leave-requests/{id}` | 請假 CRUD |
 | PATCH | `/leave-requests/{id}/submit` | 送出請假申請（draft → pending） |
@@ -140,10 +142,10 @@
 | PATCH | `/holiday-travel-requests/{id}/submit` | 送出假日執行活動申請（draft → pending） |
 | PATCH | `/holiday-travel-requests/{id}/installments` | upsert 分期撥款（同 PaymentRequest 行為） |
 | GET | `/holiday-travel-requests/count-holidays?startDate=...&endDate=...` | 計算指定區間內的假日天數（用於計算假日津貼）；回傳含 `holidayDates[]`（yyyy-MM-dd 假日清單，供參與日期 chips 標示） |
-| GET/POST | `/overtime-requests` | 加班申請列表 / 新增（預設 draft）。payload 須帶 **`projects[]`（`projectId` + `estimatedHours`），必填至少 1 筆**、`compensationType`（`compensatory` 補休 / `pay` 加班費，未知值一律正規化為 `compensatory`）；驗證：每列時數 > 0、同單不可重複專案、專案須存在。回應 `projects[]` 含 `projectCode` / `projectName` / `estimatedHours`，`estimatedHours` 為各列合計（後端計算，不接受客戶端傳入） |
+| GET/POST | `/overtime-requests` | 加班申請列表 / 新增（預設 draft）。payload 須帶 **`projects[]`（`projectId` + `estimatedHours`），必填至少 1 筆**、`compensationType`（`compensatory` 補休 / `pay` 加班費，未知值一律正規化為 `compensatory`）；驗證：每列時數 > 0、同單不可重複專案、專案須存在。回應 `projects[]` 含 `projectCode` / `projectName` / `estimatedHours`，`estimatedHours` 為各列合計（後端計算，不接受客戶端傳入）。**2026-10**：加班日期最早為今天往前 7 天、同人同日只能一張（非拒絕）、當日全天有薪假不可申請、當月申請時數合計不得超過 `SystemSetting.MonthlyOvertimeLimit`（送簽與核准時再檢）；回應新增 `settledHours`（＝min(申請時數, 實際加班打卡)，舊單為 null 沿用申請時數）；request 的 `approvalItemId` 一律忽略（請假 / 出差 / 出差請款同） |
 | GET/PUT/PATCH/DELETE | `/overtime-requests/{id}` | 加班申請 CRUD。更新時 `projects[]` **整批替換且必填**（不支援省略），一併重算父表合計；`compensationType` 為 `null` 時不變更。**任何更新一律清空加班費快照**（日期 / 時數 / 補償方式可能已變動），重新送簽時再算 |
 | PATCH | `/overtime-requests/{id}/submit` | 送出加班申請（draft → pending）。送出時依 `compensationType` 寫入加班費快照（`pay` 才算；補休型清空） |
-| GET | `/overtime-requests/estimate?date=&hours=` | **加班費即時試算**（表單用，權限沿用 `overtime-requests:read`）。對象一律取 JWT `sub`，**刻意不接受 `employeeId`**（回傳含時薪可反推底薪）。回傳 `hourlyRate` / `requestedHours` / `payableHours` / `excessHours` / `capHours` / `amount` / `isHoliday` / `segments[]`（分段明細）/ `hasBaseSalary` / `hasHolidayTravelConflict` |
+| GET | `/overtime-requests/estimate?date=&hours=` | **加班時數即時試算**（表單用，權限沿用 `overtime-requests:read`；2026-09-28 起**兩種補償方式都查詢**，不再限「加班費」模式）。對象一律取 JWT `sub`，**刻意不接受 `employeeId`**（回傳含時薪可反推底薪）。回傳 `hourlyRate` / `requestedHours` / `payableHours` / `excessHours` / `capHours` / `amount` / `dayType`（`WorkDayTypes` 四值，2026-09 由 `isHoliday` 布林改）/ `segments[]`（分段明細）/ `hasBaseSalary` / `hasHolidayTravelConflict` / **`exceedsCap`**（超出上限，2026-09-28 新增）/ **`blockMessage`**（非 null＝不可送出：超出加班上限，2026-09-28 新增） |
 | GET/POST | `/advance-requests` | 預支申請列表 / 新增（預設 draft） |
 | GET/PUT/PATCH/DELETE | `/advance-requests/{id}` | 預支申請 CRUD |
 | PATCH | `/advance-requests/{id}/submit` | 送出預支申請（draft → pending）；追加批次被退回後也走此端點重送 |
@@ -181,7 +183,7 @@
 | GET/POST | `/pre-review-requests` | 預審申請列表 / 新增（預設 draft，multipart 含品項與報價單檔上傳，blob container = `quotes`；單號 `PRV-yyyyMMdd-NNN`） |
 | GET/PUT/PATCH/DELETE | `/pre-review-requests/{id}` | 預審申請 CRUD（明細含品項類別 / 品項名稱 / 金額 / 備註 / 日期 / 報價單檔；**無撥款流程、不計入款項統計報表**） |
 | PATCH | `/pre-review-requests/{id}/submit` | 送出預審申請（draft → pending） |
-| POST | `/quote-ocr` | 報價單 OCR 辨識（multipart，後端透過 Google Gemini API），回傳品項列表 `{itemName, amount, note}`，供前端自動展開明細。登入即可用，不需特殊權限 |
+| POST | `/quote-ocr` | 報價單 OCR 辨識（multipart，後端透過 Google Gemini API），回傳品項列表 `{itemName, amount, note}`，供前端自動展開明細。登入即可用，不需特殊權限；**每人速率限制**（與 `/invoice-ocr` 共用計數：每分鐘 10 次、每日 200 次），超限回 429 |
 
 ## 出勤打卡
 
@@ -190,15 +192,110 @@
 | Method | Path | 權限 | 說明 |
 |--------|------|------|------|
 | GET | `/attendances` | `reports-attendance:read` | 出勤紀錄列表（分頁，套用部門可見性 scope；支援 `?dateFrom=YYYY-MM-DD&dateTo=YYYY-MM-DD` 區間篩選，前端依「日 / 週 / 月」模式換算）。**回傳「打卡紀錄 ∪ 當日請假日 ∪ 缺勤日」合併結果**（`AttendanceLeaveMerger`）：以 **`rowKind`（`clock` / `leave` / `absent`）** 標示列的種類 —— `leave`＝當日只有已核准請假無打卡、`absent`＝工作日既沒打卡也沒請假（2026-09 新增），**兩者同樣 `id = null` 且不可編輯，不可再用 `id` 分辨**。另含 `userId` / `leaveHours`（當日時數合計）/ `leaves[]`（當日逐張假單，同日多張合併為一列，每張帶 `daySegment`（`full`/`am`/`pm`/`partial`）+ `dayStart` / `dayEnd` 逐日時段）/ `expectedStart` / `expectedEnd`（當日應出勤時段，扣掉請假後；`null`＝免出勤）/ `isClockInAuto`。缺勤列的員工母體＝非超管 + 在職 + 持有 `attendances:write`，展開上限 `AbsenceMaxCells`（60,000 ＝ 員工數 × 天數）。**區間必須有界**：未指定起訖回退近一年，跨度 > 400 天回 400。`?export=true` 時 `pageSize` 上限放寬至 5000（一般為 100） |
-| GET | `/attendances/today` | `attendances:read` | 今日打卡紀錄（當前使用者；含 `todayLeaves` 陣列：當日所有已核准請假時段，供前端顯示提示與 disable 按鈕；含 `canOvertimeWithoutClockOut` 旗標：今日免下班卡即可打加班開始，與 overtime-start 的放行判定同源；無打卡紀錄時回傳 `Id=0` 空殼仍含請假資訊） |
+| GET | `/attendances/today` | `attendances:read` | 今日打卡紀錄（當前使用者；含 `todayLeaves` 陣列：當日所有已核准請假時段，供前端顯示提示與 disable 按鈕；含 `canOvertimeWithoutClockOut` 旗標：今日免下班卡即可打加班開始，與 overtime-start 的放行判定同源；**另含 `canStartOvertimeNow` / `overtimeStartNotBefore`**：現在是否已可打加班開始卡（一般上班日須在應下班時間與實際下班卡之後）及最早可打時間，與 overtime-start 擋件共用 `ComputeOvertimeNotBefore`；無打卡紀錄時回傳 `Id=0` 空殼仍含請假資訊） |。**切換後另回**：`flexibleEnabled` / `dayType` / `isActivityAssignee` / `canClockInOut` ＋ `clockLockReason`（日別鎖定的結果與說明）/ `expectedClockOutTime` / **`lateAfter`**（遲到界線，2026-10-06：超過即須於上班打卡帶 `reason`＝遲到原因）。⚠ 前端**不自行重組日別規則**，只吃這些旗標
 | POST | `/attendances/clock-challenge` | `attendances:write` | 取得一次性打卡挑戰碼（body `{ action }`，`action` ∈ clock-in / clock-out / overtime-start / overtime-end）；回 `{ token, minWaitMs, expiresInMs }`，簽發後至少 3 秒、5 分鐘內、限用一次（防機器人打卡，2026-10，見 [attendance-clock-rules.md §防機器人打卡](business/attendance-clock-rules.md#防機器人打卡2026-10-hotfix)） |
-| POST | `/attendances/clock-in` | `attendances:write` | 上班打卡（**`challengeToken` 必填**、GPS 選填，另可帶 `accuracy`；四個打卡動作皆同；落在已核准請假 `[StartDate, EndDate)` 區間內會回 BadRequest） |
-| POST | `/attendances/clock-out` | `attendances:write` | 下班打卡（含 GPS；同上規則） |
+| POST | `/attendances/clock-in` | `attendances:write` | 上班打卡（**GPS 必填 + `challengeToken` 必填**（防機器人打卡，四個打卡動作皆同），另可帶 `accuracy`；**`turnstileToken`** 是否必填依 `Turnstile:Mode`（enforce 時必填）；落在已核准請假 `[StartDate, EndDate)` 區間內會回 BadRequest）。**四週彈性工時切換後**另加：依當日日別鎖定（例假日全鎖／休假日鎖／國定假日僅活動日預定人力解鎖）、08:30 前不開放（請上午半天假者不受此限）、超過 09:30 記 `IsLate`（**出差當日不判定**） |
+| POST | `/attendances/clock-out` | `attendances:write` | 下班打卡（含 GPS；同上規則）。**切換後**另加 `reason` 欄位：以應下班時間 T（＝實際上班打卡 ＋ 9 小時，請上午半天假者 ＋4 小時）為界，`< T` 早退、`[T, T+30分]` 正常、`> T+30分` 逾時；早退／逾時且**非出差**時 `reason` 必填，否則回 400。出差當日欄位仍可填但非必填 —— 改的是必填性、不是可見性 |
 | POST | `/attendances/overtime-start` | `attendances:write` | 加班開始打卡（不受請假時段阻擋）。需帶**屬於自己**且當日已核准的加班申請；一般上班日須先打下班卡，**休假日（行事曆 `IsHoliday` / 該年度無行事曆時的六日）或當日全日已核准請假時免下班卡**，且今日無打卡紀錄時自動建立「只含加班時間」的 AttendanceRecord |
 | POST | `/attendances/overtime-end` | `attendances:write` | 加班結束打卡（不受請假時段阻擋） |
-| PUT/PATCH | `/attendances/{id}` | `reports-attendance:write` | 人工修改出缺勤紀錄（上下班 / 加班起訖）。權限碼控管「誰能改」，Handler 內另套**部門可見性 scope** 控管「能改誰」（與 `GET /attendances` 同範圍，讀得到才改得到，非同範圍回 403）。上 / 下班時間被改動時各自清掉 `IsClockInAuto` / `IsClockOutAuto`（系統補卡）標記 |
+| PUT/PATCH | `/attendances/{id}` | `reports-attendance:write` | 人工修改出缺勤紀錄（上下班 / 加班起訖）。權限碼控管「誰能改」，Handler 內另套**部門可見性 scope** 控管「能改誰」（與 `GET /attendances` 同範圍，讀得到才改得到，非同範圍回 403）。`Remark` 於「未打下班卡」的列即為 HR 填寫的原因（報表紅字轉綠字） |。**2026-10**：不可修改自己的紀錄（403，Superadmin 除外）；下班須晚於上班、加班結束須晚於開始；每次實質修改寫 `AttendanceAuditLogs`，並設 `IsManuallyAdjusted`（不再清除系統補卡標記）；修改加班起訖會重算該日已核准加班單的 `SettledHours`
 
 > **請假時段阻擋規則**：上下班打卡以 `Clock.Now`（Asia/Taipei）比對員工 `LeaveRequests` 中 `ApprovalStatus='approved'` 的紀錄，落在 `StartDate <= now < EndDate` 半開區間內即阻擋並回含請假單編號 / 假別 / 時段的錯誤訊息。半天 / 小時請假時段已編碼於 datetime，時段外仍可打卡（如上午半天請假，下午可打上班卡；09:00–12:00 病假，12:00 整點可打卡）。加班打卡不套用此規則。實作於 [Api/Handlers/AttendanceHandler.cs](../Api/Handlers/AttendanceHandler.cs) `EnsureNotOnLeaveAsync`，Dapper SQL 於 [Api/Services/Dapper/AttendanceReadService.cs](../Api/Services/Dapper/AttendanceReadService.cs) `GetActiveLeaveAtAsync`。
+
+## 個人排班（四週彈性工時 ‧ 功能 A）
+
+> **狀態**：後端已實作、**制度尚未切換**（`SystemSetting.FlexibleWorkStartDate` 為 null 時全系統維持舊制）。
+> 規格見 [flexible-work-hours.md](business/flexible-work-hours.md)。
+
+| Method | 路徑 | 權限 | 說明 |
+|---|---|---|---|
+| GET | `/shift-schedules?year=&month=[&userId=]` | `shift-schedule:read` | 某人某月的排班月曆。回傳每日 `dayType`（`work` / `rest_day` / `statutory_off` / `public_holiday`）、`holidayName`、`readOnly`、活動日疊加旗標（`isActivityDay` / `activityTitle` / `isActivityAssignee`，取自第一筆）與 **`activities[]`**（2026-10-01：該日全公司全部活動 `{id, title, departmentName, createdByName, isAssignee, assigneeNames[]}`，本人被指派者在前；`POST /shift-changes/preview` 等改班月曆同樣帶回）、**鎖定原因 `lockReason`（`activity` / `leave`）與假別 `leaveLabel`**（2026-09-28：本人的活動日與已請假日唯讀、不得排休），以及 `editable` / `editMode`（`open` / `grace_period` / `same_day_only` / `closed`；開放期＝**前三個月 10 日 ～ 前一個月 25 日**，2026-10-06 起）與 **`validation`**（擋存判準結果，**進入畫面即顯示**，不可等到按儲存才報錯），以及 **`adjacentDays`**（2026-09-29：前月月底與次月月初各 13 天 `[{date, dayType, holidayName}]`，`dayType=null` ＝ 該月未定案，與跨月檢核同一份資料，供月曆對照）。帶 `userId` 看別人：未持 `shift-schedule:view-all` 者僅限 `ProjectAccessScope` 涵蓋的部門 |
+| GET | `/shift-schedules/adjustments` | `shift-schedule:read` | 本人**未確認**的「活動日覆蓋班表」通知（`ShiftScheduleAdjustment`，2026-09-29）：`[{id, date, activityTitle, originalDayType, relocatedTo, createdAt}]`，`relocatedTo=null` ＝ 待補排。對象一律取 JWT sub |
+| POST | `/shift-schedules/adjustments/ack` | `shift-schedule:read` | 「我知道了」：把本人所有未確認的通知標為已讀，回 `{count}` |
+| PUT | `/shift-schedules` | `shift-schedule:write` | 整月整批替換。body `{ year, month, days: [{ date, dayType }] }`，只需送非上班日的格子。**國定假日格送了會被靜默丟棄**（唯讀、不佔配額；**彈性休假日比照國定假日**，2026-09-29 改回）；活動日／已請假日排為例假或休假回 400；上班日**不落地**（查無紀錄即上班日）。未通過擋存判準回 400 並列出全部原因 |
+
+> **擋存判準（單一真相 [Api/Common/ShiftScheduleValidator.cs](../Api/Common/ShiftScheduleValidator.cs)）**：
+> `例假至少 4 天 ∧ 連續上班 ≤ 12 天 ∧ 任意連續 14 天內 ≥ 2 天例假` ⇒ 可儲存。
+> **休假未排滿只警示、不擋存**。休假應排天數 `validation.requiredRestDay` ＝ `requiredOffDays`（例＋休合計，8／31 日曆月 9）− max(4, 已排例假)
+> —— **多排的例假由休假轉入**（2026-09-29，因滾動 14 天規則一年須 52 天例假、每月 4 天只有 48 天）。滾動 14 天視窗會**跨月**，計算時併入前月月底與次月月初的已定案班表；
+> 次月尚未排定則該側不檢核（未知的日子不可當成上班日，否則會誤擋）。
+> ⚠ **空白月曆的第一次儲存必然被擋**（全月皆上班日 → 關卡 A／B 必不過），為預期行為。
+
+> **開放期（單一真相 [Api/Common/ShiftScheduleWindow.cs](../Api/Common/ShiftScheduleWindow.cs)）**：
+> 每月 10 日 00:00 ～ 25 日 23:59 排**次月**；當月僅可於**當日 08:30 前**調整**當天**一格（臨時調休，仍受擋存判準約束）；
+> 歷史月份唯讀。當月到職者另有寬限期 ＝ `User.CredentialsSentAt` 起 3 個**工作天**（以 `CalendarDay` 判定，**刻意不用個人班表** —— 新人當月本來就沒班表）。
+> 開放期結束後的異動一律走〈改班申請〉送簽。
+
+> **排班一律只能排自己的**（代排會讓「誰排的」失去意義，且改班申請的簽核對象會錯亂），帶他人 `userId` 送 PUT 回 403。
+
+
+## 改班申請（四週彈性工時 ‧ §3.5.2）
+
+開放期（10–25 日）結束、班表定案鎖定後的異動途徑。唯一不需簽核的例外是「當日 08:30 前調整當天狀態」。
+
+| Method | 路徑 | 權限 | 說明 |
+|---|---|---|---|
+| GET | `/shift-changes` | `shift-schedule:read` | 自己的改班申請清單（分頁）。簽核者從〈簽核作業〉進入 |
+| GET | `/shift-changes/changeable-dates?year=&month=` | `shift-schedule:read` | 可申請改班的日期（逐日現況 + 目前配額）。已排除國定假日、過去日期與被其他進行中改班單佔用的日期 |
+| POST | `/shift-changes/preview` | `shift-schedule:write` | **試算（不寫入，2026-09-28）**：body `{ year, month, dates: [{ date, toDayType }], excludeRequestId? }`，回 `ShiftChangeMonthViewDto`（套用後整月 `days` + `changes` 原→新 + `validation`，與個人排班同一套檢核含活動日／請假鎖定）。表單每點一格呼叫一次 |
+| POST | `/shift-changes` | `shift-schedule:write` | 新增草稿。body `{ year, month, reason, dates: [{ date, toDayType }] }`。**同一人同一月份已有進行中（草稿／簽核中／退回）的單回 400** |
+| GET | `/shift-changes/{id}` | `shift-schedule:read` | 詳情（授權走 `RequestViewAccess`，不符回 404），含 `view`（套用後整月月曆 + 檢核） |
+| PUT/PATCH | `/shift-changes/{id}` | `shift-schedule:write` | 修改草稿 / 退回單；可帶 `year` / `month` 換月份（同月一張規則同樣適用） |
+| PATCH | `/shift-changes/{id}/submit` | `shift-schedule:write` | 送簽（取號 `SC-yyyyMMdd-NNN` + 寫 `SubmittedAt`）。**套用後班表不合規回 400**；同月已有簽核中／退回的另一張單亦回 400 |
+| DELETE | `/shift-changes/{id}` | `shift-schedule:write` | 刪除草稿（一併清三張多型足跡表） |
+
+> ⚠ **與銷假申請的關鍵差異**：銷假借用請假的流程設定（`ResolveApprovalItemIdAsync("leave", …)`），
+> 改班以**自己的 `ApplicationType`** 解析 —— §3.5.2 的逐部門六條路線要靠管理員建 6 個 `ApprovalItem`。
+> 連帶要求前端 `approval-list.ts` 的 `appTypeOptions`（硬式清單）必須含 `shift_change`。
+
+> **核准後才寫入班表**：未核准前 `ShiftScheduleDay` 完全不動，故退回 / 拒絕都不需要任何回滾。
+> `toDayType = work` 時是**刪除**該日排班列（全站語意：查無紀錄即上班日）。
+
+> **送單時擋件**：國定假日不可變更、「原本就是該日別」不需申請、日期須落在該年月內。
+> `FromDayType` 為**送單當下的快照**，供簽核者看到「原本是什麼」，不必自己去查班表。
+
+> **權限沿用 `shift-schedule:*`**，不新增權限碼（比照銷假沿用 `leave-requests:*`）。
+
+
+## 排班提醒（四週彈性工時 ‧ §3.5）
+
+| Method | 路徑 | 權限 | 說明 |
+|---|---|---|---|
+| POST | `/shift-schedule-reminders/run?kind=…[&send=true]` | Superadmin（Handler 內驗 `is_superadmin`） | 手動觸發排班提醒。`kind` ＝ `schOpen` / `schPending` / `schDeadline` / `schAuto`。**預設乾跑**：只回收件人名單、不發送、不寫紀錄；要真的推播必須明確帶 `send=true` |
+| POST | `/shift-schedule-reminders/auto-schedule?year=&month=[&userId=][&apply=true]` | Superadmin | 補跑自動排班。**預設乾跑**，要真的寫入必須帶 `apply=true`。與 26 號排程的差別：**不發任何通知** —— 排程沒跑到要補救時，通知與排班該分開處理 |
+| GET | `/shift-schedule-reminders/auto-schedule-preview?year=&month=[&userId=]` | Superadmin | **唯讀**預覽自動排班結果：每位逾期者排出來的例假／休假日期，以及**排不出合法班表**者與其原因 |
+| GET | `/shift-schedule-reminders/clock-out-preview?at=HH:mm` | Superadmin | **唯讀**預覽個人化下班提醒：今天誰打了上班卡沒打下班卡、各自的提醒時點、此刻誰會被推、誰因每人每日去重而跳過；另回 `customClockInRows`（自訂上下班時段者的上班提醒時點，2026-09-30）。`at` 可模擬時刻，不必等到 17:33 才驗得了 |
+
+> ⚠️ **手動觸發為何預設乾跑**：這支端點的作用就是對外發 LINE，誤觸會讓真實同仁收到看不懂的通知，
+> 而 **LINE 不支援撤回已送出的推播**。安全的那一邊才該是預設值。
+> 本機 `local.settings.json` 內的 LINE token 是**真的會送出訊息**的，測試前務必確認。
+
+
+## 活動日（四週彈性工時 ‧ §3.2）
+
+主管（各部門協理）於活動 3 個月前預先排定日期並勾選預定人力，讓同仁排班時看得到。
+
+| Method | 路徑 | 權限 | 說明 |
+|---|---|---|---|
+| GET | `/activity-days?year=&month=[&departmentId=]` | `activity-days:read` | 某月的活動日清單（含預定人力、是否落在國定假日）。套用 `ProjectAccessScope` 部門可見性 |
+| POST | `/activity-days` | `activity-days:write` | 新增。body `{ date, departmentId, title, assigneeUserIds[] }` |
+| PUT | `/activity-days/{id}` | `activity-days:write` | 更新／**改期**。不受 10–25 日開放期限制（活動得因業主通知或天氣因素變更），但**原活動日已過則不可改期** |
+| DELETE | `/activity-days/{id}` | `activity-days:write` | 刪除（預定人力走 Cascade） |
+
+> **活動日是疊加旗標，不是第 5 種日別**：同一天可以既是「上班日」又是「活動日」，
+> **也可以壓在國定假日上**（2026-09-17 決議 —— 假日活動本來就會排在國定假日）。
+> 做成第 5 種狀態會讓自動排班的「跳過活動日」與配額計算互相打架。
+
+> **活動日優先（2026-09-29 改，推翻「不自動改寫個人班表」）**：POST / PUT 存檔時，預定人力當天若排了例假／休假，
+> 由 `ActivityScheduleOverrideService` 改為上班日並把少掉的那一天自動補排到當月最近的合法日子
+> （找不到則只改上班日、待同仁補排），每筆落一列 `ShiftScheduleAdjustment` 並以鈴鐺通知本人。
+> 回應 `adjusted[]` 列出本次覆蓋（`{userId, userName, date, originalDayType, relocatedTo}`，`relocatedTo=null` ＝ 待補排），
+> `affected[]` 列出覆蓋後班表**仍**不合規的同仁。國定假日上的活動日**不覆蓋**（國定假日不入表，本來就無衝突）；
+> 過去日與今天不處理；改期／移除預定人力時**不還原**先前的覆蓋。見 [flexible-work-hours.md §3.2](business/flexible-work-hours.md)。
+
+> **寫入範圍**：`activity-days:write` ＋ 只能排定 `ProjectAccessScope` 涵蓋的部門。
+> **不得硬編 `JobTitle.Level` 判定「協理」**（組織改制後職級對應會漂移，前例見 `'FIN'` 硬編碼事故）。
+
 
 ## 報表（Reports）
 
@@ -212,6 +309,7 @@
 | GET | `/reports/payment` | 款項統計報表（依類別查詢 6 種付款相關申請）。**必填** `category`（白名單：`all` / `payment` / `advance` / `writeoff` / `travel-payment` / `travel` / `travel-writeoff`，未帶或不合法 → 400）。`all` = 全部，6 種類別主查詢 `UNION ALL` 後依 `CreatedAt DESC` 分頁；明細依各列 `SourceCategory` 分組撈回對應子表。篩選參數：`dateFrom / dateTo / paymentStatus`（**2026-09 由二態擴成四態**：空＝全部／`unpaid` 完全沒撥／`partial` 部分撥款／`paid` 全部撥款。⚠ `unpaid` 的語意已改變 —— 原本是「非全額撥款」含部分撥款）；`{主表}.CreatedAt` 為 DATETIME，`dateTo` 用 `< DATEADD(day, 1, @DateTo)` 半開區間涵蓋當日 23:59:59。沖銷類無 installments，`paymentStatus` 被忽略（`all` 時此忽略行為一致）。權限：`reports-payment:read`，**不**需要各別 `xxx-requests:read`。 |
 | GET | `/reports/payment/due` | **待撥款清單（2026-09 新增）**：依**預計撥款日**查出各期，**一期一列**（同一張單有多期就拆多列），供財務排款。參數：`category`（同上白名單；`travel-writeoff` 無 installments 表，一律回空清單）／`dueFrom` / `dueTo`（比對 `CAST(i.ExpectedDate AS DATE)`）／`installmentStatus`（`unpaid` 預設 / `paid` / `all`，白名單正規化，非法值退回 `unpaid`）／`page` / `pageSize`。**只含 `ApprovalStatus = 'approved'`** —— 撥款明細端點僅開放 approved，列出 pending 的單會讓財務點進去卻填不了實際撥款日。回傳的 `applicationType` 是 **snake_case**（`payment_request` / `advance` / `travel` / `travel_payment` / `write_off`），供前端直接組簽核作業網址 `/admin/approval-tasks/{type}/{id}/review`，**與本報表其他端點的 kebab 命名不同**。部門可視範圍同其餘兩支。權限：`reports-payment:read`。 |
 | GET | `/reports/payment/export` | 款項統計匯出（不分頁、**一列一明細**：主表 LEFT JOIN 對應子表（InvoiceItems / AdvanceRequestItems / WriteOffItems / TravelPaymentRequestItems / TravelRequestItems / TravelWriteOffItems），無明細仍輸出 1 列）；參數同上（含 `all`，6 種 export 查詢 `UNION ALL`）；前端依 `category` 對應右側 4 欄表頭（請款/沖銷/出差類別 → 發票號碼/品名/發票日期/金額；預支 → 類別/品名/數量/金額；`all` → 通用 發票號碼/類別、品名、發票日期/數量、金額，明細第 3 欄 per-row 取值）。所有「不適用欄位」皆以 `CAST(NULL AS …)` 明確轉型（裸 `NULL` 會被 SQL Server 視為 int，Dapper 映射 `string?`/`DateTime?` 會拋型別轉換例外 → 500）。 |
+| GET | `/reports/shift-schedule?year=&month=[&departmentId=]` | `reports-shift-schedule:read` | **〈出勤／排休總覽表〉**（四週彈性工時功能 B）：一人一列 × 當月每日一欄，回 `rows[].cells[]`（`dayType` ＋ `isActivityDay` / `isActivityAssignee` 疊加旗標）、每列配額統計與 `quotaSatisfied`，以及表尾 `dayStats[]`（每日 `workingCount` ＋ `noCoverage`）。**不分頁**（一次回完整表格才畫得出橫向月曆，匯出由前端用已載入資料產 Excel，同 payroll 做法）。可見範圍與 §3.1 同一套：持 `shift-schedule:view-all` → 全公司，否則受 `ProjectAccessScope` 限制。⚠ `noCoverage` 只在**週一至週五**且非國定假日時成立 —— 週末與國定假日本來就可能全員休假 |
 | GET | `/reports/project-water-level` | 專案水位表。回傳 `DisbursedAmount` = 四種支出加總：① 請款已撥分期（PaymentRequest 非 draft + Installment.PaidAt 非 null）② 已核准預支沖銷 GrandTotal（透過 AdvanceRequest.ProjectId）③ 出差請款已撥分期 ④ 已核准出差沖銷 GrandTotal（透過 TravelRequest.ProjectId）。`Percentage` / `TotalPercentage` 皆以 `DisbursedAmount` 計算（分母為 0 / NULL 時回 `null`，前端顯示「—」）。**2026-07 起回傳可見範圍內的全部專案**（原本 `DisbursedAmount = 0` 不回傳，導致尚無撥款紀錄時整張表空白）。篩選參數：`year / status`；套用部門可見性。權限：`reports-project-water-level:read`（進得了報表）＋**欄位級 `reports-project-water-level:total`**：沒有後者時 `TotalPercentage` / `PreImportUsedAmount` / `RemainingAmount` 一律回 `null` / `0`（三者皆為總水位的原料，不可只藏百分比），`Percentage` / `ContractAmount` / `DisbursedAmount` 照常回傳。 |
 
 ## 打卡提醒（手動觸發 + 紀錄查詢，僅 Superadmin）
@@ -252,7 +350,7 @@
 
 | Method | Path | 說明 |
 |--------|------|------|
-| GET | `/me/notification-counts` | 鈴噹通知件數聚合：回 `{approvals, myRequests, recentApprovals}`。`approvals` / `myRequests` 為 9 種申請類型 → 件數的 dictionary（前者走 reviewer 過濾，後者統計當前使用者送出且狀態為 `pending` / `returned` 的件數）。`recentApprovals` 為當前使用者「最近 10 分鐘內被核准」的單清單 `[{type, id, approvedAt}]`，供前端輪詢時比對時間戳跳「已核准」toast（後端無狀態，去重由前端 localStorage 處理）。登入即可呼叫；前端每 60 秒輪詢（分頁背景暫停） |
+| GET | `/me/notification-counts` | 鈴噹通知件數聚合：回 `{approvals, myRequests, recentApprovals, shiftAdjustments}`（`shiftAdjustments` ＝ 本人班表被活動日覆蓋、尚未確認的筆數，2026-09-29 新增）。`approvals` / `myRequests` 為 9 種申請類型 → 件數的 dictionary（前者走 reviewer 過濾，後者統計當前使用者送出且狀態為 `pending` / `returned` 的件數）。`recentApprovals` 為當前使用者「最近 10 分鐘內被核准」的單清單 `[{type, id, approvedAt}]`，供前端輪詢時比對時間戳跳「已核准」toast（後端無狀態，去重由前端 localStorage 處理）。登入即可呼叫；前端每 60 秒輪詢（分頁背景暫停） |
 | GET | `/me/user` | 員工查看**自己**的帳號資料（回傳與 `/users/{id}` 同型別 `UserDetailDto`，含薪資 / 加給 / 勞健保覆寫 / 各證明檔 URL / 頭像 / 簽名 / 部門 / 職稱）。從 JWT `sub` 取自身 id，**登入即可，不需 `users:read`**。供「個人資訊」唯讀頁用。**刻意不套薪資欄位級權限**：員工看自己的薪資是既有需求 |
 | GET | `/me/profile` | 員工查看**自己**的人事資料卡（回傳與 `/users/{id}/profile` 同型別 `EmployeeProfileDetailDto`，含 9 張子表 + 健保眷屬）。**登入即可，不需 `users:read`**，且**刻意不套薪資欄位級權限**（自己的薪資調整歷史照常回傳） |
 | GET | `/me/payroll?months=12` | 員工查看**自己**近 N 個月的薪資明細（`months` 預設 12、clamp 1~24；回 `MyPayrollHistoryDto`＝`{months:[{year, month, isCurrentMonth, payroll}]}`，`payroll` 與 `/payroll` 同型別 `EmployeePayrollDto`）。**登入即可，不需 `payroll:read`**，端點不接受 employeeId 參數故無法查別人。逐月呼叫 `CalculateMonthlyPayrollAsync(y, m, userId)`，**薪資為即時重算、無月結快照**（底薪 / 加給取自 `Users` 表當下的值），到職日之前的月份不列入。供「個人資訊」→「過往薪資」Tab 用 |
@@ -273,7 +371,7 @@
 
 | Method | Path | 說明 |
 |--------|------|------|
-| GET | `/files/signatures/{fileName}` | 簽名檔代理（公開，PDF 匯出用） |
+| GET | `/files/signatures/{fileName}` | 簽名檔代理（PDF 匯出用；**2026-10 起需登入**） |
 | GET | `/files/avatars/{fileName}` | 頭像代理（公開，topbar 顯示用） |
 | GET | `/files/indigenous-proofs/{fileName}` | 原住民證明文件代理（需 `users:read`，HR 敏感 PII） |
 | GET | `/files/low-income-proofs/{fileName}` | 低收入證明文件代理（需 `users:read`，HR 敏感 PII） |
@@ -298,9 +396,10 @@
 
 | Method | Path | 說明 |
 |--------|------|------|
+| GET | `/work-mode` | 四週彈性工時是否已切換（**輕量端點，任何登入者**，免 `settings:read`）。回 `flexibleWorkStartDate` / `isFlexibleActive` |
 | GET | `/settings` | 取得系統設定 |
 | PATCH | `/settings` | 更新系統設定 |
-| POST | `/invoice-ocr` | 發票 / 收據 / 交通票根 OCR 辨識（multipart 欄位 `file`，後端透過 Google Gemini API）。**一張圖可包含多張，回傳 `data` 為陣列**（每張一筆 `{docType, invoiceNo, amount, invoiceDate, buyerName, buyerTaxId, sellerTaxId}`，無辨識結果回 `[]`）。`buyerName`/`buyerTaxId` 為統一發票買方抬頭/統編（票根固定空字串），供前端比對公司白名單顯示警告；`sellerTaxId` 為賣方（發票專用章）統編，供前端交叉比對——與 `buyerTaxId` 相同時代表 OCR 抄到賣方統編，不跳警告。**`invoiceNo` 後處理**：字軌與數字分開印時合併（`ED 22598786` → `ED22598786`）；統一發票抓到 8 碼純數字且等於 `buyerTaxId` / `sellerTaxId` 時視為誤抓統編欄而清空。登入即可用，不需特殊權限 |
+| POST | `/invoice-ocr` | 發票 / 收據 / 交通票根 OCR 辨識（multipart 欄位 `file`，後端透過 Google Gemini API）。**一張圖可包含多張，回傳 `data` 為陣列**（每張一筆 `{docType, invoiceNo, amount, invoiceDate, buyerName, buyerTaxId, sellerTaxId}`，無辨識結果回 `[]`）。`buyerName`/`buyerTaxId` 為統一發票買方抬頭/統編（票根固定空字串），供前端比對公司白名單顯示警告；`sellerTaxId` 為賣方（發票專用章）統編，供前端交叉比對——與 `buyerTaxId` 相同時代表 OCR 抄到賣方統編，不跳警告。**`invoiceNo` 後處理**：字軌與數字分開印時合併（`ED 22598786` → `ED22598786`）；統一發票抓到 8 碼純數字且等於 `buyerTaxId` / `sellerTaxId` 時視為誤抓統編欄而清空。登入即可用，不需特殊權限；**每人速率限制**（與 `/quote-ocr` 共用計數：每分鐘 10 次、每日 200 次），超限回 429 |
 
 ---
 

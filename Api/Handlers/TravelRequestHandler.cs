@@ -27,10 +27,37 @@ public sealed class TravelRequestHandler(
     IApprovalNotificationService notifier,
     IApprovalFlowService approvalFlow,
     ICalendarDayReadService calendarDayReader,
-    IBlobStorageService blob)
+    IBlobStorageService blob,
+    IWorkdayScheduleProvider scheduleProvider,
+    IEmployeeWorkdaysFactory workdaysFactory)
 {
     private const string ContainerName = "invoices";
     private static readonly JsonSerializerOptions JsonOpts = new() { PropertyNameCaseInsensitive = true };
+
+    /// <summary>
+    /// 〈假日執行活動申請〉退場閘門（四週彈性工時 §8）。
+    ///
+    /// 新制下全公司改用〈加班申請〉，本申請別**只保留唯讀**：列表、詳情、簽核台分支、
+    /// 薪資的假日津貼取數全部原封不動（薪資是即時重算、無月結快照，移除取數會讓
+    /// 歷史月份的金額憑空消失，但錢早就發出去了），只關掉**新增 / 編輯 / 送簽**三個寫入口。
+    ///
+    /// ⚠ **以「今天」判斷，不是以活動日期判斷** —— 這是全站少數的例外，理由是這裡問的不是
+    /// 「這筆資料該用哪套規則算」而是「現在還能不能建新的單」，屬於制度開關而非資料解讀。
+    /// 已建立的草稿在切換後會卡住無法送簽，屬預期行為（改提加班申請）。
+    ///
+    /// 切換日為 null（尚未切換）時完全不擋，故本階段部署不改變任何現行行為。
+    /// </summary>
+    private async Task<IActionResult?> GuardHolidayTravelRetiredAsync(bool isHolidayTravel)
+    {
+        if (!isHolidayTravel) return null;
+
+        var switchDate = await scheduleProvider.GetSwitchDateAsync();
+        if (!WorkdayHours.IsFlexible(Clock.Now, switchDate)) return null;
+
+        return new BadRequestObjectResult(ApiResponse.Fail(
+            "〈假日執行活動申請〉已隨四週彈性工時上線退場，不再受理新增與送簽；"
+          + "假日出勤請改提〈加班申請〉。既有單據仍可查閱。"));
+    }
 
     public async Task<IActionResult> GetAllAsync(HttpRequest req, bool isHolidayTravel = false)
     {
@@ -43,7 +70,7 @@ public sealed class TravelRequestHandler(
         return new OkObjectResult(ApiResponse.Ok(result));
     }
 
-    public async Task<IActionResult> GetByIdAsync(HttpRequest req, string id)
+    public async Task<IActionResult> GetByIdAsync(HttpRequest req, string id, bool isHolidayTravel = false)
     {
         var userId = await GetUserIdAsync(req);
         if (!int.TryParse(id, out var intId))
@@ -54,12 +81,13 @@ public sealed class TravelRequestHandler(
             .Where(x => x.Id == intId)
             .Select(x => new { x.EmployeeId, x.IsHolidayTravel })
             .FirstOrDefaultAsync();
-        if (owner is null)
+        if (owner is null || owner.IsHolidayTravel != isHolidayTravel)
             return new NotFoundObjectResult(ApiResponse.Fail("Travel request not found."));
 
         var principal = await jwtService.ValidateRequestAsync(req);
         var appType = owner.IsHolidayTravel ? "holiday_travel" : "travel";
-        if (!await RequestViewAccess.CanViewAsync(db, principal, userId, appType, intId, owner.EmployeeId == userId))
+        if (!await RequestViewAccess.CanViewAsync(db, principal, userId, appType, intId, owner.EmployeeId == userId,
+                RequestViewAccess.StepReviewerProbe(db, approvalFlow, appType, intId, userId)))
             return new NotFoundObjectResult(ApiResponse.Fail("Travel request not found."));
 
         var item = await reader.GetByIdAsync(intId);
@@ -68,6 +96,8 @@ public sealed class TravelRequestHandler(
 
     public async Task<IActionResult> CreateAsync(HttpRequest req, bool isHolidayTravel = false)
     {
+        if (await GuardHolidayTravelRetiredAsync(isHolidayTravel) is { } retired) return retired;
+
         var appType = isHolidayTravel ? "holiday_travel" : "travel";
         // BUG-04: EmployeeId 由 JWT 中的 sub claim 決定，不信任客戶端傳入的值
         var employeeId = await GetUserIdAsync(req);
@@ -102,6 +132,11 @@ public sealed class TravelRequestHandler(
         if (body.Items is null || body.Items.Length == 0)
             return new BadRequestObjectResult(ApiResponse.Fail("At least one item is required."));
 
+        // 金額合理性（2026-10 安全稽核）：不可為負數
+        AmountGuard.EnsureItems(body.Items,
+            i => new AmountGuard.ItemAmounts(i.UnitPrice, i.TotalPrice),
+            "出差費用明細");
+
         // 指定審核者存在性驗證
         if (body.DesignatedReviewers is { Length: > 0 })
         {
@@ -129,7 +164,7 @@ public sealed class TravelRequestHandler(
         var travelRequest = new TravelRequest
         {
             EmployeeId      = employeeId,   // 強制使用 JWT 身分，忽略 body.EmployeeId
-            ApprovalItemId  = body.ApprovalItemId,
+            // ApprovalItemId 不採用前端值：一律於 SubmitAsync 依申請人部門解析（防止竄改流程）
             Destination     = body.Destination,
             StartDate       = body.StartDate,
             EndDate         = body.EndDate,
@@ -205,6 +240,9 @@ public sealed class TravelRequestHandler(
             if (existCount != participantIds.Count)
                 return new BadRequestObjectResult(ApiResponse.Fail("一或多位出差參與者不存在。"));
 
+            // 參與人員必須在職（2026-10 安全稽核）
+            await HolidayTravelParticipantGuard.EnsureParticipantsActiveAsync(db, participantIds);
+
             var dateError = ValidateParticipants(participants, startDate, endDate);
             if (dateError is not null)
                 return new BadRequestObjectResult(ApiResponse.Fail(dateError));
@@ -254,6 +292,8 @@ public sealed class TravelRequestHandler(
 
     public async Task<IActionResult> UpdateAsync(HttpRequest req, string id, bool isHolidayTravel = false)
     {
+        if (await GuardHolidayTravelRetiredAsync(isHolidayTravel) is { } retired) return retired;
+
         var appType = isHolidayTravel ? "holiday_travel" : "travel";
         var userId = await GetUserIdAsync(req);
         if (!int.TryParse(id, out var intId))
@@ -272,9 +312,14 @@ public sealed class TravelRequestHandler(
             ? await db.TravelRequests.Include(x => x.Items).FirstOrDefaultAsync(x => x.Id == intId)
             : await db.TravelRequests.Include(x => x.Items).FirstOrDefaultAsync(x => x.Id == intId && x.EmployeeId == userId);
         if (item is null) throw AppException.NotFound("TravelRequest");
+        // 2026-10 安全修正：路由型別須與資料型別一致（出差 / 假日執行活動共用一張表，不比對會互相冒用退場閘門與重複給付檢查）
+        if (item.IsHolidayTravel != (appType == "holiday_travel")) throw AppException.NotFound("TravelRequest");
 
         if (item.ApprovalStatus != "draft" && item.ApprovalStatus != "returned")
             throw AppException.BadRequest("Only draft or returned travel requests can be edited.");
+        // 2026-10 安全修正：財務已填撥款日（PaidAt）的單據即使被退回，也不可再修改 / 刪除（已撥款是事實，不可被抹除；Superadmin 亦同）
+        if (await db.TravelRequestInstallments.AsNoTracking().AnyAsync(i => i.TravelRequestId == item.Id && i.PaidAt != null))
+            throw AppException.BadRequest("此申請單已有撥款紀錄，不可修改或刪除，請洽財務。");
 
         // 指定審核者整組替換（提供 DesignatedReviewers 時才更新）
         if (body.DesignatedReviewers is not null)
@@ -313,6 +358,11 @@ public sealed class TravelRequestHandler(
         // 明細項目整組替換（提供 Items 時才更新）
         if (body.Items is { Length: > 0 })
         {
+            // 金額合理性（2026-10 安全稽核）：不可為負數
+            AmountGuard.EnsureItems(body.Items,
+                i => new AmountGuard.ItemAmounts(i.UnitPrice, i.TotalPrice),
+                "出差費用明細");
+
             db.TravelRequestItems.RemoveRange(item.Items);
             var newItems = body.Items.Select((i, idx) => new TravelRequestItem
             {
@@ -346,9 +396,14 @@ public sealed class TravelRequestHandler(
             ? await db.TravelRequests.Include(x => x.Items).Include(x => x.Participants).ThenInclude(p => p.Dates).FirstOrDefaultAsync(x => x.Id == intId)
             : await db.TravelRequests.Include(x => x.Items).Include(x => x.Participants).ThenInclude(p => p.Dates).FirstOrDefaultAsync(x => x.Id == intId && x.EmployeeId == userId);
         if (item is null) throw AppException.NotFound("TravelRequest");
+        // 2026-10 安全修正：路由型別須與資料型別一致（出差 / 假日執行活動共用一張表，不比對會互相冒用退場閘門與重複給付檢查）
+        if (item.IsHolidayTravel != (appType == "holiday_travel")) throw AppException.NotFound("TravelRequest");
 
         if (item.ApprovalStatus != "draft" && item.ApprovalStatus != "returned")
             throw AppException.BadRequest("Only draft or returned travel requests can be edited.");
+        // 2026-10 安全修正：財務已填撥款日（PaidAt）的單據即使被退回，也不可再修改 / 刪除（已撥款是事實，不可被抹除；Superadmin 亦同）
+        if (await db.TravelRequestInstallments.AsNoTracking().AnyAsync(i => i.TravelRequestId == item.Id && i.PaidAt != null))
+            throw AppException.BadRequest("此申請單已有撥款紀錄，不可修改或刪除，請洽財務。");
 
         // 基本欄位更新
         var destination = form["destination"].ToString();
@@ -417,6 +472,9 @@ public sealed class TravelRequestHandler(
                 if (existCount != participantIds.Count)
                     return new BadRequestObjectResult(ApiResponse.Fail("一或多位出差參與者不存在。"));
 
+                // 參與人員必須在職（2026-10 安全稽核）
+                await HolidayTravelParticipantGuard.EnsureParticipantsActiveAsync(db, participantIds);
+
                 var dateError = ValidateParticipants(participants, item.StartDate, item.EndDate);
                 if (dateError is not null)
                     return new BadRequestObjectResult(ApiResponse.Fail(dateError));
@@ -481,8 +539,9 @@ public sealed class TravelRequestHandler(
         return new OkObjectResult(ApiResponse.Ok(dto, "Travel request updated."));
     }
 
-    public async Task<IActionResult> DeleteAsync(HttpRequest req, string id)
+    public async Task<IActionResult> DeleteAsync(HttpRequest req, string id, bool isHolidayTravel = false)
     {
+        var routeAppType = isHolidayTravel ? "holiday_travel" : "travel";
         var userId = await GetUserIdAsync(req);
         if (!int.TryParse(id, out var intId))
             return new BadRequestObjectResult(ApiResponse.Fail("Invalid travel request ID format."));
@@ -492,9 +551,14 @@ public sealed class TravelRequestHandler(
             ? await db.TravelRequests.FirstOrDefaultAsync(x => x.Id == intId)
             : await db.TravelRequests.FirstOrDefaultAsync(x => x.Id == intId && x.EmployeeId == userId);
         if (item is null) throw AppException.NotFound("TravelRequest");
+        // 2026-10 安全修正：路由型別須與資料型別一致（出差 / 假日執行活動共用一張表，不比對會互相冒用退場閘門與重複給付檢查）
+        if (item.IsHolidayTravel != (routeAppType == "holiday_travel")) throw AppException.NotFound("TravelRequest");
 
         if (item.ApprovalStatus != "draft" && item.ApprovalStatus != "returned")
             throw AppException.BadRequest("Only draft or returned travel requests can be deleted.");
+        // 2026-10 安全修正：財務已填撥款日（PaidAt）的單據即使被退回，也不可再修改 / 刪除（已撥款是事實，不可被抹除；Superadmin 亦同）
+        if (await db.TravelRequestInstallments.AsNoTracking().AnyAsync(i => i.TravelRequestId == item.Id && i.PaidAt != null))
+            throw AppException.BadRequest("此申請單已有撥款紀錄，不可修改或刪除，請洽財務。");
 
         // 一併清除此申請單的審核流程足跡（多型關聯無 FK，須手動刪除，否則殘留列會擋住使用者刪除）
         var appType = item.IsHolidayTravel ? "holiday_travel" : "travel";
@@ -514,6 +578,8 @@ public sealed class TravelRequestHandler(
     /// <summary>送出申請（draft → pending）</summary>
     public async Task<IActionResult> SubmitAsync(HttpRequest req, string id, bool isHolidayTravel = false)
     {
+        if (await GuardHolidayTravelRetiredAsync(isHolidayTravel) is { } retired) return retired;
+
         // 根據路由決定申請類型（假日執行活動 vs 一般出差）
         var appType = isHolidayTravel ? "holiday_travel" : "travel";
 
@@ -526,6 +592,8 @@ public sealed class TravelRequestHandler(
             ? await db.TravelRequests.FirstOrDefaultAsync(x => x.Id == intId)
             : await db.TravelRequests.FirstOrDefaultAsync(x => x.Id == intId && x.EmployeeId == userId);
         if (item is null) throw AppException.NotFound("TravelRequest");
+        // 2026-10 安全修正：路由型別須與資料型別一致（出差 / 假日執行活動共用一張表，不比對會互相冒用退場閘門與重複給付檢查）
+        if (item.IsHolidayTravel != (appType == "holiday_travel")) throw AppException.NotFound("TravelRequest");
 
         if (item.ApprovalStatus != "draft" && item.ApprovalStatus != "returned")
             throw AppException.BadRequest("Only draft or returned travel requests can be submitted.");
@@ -584,29 +652,42 @@ public sealed class TravelRequestHandler(
             }
         }
 
-        // 退回重送時清除舊審核記錄，重置指定審核者狀態，重新走流程
-        if (item.ApprovalStatus == "returned")
+        // 假日執行活動（2026-10 安全稽核）：送簽時再驗一次參與人員 ——
+        // 在職，且同一人同一假日不得重複出現在另一張非拒絕非草稿的假日活動單 /
+        // 已核准的加班費型加班單 / 涵蓋該日的已核准有薪假（原本只有加班費型會「警示」，不擋）。
+        if (isHolidayTravel)
         {
-            var oldRecords = await db.ApprovalRecords
-                .Where(r => r.ApplicationType == appType && r.ApplicationId == item.Id)
+            var participantUserIds = await db.TravelRequestParticipants.AsNoTracking()
+                .Where(p => p.TravelRequestId == item.Id)
+                .Select(p => p.UserId)
                 .ToListAsync();
-            db.ApprovalRecords.RemoveRange(oldRecords);
+            await HolidayTravelParticipantGuard.EnsureParticipantsActiveAsync(db, participantUserIds);
+            await HolidayTravelParticipantGuard.EnsureNoConflictsAsync(
+                db, calendarDayReader, workdaysFactory, item.Id, onlyAgainstApproved: false);
+        }
 
-            var oldOverrides = await db.EscalationOverrides
-                .Where(o => o.ApplicationType == appType && o.ApplicationId == item.Id)
-                .ToListAsync();
-            db.EscalationOverrides.RemoveRange(oldOverrides);
+        // 退回重送時清除舊審核記錄，重置指定審核者狀態，重新走流程
+        // 2026-10 安全修正：不論 draft 或 returned 送出一律清空舊簽核足跡（原只清 returned）。
+        // 殘留的舊 approved 紀錄會讓後續關卡誤判「此人已審過」而被自動代簽，未經審核即核准。
+        var oldRecords = await db.ApprovalRecords
+            .Where(r => r.ApplicationType == appType && r.ApplicationId == item.Id)
+            .ToListAsync();
+        db.ApprovalRecords.RemoveRange(oldRecords);
 
-            // 重置指定審核者狀態為 pending
-            var rdrsToReset = await db.RequestDesignatedReviewers
-                .Where(r => r.RequestType == appType && r.RequestId == item.Id)
-                .ToListAsync();
-            foreach (var rdr in rdrsToReset)
-            {
-                rdr.Status     = "pending";
-                rdr.ReviewedAt = null;
-                rdr.Comment    = null;
-            }
+        var oldOverrides = await db.EscalationOverrides
+            .Where(o => o.ApplicationType == appType && o.ApplicationId == item.Id)
+            .ToListAsync();
+        db.EscalationOverrides.RemoveRange(oldOverrides);
+
+        // 重置指定審核者狀態為 pending
+        var rdrsToReset = await db.RequestDesignatedReviewers
+            .Where(r => r.RequestType == appType && r.RequestId == item.Id)
+            .ToListAsync();
+        foreach (var rdr in rdrsToReset)
+        {
+            rdr.Status     = "pending";
+            rdr.ReviewedAt = null;
+            rdr.Comment    = null;
         }
 
         // Superadmin 無部門歸屬，直接自動核准
@@ -704,7 +785,7 @@ public sealed class TravelRequestHandler(
     /// 僅財務體系部門或 Superadmin 可操作。
     /// 每筆新填入 PaidAt 的 installment 觸發一次「已撥款」通知。
     /// </summary>
-    public async Task<IActionResult> UpsertInstallmentsAsync(HttpRequest req, string id)
+    public async Task<IActionResult> UpsertInstallmentsAsync(HttpRequest req, string id, bool isHolidayTravel = false)
     {
         if (!int.TryParse(id, out var intId))
             return new BadRequestObjectResult(ApiResponse.Fail("Invalid ID format."));
@@ -727,6 +808,11 @@ public sealed class TravelRequestHandler(
                          .Include(t => t.Installments)
                          .FirstOrDefaultAsync(t => t.Id == intId)
                  ?? throw AppException.NotFound("TravelRequest");
+        if (tr.IsHolidayTravel != isHolidayTravel) throw AppException.NotFound("TravelRequest");
+
+        // 2026-10 安全修正：申請人不可操作自己單據的撥款明細（Superadmin 例外）
+        if (!user.IsSuperAdmin && tr.EmployeeId == userId)
+            throw AppException.Forbidden("不可設定自己申請單的撥款明細。");
 
         if (tr.ApprovalStatus != "approved")
             return new BadRequestObjectResult(ApiResponse.Fail("只有已核准的出差申請可以設定撥款明細。"));

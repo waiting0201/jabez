@@ -2,7 +2,8 @@
 
 > ⚠️ **本檔描述的是現行制度（每日 08:00–17:00、午休 12:00–13:00）。**
 > 公司已確認導入《勞基法》§30-1「四週彈性工時」（09:00–18:00、午休 12:30–13:30、個人排例假／休假日），
-> 規格見 [flexible-work-hours.md](flexible-work-hours.md) —— **該制尚未實作**，本檔在對應項目落地前仍為準。
+> 規格見 [flexible-work-hours.md](flexible-work-hours.md) —— **程式已全部實作，但制度尚未切換**
+> （`SystemSetting.FlexibleWorkStartDate` 為 null 時行為與本檔完全一致）。
 
 本文件定義 Jabez 的請假業務規則：19 種假別、時間單位、年假 / 喪假 / 補休額度、天數上限驗證、日期重疊驗證、人事薪資整合。
 
@@ -52,8 +53,9 @@
   > 「起 &lt; 13:00 ＝上午」**與「訖 &gt; 13:00 ＝下午」**分類時段（`LeaveDayExpander.ExpandHalfDayUnit`），
   > **不可改用「等於 08:00 / 12:00」判定，訖點界線也不可用 12:00** —— 補休的訖 13:00 會被判成下午，
   > 單日 am→am 就變成全日 8 小時。逐日展開仍取標準上午時段 08:00–12:00（故出缺勤報表的請假欄、
-  > 應出勤時段、登入自動補卡皆不受影響）。半天時數本身走「HalfDay 信任 client」，`body.Hours` 未帶時的退路
-  > `LeaveRequestHandler.ComputeHalfDaySlotHours` 亦以同一組時段界線推時數，不用 End − Start 時間差。
+  > 應出勤時段、登入自動補卡皆不受影響）。**半天時數由後端依起訖與時段逐日計算（2026-10 起，完全忽略 `body.Hours`）**：
+  > `LeaveRequestHandler.ComputeHalfDayHoursAsync` → `LeaveDayExpander.ExpandAsync`（與銷假逐日展開、出缺勤請假合併同一份判定），
+  > Create / Update / Submit 三處一致；同一組時段界線，不用 End − Start 時間差。
   > 打卡阻擋為半開區間 `[Start, End)`，故補休上午請假者 13:00 打上班卡不會被擋。
 - **高階主管假權限閘門**：前後端皆檢查 `JobTitle.Level ≤ 3`；前端透過 JWT `job_title_level` claim 判斷選項可見性，後端在 `CreateAsync` / `UpdateAsync` / `SubmitAsync` 各階段驗證。
 - **高階主管假額度**：協理以上每年 24 天（曆年 1/1~12/31），當年度未用完歸零、隔年重新給予 24 天（2026-08 由 20 天調整）。比照年假動態計算（不儲存、不排程）。**年度基準一律為「請假起始日所屬曆年」（`item.StartDate.Year`）**，非「今天所屬年度」—— 額度上限驗證於 `ValidateLeaveQuotaAsync` 的 `senior_executive` 分支；API 端點 `GET /leave-requests/senior-executive-quota` **支援 `?year=`**（未帶或超出 2000~2100 則預設當年度），回 `year` / `totalDays` / `usedDays` / `availableDays`；前端表單以起始日年度查詢額度，起始日跨年時自動重載。
@@ -110,7 +112,7 @@
 - **請假時段**：半天單位，**上午時段為 09:00–13:00**、下午 13:00–17:00；時數仍以半天 4 小時計（見上方「半天時段的代表性時刻」）。
 - **可補休時數來源兩塊**：
   1. **期初匯入餘額**（`User.CompensatoryOpeningHours`）：系統上線前（115/1~6/30）以紙本累計、由使用者管理頁手動輸入；**須於 116/6/30（含）前休完，逾期未休部分歸零作廢**。到期日為固定常數 `CompensatoryBalance.OpeningExpiry`（2027-06-30，[Api/Common/CompensatoryBalance.cs](../../Api/Common/CompensatoryBalance.cs)）。
-  2. **系統加班補休**：07/01 起系統內已核准加班申請 `EstimatedHours` 合計（該欄本身已是**各關聯專案時數的合計快取**，故此處仍只需 SUM 父表，不必展開 `OvertimeRequestProject` 子表）；**不到期**。
+  2. **系統加班補休**：07/01 起系統內已核准加班申請的**給付基準時數**合計 `SUM(ISNULL(SettledHours, EstimatedHours))`（`OvertimeSettlement.BillableHours`；2026-10 起新單依實際加班打卡結算、舊單 `SettledHours` 為 null 沿用申請時數 `EstimatedHours`，後者本身是**各關聯專案時數的合計快取**，故只需處理父表，不必展開 `OvertimeRequestProject` 子表）；**不到期**。沒打加班結束卡的新單結算為 0，補休餘額不會增加。
      - ⚠️ **只計入 `CompensationType='compensatory'` 的加班單**（2026-08 新增）。加班申請可整單二擇一選「補休」或「加班費」；
        選加班費的單已依勞基法試算金額、隨加班日**次月**薪資發放現金，再進補休池就是同一段工時領兩次（雙重給付）。
        舊資料因欄位預設值為 `compensatory`，全部原封不動留在池內。詳見 [payroll-formula.md §第 12 條](payroll-formula.md)。
@@ -129,8 +131,46 @@
   - 權限**沿用加班紀錄**：頁面 `reports-overtime:read`、「金額」欄 `reports-overtime:amount`（前端 `canSeeAmount` 同控 th / td / 合計 / Excel，後端 `CompensatoryReportHandler` 抹 null），不另立權限碼。
   - 部門可見性走 `IProjectAccessResolver`；部門 / 員工下拉由回傳資料去重、前端過濾（`/departments` 需 `departments:read`，不能拿來給一般主管用）。
   - 欄位：**期間取得**的 1~2h(×1.34) / 3~8h(×1.67) / 9~12h(×2.67) 與合計、期間已休、**截至今日**待補休、金額（＝Σ 級距時數 × 倍率 × 現行時薪 `ROUND(底薪 ÷ 240, 2)`，只在總額捨入一次；未設定底薪者為「—」）。
-  - **級距於報表當下判定**：補休型加班單核准時不寫日別 / 級距快照（`OvertimeCompensationService` 只對加班費單寫），故依行事曆判平日 / 休假日（排班制恆平日、未匯入年度退回六日，同 `WorkCalendarHelper.IsHolidayAsync`），
-    以 `OvertimePayCalculator.SplitCompensatoryTiers` 切分 —— 與加班費共用同一份級距表但**不截斷至計酬上限**（補休本來就沒有上限，截斷會讓級距加總對不上補休時數）：平日第 3 小時起一律 ×1.67、休假日第 9 小時起一律 ×2.67。
+  - **級距於報表當下判定**：補休型加班單核准時不寫日別 / 級距快照（`OvertimeCompensationService` 只對加班費單寫），故走與加班費同一支 `OvertimePayCalculator.ResolveDayContextAsync`
+    （個人排班 → 國定假日 → 舊制行事曆；切換日前國定假日收斂回休假日），以 `SplitCompensatoryTiers(hours, dayType, isActivityAssignee)` 切分 ——
+    與加班費共用同一份級距表但**不截斷至計酬上限**（補休本來就沒有上限）：上班日第 3 小時起一律 ×1.67、休假日 / 例假日第 9 小時起一律 ×2.67；
+    **國定假日未排活動日者前 8 小時屬國定假日出勤加倍工資、不列入級距**（第 9 小時起套上班日級距），故該類加班的「期間合計」會大於三級距加總。
+  - **待補休**：四週彈性工時切換後以逐筆 lot 為準（`CompensatoryLotService.GetBalanceAsync`，同請假表單），切換日為 null 時走聚合版 `CompensatoryBalance.Compute`。
+
+### 逐筆 lot 制（四週彈性工時，2026-09 實作）
+
+⚠️ **以上是舊制（純聚合 SUM）。`SystemSetting.FlexibleWorkStartDate` 一旦設定，補休池改以逐筆 lot 為準。**
+回應欄位刻意沿用同一組名稱，前端不必分兩套；`openingExpiry` 在 lot 制下改讀期初 lot 的 `ExpiresAt`。
+
+| | 舊制（聚合） | 新制（lot） |
+|---|---|---|
+| 結構 | 三個 SUM 相減 | `CompensatoryLots`（一張加班單一筆）＋ `CompensatoryUsages`（扣抵紀錄） |
+| FIFO | `Math.Min(used, opening)` 的算術模擬 | 真的逐筆扣抵，「這張補休假吃掉哪幾筆加班」可稽核 |
+| 效期 | 只有期初有到期日，系統加班**不到期** | 每筆都有到期日 |
+| 原始費率 | 無 | `RateSnapshot`（核准當下寫入），到期換津貼用 |
+
+- **效期（2026-09-16 客戶修訂，比產生期間多留一個月）**：1–6 月產生 → 用至 **7/31** → **8 月**薪資結算；
+  7–12 月產生 → 用至**隔年 1/31** → **隔年 2 月**結算。單一真相 `CompensatoryLotService.ExpiresAtFor`。
+  ⚠️ 原規格「1–6 月產生者用至 6 月底」已被推翻（6 月下旬產生的補休幾乎無法執行），舊數字不可沿用。
+- **開 lot 的三個條件**（缺一不可）：加班單**終局核准** ＋ 補償方式為補休 ＋ **加班日 ≥ 切換日**。
+  第三個條件是為了不與期初 lot 重複計算 —— 切換日之前的餘額由
+  [`Api/Data/Scripts/12`](../../Api/Data/Scripts/12-seed-compensatory-opening-lots.sql) 整批做成**一筆期初 lot**。
+- **時數取給付基準 `OvertimeSettlement.BillableHours`（`SettledHours ?? EstimatedHours`，未截斷）**，不是加班費那條路徑的 `PayableHours` ——
+  現行補休路徑本來就沒有計酬上限，改用截斷值會把既有餘額追溯砍掉。2026-10 起新單的 lot 於終局核准後依實際加班打卡結算
+  （結算時數 0 不開 lot；打加班結束卡 / 管理者修改出缺勤時 `OvertimeSettlementService` 重算，既有 lot 走等比調整、已被請掉的補休不還原）。
+- **費率快照為加權平均**：一張加班單可能橫跨多個級距（例：休假日 3 小時 ＝ 2h ×1.34 ＋ 1h ×1.67 → 1.45），
+  而 `CompensatoryLot.SourceOvertimeRequestId` 有唯一索引（一單一 lot）。加權平均讓
+  「剩餘時數 × 費率 × 時薪」在全額未休完時與逐段計算完全相等。
+- **佔用時機比照舊制：pending 與 approved 都佔用**（送出即扣，避免同一批時數被重複申請）。
+- **扣抵一律走 `CompensatoryLotService.SyncUsageAsync`**：該函式對一張補休假單「先全額歸還、再重新 FIFO 扣抵」，
+  **冪等**。六個入口（送簽 / 審核 / 退回 / 拒絕 / 刪單 / **銷假使 Hours 遞減**）都只呼叫這一支 ——
+  增量寫法則每個入口都要各自算差額，漏一個就會出現對不起來的餘額。
+- **FIFO 以「該假單起始日當下尚未逾期」篩選**，不是今天 —— 補登過去日期的補休才不會被誤擋。
+- **到期未休完 → 轉加班津貼**進結算月薪資（見 [payroll-formula.md](payroll-formula.md) 第 14 條）。
+- ⚠️ **期初 lot 的 `RateSnapshot` 刻意為 NULL**（無從得知當時費率），故 2027-06-30 到期時**不會**自動換成津貼，
+  交人工處理。憑空給一個費率等於系統自行決定要發多少錢。
+- ⚠️ **`SettledAt` / `SettledAmount` 目前恆為 null**：薪資是即時重算、無月結快照，另寫一份落地金額
+  等於製造第二個真相。兩欄保留給日後「明確結算批次」的設計。
 
 ## 生理假規則（限女性）
 
@@ -264,7 +304,8 @@
 - **假日來源＝唯一權威 `CalendarDays` 表**：台灣政府行事曆匯入時 `IsHoliday=true` 已同時涵蓋**六日 + 國定假**、補班六為工作日（`IsHoliday=false`）。透過 [CalendarDayReadService](../../Api/Services/Dapper/CalendarDayReadService.cs) 的 `GetHolidayDatesAsync` / `HasDataForRangeAsync` 讀取（與出差假日活動共用）。**例外：彈性休假日（原「補假」）雖為 `IsHoliday=1` 但不從請假日中扣除**，見 [§彈性休假日](#彈性休假日2026-09-新增)。
 - **行事曆完整性逐年檢查**：`HasDataForRangeAsync` 為 EXISTS 語意（區間內任一天有資料即 true），產假 56 天與拉長後的婚假 / 喪假可能跨年，故 `LeaveRequestHandler.HasCalendarForAllYearsAsync` 對區間橫跨的**每個年度**各查一次，全部有資料才算已匯入。
 - **前端顯示**：[leave-request-form](../../Admin/src/app/features/admin/leave-requests/pages/leave-request-form/) 於工作日型假別（day / half_day / hour 三種單位皆適用）選好起迄日後呼叫輕量端點 `GET /leave-requests/working-days?start=&end=&leaveType=`（免 `calendar-days:read`），列出逐日 chip + 合計天數；行事曆未匯入時退回僅扣六日並提示。產假的結束日不在表單上，前端改以 `maternityEndDate`（起始日 +55 天）當區間終點查詢。
-- **後端權威重算**：工作日型假別的 `Day` 單位（含產假）以工作日數 × 8、`Hour` 單位以逐日累加時數，於 Create / Update / **Submit** 覆寫 `Hours`；**Submit 時強制要求行事曆已匯入**（缺資料擋件並提示匯入，訊息含跨年區間的年度範圍），區間全為假日亦擋件。`half_day` 由前端以 working-days 端點計算後送出（後端沿用既有「HalfDay 信任 client」原則）。
+- **後端權威重算**：工作日型假別的 `Day` 單位（含產假）以工作日數 × 8、`Hour` 單位以逐日累加時數，於 Create / Update / **Submit** 覆寫 `Hours`；**Submit 時強制要求行事曆已匯入**（缺資料擋件並提示匯入，訊息含跨年區間的年度範圍），區間全為假日亦擋件。`half_day`（年假 / 補休 / 高階主管假）**2026-10 起同樣由後端權威重算**（`ComputeHalfDayHoursAsync`，Create / Update / Submit 一致），前端送來的 `hours` 一律忽略
+（過去「信任 client」可由改 payload 把 4 小時送成任意值）；前端仍以 working-days 端點算好顯示給使用者看，但不再是計算依據。
 
 ### 彈性休假日（2026-09 新增）
 
@@ -298,8 +339,21 @@
 以及既有年度的一次性回填腳本 `Api/Data/Scripts/15`。字串常數的單一真相為 `Constants.CalendarDescriptions`。
 **「調整放假」刻意不改**（2026-09-23 業務決議，只改「補假」）。
 
+> **四週彈性工時下（2026-09-29 定案）**：彈性休假日在個人排班月曆上**比照國定假日**（唯讀、不佔配額），
+> 故切換日後它**不算請假日**（與國定假日相同）；上面的「彈性休假日算請假日」只適用切換日之前。
+> 見 [flexible-work-hours.md §6.3.3](flexible-work-hours.md)。
+> 另外，**簽核中或已核准假單涵蓋的日子不得在排班月曆上排為例假日／休假日**，月曆格會顯示假別。
+
 > **歷史假單**：已核准假單的 `Hours` 是快照，不會回溯變動。但若對一張**橫跨彈性休假日**的舊假單辦銷假，
 > `LeaveRevocationService.ApplyAsync` 會以新規則重新展開重算剩餘時數，得到的天數會比原快照多一天。
+
+### 四週彈性工時切換後：依個人排班扣假日（2026-09-29）
+
+`SystemSetting.FlexibleWorkStartDate` 設定後，**該日期（含）起**的請假日一律依**假單所有人的個人排班**判定：
+只有排定為「上班日」的日子算請假日，例假日／休假日／國定假日不算（例：排週三休假、週六上班的人，
+請週一到週六的假＝週一、二、四、五、六共 5 天）。切換日之前的日子、以及切換後尚未排班的月份仍走下方的公司行事曆規則，
+`IsShiftWorker` 在切換日後不再被參考。請假送出、銷假逐日、排班月曆鎖定、出缺勤報表共用同一套判定
+（[EmployeeWorkdays](../../Api/Common/EmployeeWorkdays.cs)），見 [flexible-work-hours.md §10.1](flexible-work-hours.md)。
 
 ### 排班制員工不扣假日（2026-08 新增）
 
@@ -410,7 +464,7 @@
 | `ResolveStartingStepAsync` / `ApprovalRecord` / `RequestDesignatedReviewer` / 簽核任務 | **`"leave_revocation"`** —— 隔離「此人已審過」查詢，避免與同 Id 的請假單撞號 |
 
 - `requestDays` 帶**原假單天數**（`(OriginalHours ?? Hours) / 8`），讓銷假回到與原假單相同的那組 `MinDays` 關卡（`LeaveRevocationHandler.SubmitAsync` 與 `ApprovalTaskHandler` 推進時同源）。
-- 自審規則沿用請假：Group A 全程禁止自審（否定清單自動涵蓋），自審時嘗試升級審核且停在總監之前。
+- 自審規則沿用請假：全程禁止指定自己為審核者（2026-10 起全部申請類型一致），自審時嘗試升級審核且停在總監之前。
 - 流程若含「申請人指定審核」步驟，銷假表單同樣要挑指定審核者。
 
 ## 請假申請步驟
@@ -467,7 +521,7 @@ label 星號與 placeholder 同步條件顯示。後端 `LeaveRequest.Reason` �
 
 ## 跨業務關聯
 
-- **請假走簽核流程** → [approval-flow.md](approval-flow.md)（請假屬 Group A 全程禁止自審）
+- **請假走簽核流程** → [approval-flow.md](approval-flow.md)（請假全程禁止指定自己為審核者）
 - **事假 / 病假扣薪計算、育嬰留停按比例** → [payroll-formula.md §扣薪規則](payroll-formula.md)
 - **打卡時段阻擋規則**（已核准請假時段內無法打上下班卡；例外：**當日全日請假 + 已核准加班單 → 可直接打「加班開始」**，免下班卡；**已核准銷假的日子不再阻擋**） → [attendance-clock-rules.md](attendance-clock-rules.md)
 - **銷假重跑請假簽核** → [approval-flow.md §銷假重跑請假簽核](approval-flow.md#銷假重跑請假簽核2026-08-新增)

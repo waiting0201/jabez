@@ -109,7 +109,8 @@ public sealed class TravelWriteOffRequestHandler(
             return new NotFoundObjectResult(ApiResponse.Fail("Travel write-off request not found."));
 
         var principal = await jwtService.ValidateRequestAsync(req);
-        if (!await RequestViewAccess.CanViewAsync(db, principal, userId, "travel_write_off", intId, submittedById == userId))
+        if (!await RequestViewAccess.CanViewAsync(db, principal, userId, "travel_write_off", intId, submittedById == userId,
+                RequestViewAccess.StepReviewerProbe(db, approvalFlow, "travel_write_off", intId, userId)))
             return new NotFoundObjectResult(ApiResponse.Fail("Travel write-off request not found."));
 
         var item = await reader.GetByIdAsync(intId);
@@ -155,6 +156,10 @@ public sealed class TravelWriteOffRequestHandler(
 
         // 年份合理性（擋民國年誤植）
         RequestDateGuard.EnsureEach(items, i => i.InvoiceDate, "發票日期");
+        // 金額合理性（2026-10 安全稽核）：不可為負數
+        AmountGuard.EnsureItems(items,
+            i => new AmountGuard.ItemAmounts(i.UnitPrice, i.TotalPrice),
+            "出差沖銷費用明細");
 
         // 解析指定審核者
         DesignatedReviewerRequest[]? designatedReviewers = null;
@@ -279,6 +284,10 @@ public sealed class TravelWriteOffRequestHandler(
 
             // 年份合理性（擋民國年誤植，比照 CreateAsync）
             RequestDateGuard.EnsureEach(items, i => i.InvoiceDate, "發票日期");
+            // 金額合理性（2026-10 安全稽核）：不可為負數
+            AmountGuard.EnsureItems(items,
+                i => new AmountGuard.ItemAmounts(i.UnitPrice, i.TotalPrice),
+                "出差沖銷費用明細");
 
             // 發票唯一性驗證（排除本筆記錄自身的明細）
             await ValidateInvoiceUniquenessAsync(items, excludeTravelWriteOffRecordId: intId);
@@ -298,14 +307,11 @@ public sealed class TravelWriteOffRequestHandler(
 
             foreach (var (item, idx) in items.Select((v, i) => (v, i)))
             {
-                string? fileUrl = item.FileUrl; // 保留既有 URL
+                string? fileUrl = AttachmentProcessor.KeepExistingUrl(item.FileUrl, oldFileUrls); // 保留既有 URL：僅限本單 DB 既有值
                 if (item.FileIndex >= 0 && item.FileIndex < files.Count)
                 {
                     var file = files[item.FileIndex];
-                    var ext  = Path.GetExtension(file.FileName);
-                    var blobName = $"{Clock.Now:yyyy/MM}/{Guid.NewGuid()}{ext}";
-                    using var stream = file.OpenReadStream();
-                    fileUrl = await blob.UploadAsync(ContainerName, blobName, stream, file.ContentType);
+                    fileUrl = await AttachmentProcessor.UploadItemFileAsync(file, blob, ContainerName);
                 }
                 if (!string.IsNullOrEmpty(fileUrl))
                     newFileUrls.Add(fileUrl);
@@ -422,28 +428,27 @@ public sealed class TravelWriteOffRequestHandler(
         wo.SubmittedAt ??= Clock.Now;
 
         // 退回重送：清除舊審核記錄，重置指定審核者狀態
-        if (wo.ApprovalStatus == "returned")
+        // 2026-10 安全修正：不論 draft 或 returned 送出一律清空舊簽核足跡（原只清 returned）。
+        // 殘留的舊 approved 紀錄會讓後續關卡誤判「此人已審過」而被自動代簽，未經審核即核准。
+        var oldRecords = await db.ApprovalRecords
+            .Where(r => r.ApplicationType == RequestType && r.ApplicationId == wo.Id)
+            .ToListAsync();
+        db.ApprovalRecords.RemoveRange(oldRecords);
+
+        var oldOverrides = await db.EscalationOverrides
+            .Where(o => o.ApplicationType == RequestType && o.ApplicationId == wo.Id)
+            .ToListAsync();
+        db.EscalationOverrides.RemoveRange(oldOverrides);
+
+        // 重置指定審核者狀態為 pending
+        var rdrsToReset = await db.RequestDesignatedReviewers
+            .Where(r => r.RequestType == RequestType && r.RequestId == wo.Id)
+            .ToListAsync();
+        foreach (var rdr in rdrsToReset)
         {
-            var oldRecords = await db.ApprovalRecords
-                .Where(r => r.ApplicationType == RequestType && r.ApplicationId == wo.Id)
-                .ToListAsync();
-            db.ApprovalRecords.RemoveRange(oldRecords);
-
-            var oldOverrides = await db.EscalationOverrides
-                .Where(o => o.ApplicationType == RequestType && o.ApplicationId == wo.Id)
-                .ToListAsync();
-            db.EscalationOverrides.RemoveRange(oldOverrides);
-
-            // 重置指定審核者狀態為 pending
-            var rdrsToReset = await db.RequestDesignatedReviewers
-                .Where(r => r.RequestType == RequestType && r.RequestId == wo.Id)
-                .ToListAsync();
-            foreach (var rdr in rdrsToReset)
-            {
-                rdr.Status     = "pending";
-                rdr.ReviewedAt = null;
-                rdr.Comment    = null;
-            }
+            rdr.Status     = "pending";
+            rdr.ReviewedAt = null;
+            rdr.Comment    = null;
         }
 
         var submitter = await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == userId);
@@ -580,10 +585,7 @@ public sealed class TravelWriteOffRequestHandler(
             if (item.FileIndex >= 0 && item.FileIndex < files.Count)
             {
                 var file = files[item.FileIndex];
-                var ext  = Path.GetExtension(file.FileName);
-                var blobName = $"{Clock.Now:yyyy/MM}/{Guid.NewGuid()}{ext}";
-                using var stream = file.OpenReadStream();
-                fileUrl = await blob.UploadAsync(ContainerName, blobName, stream, file.ContentType);
+                fileUrl = await AttachmentProcessor.UploadItemFileAsync(file, blob, ContainerName);
             }
 
             result.Add(new TravelWriteOffItem

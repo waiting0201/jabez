@@ -32,6 +32,15 @@ public static class InstallmentValidator
                 throw AppException.BadRequest($"撥款序號必須 1-based 連續無斷號（目前：{string.Join(",", nos)}）。");
         }
 
+        // 2026-10 安全修正：逐列金額必須為正且不得超過總額（原只驗加總，可用 +N / −N 配對在 SUM 不變下灌出負數或超額列）
+        foreach (var i in inputs)
+        {
+            if (i.Amount <= 0m)
+                throw AppException.BadRequest($"第 {i.InstallmentNo} 期撥款金額必須大於 0。");
+            if (i.Amount > totalAmount + 0.01m)
+                throw AppException.BadRequest($"第 {i.InstallmentNo} 期撥款金額不可超過申請總額（{totalAmount:N2}）。");
+        }
+
         // 金額加總驗證
         var sum = inputs.Sum(i => i.Amount);
         if (Math.Abs(sum - totalAmount) > 0.01m)

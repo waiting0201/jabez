@@ -1,3 +1,5 @@
+import {ShiftDayType} from '../../shift-schedules/models/shift-schedule.model';
+
 export type ApprovalStatus = 'draft' | 'pending' | 'approved' | 'rejected' | 'returned';
 
 export const APPROVAL_STATUS_LABELS: Record<ApprovalStatus, string> = {
@@ -55,8 +57,13 @@ export interface OvertimePaySegment {
 /** 加班費試算結果（GET /overtime-requests/estimate） */
 export interface OvertimePayEstimate {
   overtimeDate: string;
-  /** 日別（排班制員工恆為 false，六日與國定假日視為工作日） */
-  isHoliday: boolean;
+  /**
+   * 日別（`WorkDayTypes` 四值，與後端 `Api/Common/WorkDayType.cs` 同步）。
+   * 2026-09 四週彈性工時由 `isHoliday: boolean` 改為三值語意：
+   * 上班日與**國定假日**走平日級距（國定假日另在薪資端加發 1 日日薪）、
+   * 休假日 / 例假日走假日級距。切換日之前後端會把國定假日收斂回 `rest_day`，舊資料不會突然變樣。
+   */
+  dayType: ShiftDayType;
   hourlyRate: number;
   requestedHours: number;
   /** = min(requestedHours, capHours) */
@@ -70,6 +77,17 @@ export interface OvertimePayEstimate {
   hasBaseSalary: boolean;
   /** 同日已有已核准的假日執行活動 → 可能與假日津貼雙重給付 */
   hasHolidayTravelConflict: boolean;
+  /**
+   * 是否超出計酬上限（4 / 12 小時）。2026-09 起改為**擋件**，不分補休或加班費 ——
+   * 加班工時上限是勞基法規範本身，與補償方式無關。true 時 blockMessage 必有值。
+   */
+  exceedsCap: boolean;
+  /**
+   * 非 null＝不可送出（超出加班上限）。
+   * 兩種情境共用同一個欄位：exceedsCap 為 false 但 blockMessage 有值時，
+   * 代表的是後者（這天根本不該提加班單），不是超時。
+   */
+  blockMessage: string | null;
 }
 
 /** 加班申請的關聯專案明細（一列一專案，含該案預估時數） */
@@ -89,8 +107,13 @@ export interface OvertimeRequest {
   // 後端序列化為 ISO 字串（"2026-03-24T00:00:00"），runtime 實際型別是 string 而非 Date
   overtimeDate: string;
   projects: OvertimeProject[];
-  /** 預估總時數（= projects 各列加總，由後端計算，前端唯讀） */
+  /** 申請時數（= projects 各列加總，由後端計算，前端唯讀）；核准的上限，**不是**給付時數 */
   estimatedHours: number;
+  /**
+   * 結算時數（給付基準，2026-10 防灌工時）＝ min(核准的申請時數, 實際加班打卡時數)，沒打加班卡為 0。
+   * null / undefined ＝ 舊單（給付沿用申請時數），畫面不顯示此欄。
+   */
+  settledHours?: number | null;
   reason: string;
   approvalStatus: ApprovalStatus;
   /** 補償方式（補休 / 加班費，整單二擇一） */
@@ -99,7 +122,10 @@ export interface OvertimeRequest {
   overtimePayAmount?: number | null;
   hourlyRateSnapshot?: number | null;
   payableHours?: number | null;
+  /** 舊快照欄；日別請讀 overtimeDayType */
   isHolidayOvertime?: boolean | null;
+  /** 日別快照（既有列由後端 SnapshotDayType 還原） */
+  overtimeDayType?: ShiftDayType | null;
   designatedReviewers?: DesignatedReviewer[];
   createdAt: Date;
   submittedAt: Date | null;   // 送簽日期（申請日期）；草稿為 null

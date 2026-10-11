@@ -8,6 +8,7 @@ import {AttendanceService} from '@/app/features/dashboard/services/attendance.se
 import {dayToRange, FilterMode, monthToRange, shiftDateString, snapToIsoWeek, todayString} from '@/app/features/admin/reports/utils/date-range';
 import {formatLeaveDaySegment, LEAVE_TYPE_LABELS, LeaveType} from '@/app/features/admin/leave-requests/models/leave-request.model';
 import {HasPermissionDirective} from '@shared/directives/has-permission.directive';
+import {AuthService} from '@/app/core/auth/services/auth.service';
 import * as XLSX from 'xlsx';
 
 export interface AttendanceRecordRow {
@@ -45,10 +46,30 @@ export interface AttendanceRecordRow {
   isClockInAuto: boolean;
   /** 下班時間為系統自動補卡（登入時補打漏打的下班卡），非本人打卡 */
   isClockOutAuto: boolean;
+  /** 曾被管理者修改過（與「系統補卡」各自獨立，可並存：原本是系統補的、後來被誰改過） */
+  isManuallyAdjusted: boolean;
+  /** 最後修改者姓名 / 時間（tooltip 用） */
+  adjustedBy: string;
+  adjustedAt: string;
+  /**
+   * 本人沒打下班卡：系統補的（isClockOutAuto），或已過當天仍空著（非工作日 / 全日請假，系統不補）。
+   * 清單一律標「未打下班卡」：紅字＝待 HR 處理；HR 於編輯填寫備註（原因）後轉綠字，見 missingClockOutResolved
+   */
+  isMissingClockOut: boolean;
+  /** 「未打下班卡」已由 HR 於編輯填寫原因（備註非空）→ 綠字留存 */
+  missingClockOutResolved: boolean;
   /** 該日打卡時勾選為出差 */
   isBusinessTrip: boolean;
-  /** 管理者填寫的備註（僅編輯表單使用，清單不顯示） */
+  /** 管理者填寫的備註；「未打下班卡」的列視為 HR 填寫的原因，顯示於下班欄下方 */
   remark: string;
+  /** 遲到 / 早退（四週彈性工時切換後由後端於打卡時判定，出差當日恆 false） */
+  isLate: boolean;
+  isEarlyLeave: boolean;
+  /** 員工上班打卡時填寫的遲到原因 */
+  lateReason: string;
+  /** 員工下班打卡時填寫的原因，與其標籤（早退原因 / 逾時原因 / 下班說明） */
+  clockOutReason: string;
+  clockOutReasonLabel: string;
   /** 下班 − 上班的實際跨度（小時，含午休）；缺任一端為 null */
   workHours: number | null;
   /** 上下班跨度超過 LONG_WORKDAY_HOURS 小時 */
@@ -85,6 +106,16 @@ export class AttendanceReport implements OnInit {
   private http = inject(HttpClient);
   private sanitizer = inject(DomSanitizer);
   private attendanceService = inject(AttendanceService);
+  private auth = inject(AuthService);
+
+  /**
+   * 是否可編輯該列：必須有打卡紀錄，且**不是自己的紀錄**（Superadmin 除外）。
+   * 後端 `PUT/PATCH /attendances/{id}` 對自己的紀錄回 403，這裡只是不讓人點了才被拒絕（縱深防禦，非唯一防線）。
+   */
+  canEditRow(row: {id: number | null; userId: string}): boolean {
+    if (!row.id) return false;
+    return this.auth.isSuperAdmin() || row.userId !== this.auth.currentUser()?.id;
+  }
 
   /** 篩選條件 */
   selectedEmployeeId = signal('');
@@ -260,8 +291,18 @@ export class AttendanceReport implements OnInit {
             clockOutTime: r.clockOutTime ? new Date(r.clockOutTime).toLocaleTimeString('zh-TW', {hour: '2-digit', minute: '2-digit'}) : '',
             isClockInAuto: !!r.isClockInAuto,
             isClockOutAuto: !!r.isClockOutAuto,
+            isManuallyAdjusted: !!r.isManuallyAdjusted,
+            adjustedBy: r.adjustedByName ?? '',
+            adjustedAt: r.adjustedAt ? new Date(r.adjustedAt).toLocaleString('zh-TW', {hour12: false}) : '',
+            isMissingClockOut: this.isMissingClockOut(r),
+            missingClockOutResolved: !!(r.remark ?? '').trim(),
             isBusinessTrip: !!r.isBusinessTrip,
             remark: r.remark ?? '',
+            isLate: !!r.isLate,
+            isEarlyLeave: !!r.isEarlyLeave,
+            lateReason: r.lateReason ?? '',
+            clockOutReason: r.clockOutReason ?? '',
+            clockOutReasonLabel: this.clockOutReasonLabel(r),
             workHours: this.computeWorkHours(r.clockInTime, r.clockOutTime),
             isLongWorkday: this.isLongWorkday(r.clockInTime, r.clockOutTime),
             overtimeStartTime: r.overtimeStartTime ? new Date(r.overtimeStartTime).toLocaleTimeString('zh-TW', {hour: '2-digit', minute: '2-digit'}) : '',
@@ -304,6 +345,27 @@ export class AttendanceReport implements OnInit {
   }
 
   /** 顯示用工時（四捨五入至小數一位）。刻意與 isLongWorkday 分離：捨入後比較會讓 9:31 被捨成 9.5 而漏標 */
+  /**
+   * 下班打卡原因的標籤：早退 → 早退原因；出差當日（早退／逾時皆不判定、原因非必填）→ 下班說明；其餘 → 逾時原因。
+   * 後端只存一欄 ClockOutReason，未另存「逾時」旗標，故以 isEarlyLeave / isBusinessTrip 推回當時的情境。
+   */
+  /**
+   * 本人沒打下班卡：系統於登入時補上的，或已過當天仍空著（非工作日 / 全日請假時系統不補）。
+   * 畫面 badge 與 Excel 備註共用此判定。
+   */
+  private isMissingClockOut(r: any): boolean {
+    if (r.rowKind === 'absent' || r.rowKind === 'leave') return false;
+    if (r.isClockOutAuto) return true;
+    return !!r.clockInTime && !r.clockOutTime
+      && !!r.recordDate && new Date(r.recordDate) < new Date(new Date().toDateString());
+  }
+
+  private clockOutReasonLabel(r: any): string {
+    if (r.isEarlyLeave) return '早退原因';
+    if (r.isBusinessTrip) return '下班說明';
+    return '逾時原因';
+  }
+
   private computeWorkHours(rawIn: string | null, rawOut: string | null): number | null {
     const h = this.rawWorkHours(rawIn, rawOut);
     return h == null ? null : Math.round(h * 10) / 10;
@@ -410,11 +472,16 @@ export class AttendanceReport implements OnInit {
       ? record.rawRecordDate.slice(0, 10)
       : todayString();
 
+    // 訖時間的 HH:mm 不晚於起時間 → 視為跨日（隔天），例如加班 18:30 起、00:30 訖。
+    // 表單只有時分、沒有日期，不補這段的話跨日加班（打卡紀錄的 RecordDate 是開始那天）一存就變成「訖早於起」。
+    const nextDay = this.addDays(dateStr, 1);
+    const endDate = (start: string, end: string) => (start && end <= start ? nextDay : dateStr);
+
     const body = {
       clockInTime: form.clockIn ? `${dateStr}T${form.clockIn}:00` : null,
-      clockOutTime: form.clockOut ? `${dateStr}T${form.clockOut}:00` : null,
+      clockOutTime: form.clockOut ? `${endDate(form.clockIn, form.clockOut)}T${form.clockOut}:00` : null,
       overtimeStartTime: form.overtimeStart ? `${dateStr}T${form.overtimeStart}:00` : null,
-      overtimeEndTime: form.overtimeEnd ? `${dateStr}T${form.overtimeEnd}:00` : null,
+      overtimeEndTime: form.overtimeEnd ? `${endDate(form.overtimeStart, form.overtimeEnd)}T${form.overtimeEnd}:00` : null,
       remark: form.remark?.trim() || null,
     };
 
@@ -429,6 +496,13 @@ export class AttendanceReport implements OnInit {
         this.saving.set(false);
       },
     });
+  }
+
+  /** 'YYYY-MM-DD' 加 N 天（純字串日曆運算，不經本地時區，避免台北 +8 退回前一天） */
+  private addDays(dateStr: string, n: number): string {
+    const [y, m, d] = dateStr.split('-').map(Number);
+    const dt = new Date(Date.UTC(y, m - 1, d + n));
+    return dt.toISOString().slice(0, 10);
   }
 
   /** 將 ISO 日期字串轉為 HH:mm 格式（供 input[type=time] 使用） */
@@ -481,10 +555,18 @@ export class AttendanceReport implements OnInit {
           '加班結束': r.overtimeEndTime ? new Date(r.overtimeEndTime).toLocaleTimeString('zh-TW', {hour: '2-digit', minute: '2-digit'}) : '',
           // 兩種虛擬列（請假 / 缺勤）匯出後仍需分辨得出來；出差與逾時註記與畫面 badge 同源
           '備註': [
+            r.isManuallyAdjusted ? `管理者已修正${r.adjustedByName ? '（' + r.adjustedByName + '）' : ''}` : '',
+            this.isMissingClockOut(r)
+              ? (r.remark?.trim() ? `未打下班卡（已註記原因：${r.remark.trim()}）` : '未打下班卡（待處理）')
+              : '',
             r.rowKind === 'absent' ? '缺勤（未打卡未請假）' : '',
             r.rowKind === 'leave' ? '請假（未打卡）' : '',
             (!r.clockInTime && r.expectedStart && r.rowKind === 'clock') ? '未打上班卡' : '',
             r.isBusinessTrip ? '出差' : '',
+            r.isLate ? '遲到' : '',
+            r.lateReason ? `遲到原因：${r.lateReason}` : '',
+            r.isEarlyLeave ? '早退' : '',
+            r.clockOutReason ? `${this.clockOutReasonLabel(r)}：${r.clockOutReason}` : '',
             this.isLongWorkday(r.clockInTime, r.clockOutTime) ? `超過 ${LONG_WORKDAY_HOURS} 小時` : '',
           ].filter(Boolean).join('；'),
         }));

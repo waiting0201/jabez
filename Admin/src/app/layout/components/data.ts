@@ -20,6 +20,18 @@ export const menuItems: MenuItemType[] = [
     url: '/admin/overtime-requests',
     requiredPermission: 'overtime-requests:read',
   },
+  {
+    icon: '/assets/icons/sprite.svg#calendar',
+    label: '個人排班',
+    url: '/admin/shift-schedules',
+    requiredPermission: 'shift-schedule:read',
+  },
+  {
+    icon: '/assets/icons/sprite.svg#sun',
+    label: '活動日管理',
+    url: '/admin/activity-days',
+    requiredPermission: 'activity-days:write',
+  },
 
   { label: '業務管理', isTitle: true },
   {
@@ -95,6 +107,12 @@ export const menuItems: MenuItemType[] = [
     label: '加班紀錄',
     url: '/admin/reports/overtime',
     requiredPermission: 'reports-overtime:read',
+  },
+  {
+    icon: '/assets/icons/sprite.svg#calendar',
+    label: '出勤排休總覽表',
+    url: '/admin/reports/shift-schedule',
+    requiredPermission: 'reports-shift-schedule:read',
   },
   {
     icon: '/assets/icons/sprite.svg#clock',

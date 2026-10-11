@@ -3,6 +3,7 @@ namespace Jabez.Api.Services;
 /// <summary>產生 LINE Flex Message JSON 物件（6 種簽核通知）。</summary>
 public static class LineFlexMessageBuilder
 {
+
     private const string BrandGreen = "#699F34";
     private const string WarningBrown = "#B8892A";
     private const string SuccessGreen = "#4A6B3A";
@@ -256,6 +257,33 @@ public static class LineFlexMessageBuilder
 
     // ── Flex Message Bubble 共用模板 ────────────────────────────────────────
 
+    /// <summary>
+    /// 排班日別通知（四週彈性工時）——「今天是例假日／休假日」或半天假 12:55 交接提醒。
+    ///
+    /// 與 <see cref="BuildAttendanceReminderMessage"/> 的差別：那支是「快到打卡時間了」的倒數提醒，
+    /// 這支是「今天的狀態是什麼、該注意什麼」的告知，沒有剩餘分鐘數。
+    /// </summary>
+    /// <param name="title">例假日 / 休假日 / 上午假將屆 / 準備休假</param>
+    /// <param name="body">要員工知道的規則或動作</param>
+    public static object BuildShiftDayNoticeMessage(
+        string userName, string title, string body, string linkUrl)
+    {
+        // 例假日是法定嚴禁出勤（罰鍰 2 萬～100 萬），用紅色；其餘用提醒色
+        var headerColor = title.Contains("例假") ? DangerRed : WarningBrown;
+
+        return BuildBubble(
+            altText: $"[排班提醒] {title} — {userName}",
+            headerColor: headerColor,
+            headerText: title,
+            rows:
+            [
+                ("同仁", userName),
+                ("說明", body),
+            ],
+            buttonLabel: "前往打卡頁",
+            buttonUrl: $"{linkUrl.TrimEnd('/')}/dashboard");
+    }
+
     private static object BuildBubble(
         string altText, string headerColor, string headerText,
         (string label, string value)[] rows, string buttonLabel, string buttonUrl)
@@ -276,10 +304,27 @@ public static class LineFlexMessageBuilder
             });
         }
 
+        // 環境標記：正式站為空字串時完全不影響輸出（不多一行、altText 不變）
+        // 環境標記（設定鍵見 Common/EnvironmentLabel）：altText 是通知列與聊天列表看到的、
+        // header 第一行是點開訊息後看到的 —— 只加其中一個會出現
+        // 「通知列看得出是測試、點開卻看不出來」的半吊子狀態。正式站未設定時輸出完全不變。
+        var envLabel     = Jabez.Api.Common.EnvironmentLabel.Value;
+        var hasLabel     = Jabez.Api.Common.EnvironmentLabel.HasValue;
+        var finalAltText = Jabez.Api.Common.EnvironmentLabel.Prefix(altText);
+
+        var headerContents = new List<object>();
+        if (hasLabel)
+            headerContents.Add(new
+            {
+                type = "text", text = envLabel, color = "#FFFFFF",
+                weight = "bold", size = "xs", wrap = true,
+            });
+        headerContents.Add(new { type = "text", text = headerText, color = "#FFFFFF", weight = "bold", size = "lg" });
+
         return new
         {
             type = "flex",
-            altText,
+            altText = finalAltText,
             contents = new
             {
                 type = "bubble",
@@ -289,10 +334,7 @@ public static class LineFlexMessageBuilder
                     layout = "vertical",
                     backgroundColor = headerColor,
                     paddingAll = "16px",
-                    contents = new object[]
-                    {
-                        new { type = "text", text = headerText, color = "#FFFFFF", weight = "bold", size = "lg" },
-                    }
+                    contents = headerContents.ToArray()
                 },
                 body = new
                 {

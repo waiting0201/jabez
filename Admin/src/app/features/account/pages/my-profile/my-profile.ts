@@ -7,12 +7,13 @@ import { User } from '../../../admin/users/models/user.model';
 import { EmployeeProfileDetail, SalaryAdjustmentRecord } from '../../../admin/users/models/employee-profile.model';
 import { MyPayrollMonth } from '../../models/my-payroll.model';
 import { PayrollDetailCard } from '@shared/components/payroll-detail-card';
+import { AuthImageSrcDirective } from '@shared/directives/auth-image-src.directive';
 import { CompensatoryHours } from '../../../admin/leave-requests/models/leave-request.model';
 
 @Component({
   selector: 'app-my-profile',
   templateUrl: './my-profile.html',
-  imports: [DatePipe, DecimalPipe, PayrollDetailCard],
+  imports: [DatePipe, DecimalPipe, PayrollDetailCard, AuthImageSrcDirective],
 })
 export class MyProfile implements OnInit {
   private auth = inject(AuthService);
@@ -104,9 +105,9 @@ export class MyProfile implements OnInit {
       + (+(r.mealAllowance ?? 0));
   }
 
-  /** 組成簽名檔可直接顯示的 URL。
-   *  簽名檔容器為公開路由（/files/signatures 免 JWT），故 <img src> 直接走公開路徑；
-   *  不可走 /me/files（需 Authorization header，<img> 無法帶 token 會 401 破圖）。 */
+  /** 組成簽名檔的 API 網址。
+   *  /files/signatures 自 2026-10 起需登入，<img src> 無法帶 token，
+   *  故模板以 `[appAuthSrc]`（AuthImageSrcDirective）取 blob 顯示，不可直接綁 `[src]`。 */
   signatureDisplayUrl(rawUrl: string | null | undefined): string | null {
     if (!rawUrl) return null;
     if (!rawUrl.startsWith('http')) return `${environment.apiUrl}/${rawUrl}`;

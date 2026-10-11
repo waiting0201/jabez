@@ -1,0 +1,64 @@
+// 總覽表：一人一列 × 當月每日一欄。欄數多（最多 31 欄）故欄寬壓到最小，靠橫向捲動呈現。
+// 顏色一律引用 tailwind.css 的 CIS token，與個人排班月曆共用同一組色票。
+
+.ov-table {
+  th, td { padding: 0.35rem 0.4rem; }
+}
+
+.ov-day-head {
+  min-width: 30px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.ov-day-head--holiday {
+  color: var(--text-muted);
+}
+
+.ov-weekday {
+  font-size: 0.65rem;
+  font-weight: 400;
+  color: var(--text-secondary);
+}
+
+.ov-cell {
+  min-height: 1.6rem;
+  line-height: 1.6rem;
+  font-size: 0.72rem;
+}
+
+.ov-cell--work { background: transparent; }
+
+.ov-cell--statutory-off {
+  background: #f0e4e4;
+  color: var(--red);
+  font-weight: 600;
+}
+
+.ov-cell--rest-day {
+  background: #e7efe1;
+  color: var(--green);
+  font-weight: 600;
+}
+
+.ov-cell--public-holiday {
+  background: var(--bg-elevated);
+  color: var(--text-secondary);
+}
+
+// 活動日是疊加旗標（與日別並存），故用左側色條而非換底色 —— 換底色會蓋掉例假／休假
+.ov-cell--activity {
+  border-left: 3px solid var(--purple);
+}
+
+.ov-swatch {
+  display: inline-block;
+  width: 0.75rem;
+  height: 0.75rem;
+  border-radius: 2px;
+
+  &--statutory-off  { background: #f0e4e4; box-shadow: inset 0 0 0 1px var(--red); }
+  &--rest-day       { background: #e7efe1; box-shadow: inset 0 0 0 1px var(--green); }
+  &--public-holiday { background: var(--bg-elevated); box-shadow: inset 0 0 0 1px var(--border); }
+  &--activity       { background: transparent; border-left: 3px solid var(--purple); border-radius: 0; }
+}

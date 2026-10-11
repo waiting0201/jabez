@@ -300,6 +300,94 @@
             }
           }
 
+          @case ('shift_change') {
+            @if (task.shiftChangeDetail; as d) {
+              <div class="card border-0 shadow-sm">
+                <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600">
+                  <svg class="sa-icon text-primary" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#calendar"></use></svg>
+                  改班申請資訊
+                </div>
+                <div class="card-body">
+                  <div class="row g-3">
+                    <div class="col-6 col-md-4">
+                      <div class="text-muted small mb-1">改班單號</div>
+                      <span class="fw-500 font-monospace">{{ d.requestNo || '—' }}</span>
+                    </div>
+                    <div class="col-6 col-md-4">
+                      <div class="text-muted small mb-1">異動月份</div>
+                      <span class="fw-500">{{ d.year }} 年 {{ d.month }} 月</span>
+                    </div>
+                    <div class="col-6 col-md-4">
+                      <div class="text-muted small mb-1">申請人</div>
+                      <span class="fw-500">{{ task.submittedBy }}</span>
+                    </div>
+
+                    <div class="col-12">
+                      <div class="text-muted small mb-1">調整內容（{{ d.dates.length }} 天）</div>
+                      <div class="flex flex-wrap gap-2">
+                        @for (x of d.dates; track x.date) {
+                          <span class="badge bg-light text-dark border">
+                            {{ x.date | date:'MM/dd' }}
+                            {{ shiftDayTypeLabel(x.fromDayType) }} → <b>{{ shiftDayTypeLabel(x.toDayType) }}</b>
+                          </span>
+                        }
+                      </div>
+                    </div>
+
+                    <div class="col-12">
+                      <div class="text-muted small mb-1">改班原因</div>
+                      <span class="fw-500">{{ d.reason || '—' }}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 套用後整月月曆 + 系統檢核：合規與否由系統判定，審核者只需就改班原因與部門人力安排審核 -->
+              @if (d.view; as v) {
+                @if (v.validation.canSave) {
+                  <div class="alert alert-success border-0 shadow-sm mt-4 mb-0">
+                    <div>
+                      <div class="fw-600">✔ 經系統檢核，本次改班後班表符合排班規範</div>
+                      <div class="small">
+                        例假日 {{ v.validation.statutoryOffCount }}/{{ v.validation.requiredStatutoryOff }}、
+                        休假日 {{ v.validation.restDayCount }}/{{ v.validation.requiredRestDay }}；
+                        連續上班不超過 12 天、任 14 天內至少 2 天例假日。
+                        請僅就改班原因及部門人力安排（是否與部門同仁休假強碰）審核。
+                      </div>
+                    </div>
+                  </div>
+                } @else {
+                  <div class="alert alert-danger border-0 shadow-sm mt-4 mb-0">
+                    <div>
+                      <div class="fw-600 mb-1">⚠ 班表已變動，套用本申請後不符合排班規範，無法核准，請退回申請人調整</div>
+                      <ul class="mb-0 ps-3">
+                        @for (b of v.validation.blocks; track b) { <li>{{ b }}</li> }
+                      </ul>
+                    </div>
+                  </div>
+                }
+
+                <div class="card border-0 shadow-sm mt-4">
+                  <div class="card-header bg-transparent border-bottom flex flex-wrap items-center justify-between gap-2 fw-600">
+                    <div class="flex items-center gap-2">
+                      <svg class="sa-icon text-primary" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#calendar"></use></svg>
+                      {{ v.year }} 年 {{ v.month }} 月・調整後班表
+                    </div>
+                    <div class="small text-secondary fw-normal">
+                      例假日 {{ v.validation.statutoryOffCount }}/{{ v.validation.requiredStatutoryOff }}
+                      ・休假日 {{ v.validation.restDayCount }}/{{ v.validation.requiredRestDay }}
+                    </div>
+                  </div>
+                  <div class="card-body">
+                    <app-shift-month-calendar
+                      [year]="v.year" [month]="v.month" [days]="v.days"
+                      [changedFrom]="shiftChangedFrom(d.dates)"
+                      [interactive]="false" [showChangedLegend]="true" />
+                  </div>
+                </div>
+              }
+            }
+          }
           @case ('leave_revocation') {
             @if (task.leaveRevocationDetail; as d) {
               <div class="card border-0 shadow-sm">
@@ -648,8 +736,14 @@
                       <span class="fw-500">{{ task.submittedBy }}</span>
                     </div>
                     <div class="col-6 col-md-4">
-                      <div class="text-muted small mb-1">預計加班總時數</div>
+                      <div class="text-muted small mb-1">申請加班總時數</div>
                       <span class="fw-600 fs-5">{{ d.estimatedHours }} 小時</span>
+                      @if (d.settledHours != null) {
+                        <!-- 新制：給付時數依實際加班打卡結算（不超過申請時數），核准後才會有打卡 -->
+                        <div class="text-muted small mt-1">
+                          實際給付依加班打卡結算，目前結算 {{ d.settledHours }} 小時
+                        </div>
+                      }
                     </div>
                     <div class="col-6 col-md-4">
                       <div class="text-muted small mb-1">補償方式</div>
@@ -672,13 +766,18 @@
                           </div>
                           <div class="text-muted text-xs mt-1">
                             計酬 {{ d.payableHours | number:'1.0-1' }} 小時
-                            @if (d.isHolidayOvertime != null) {
-                              ｜{{ d.isHolidayOvertime ? '假日' : '平日' }}加班
+                            @if (d.overtimeDayType != null) {
+                              ｜{{ overtimeDayLabel(d.overtimeDayType) }}
                             }
-                            @if (d.payableHours != null && d.payableHours < d.estimatedHours) {
-                              ｜超出上限 {{ d.estimatedHours - d.payableHours | number:'1.0-1' }} 小時不計酬
+                            @if ((d.excessHours ?? 0) > 0) {
+                              ｜超出上限 {{ d.excessHours | number:'1.0-1' }} 小時不計酬
                             }
                           </div>
+                          @if (d.overtimeDayType === 'public_holiday') {
+                            <!-- 國定假日前 8 小時走薪資加項（加發 1 日日薪），不在加班費級距內 —— 
+                                 不寫清楚的話，審核者看到「8 小時申請、計酬 0 小時」會以為系統算錯。 -->
+                            <div class="text-muted text-xs mt-1">前 8 小時另於薪資加發 1 日日薪，不計加班費</div>
+                          }
                         } @else {
                           <span class="text-muted">—</span>
                         }

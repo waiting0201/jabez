@@ -1,0 +1,127 @@
+<div class="container-fluid py-3">
+  <div class="flex flex-wrap items-center justify-between gap-2 mb-6">
+    <div class="flex items-center gap-2">
+      <svg class="sa-icon text-primary" style="stroke: currentColor">
+        <use href="/assets/icons/sprite.svg#bar-chart"></use>
+      </svg>
+      <h4 class="mb-0">出勤排休總覽表</h4>
+    </div>
+    <button type="button" class="btn btn-sm btn-outline-secondary"
+            [disabled]="!data()?.rows?.length || exporting()" (click)="exportExcel()">
+      @if (exporting()) { 匯出中… } @else { 匯出 Excel }
+    </button>
+  </div>
+
+  <div class="row g-4">
+    <div class="col-12">
+      <div class="card border-0 shadow-sm mb-4">
+        <div class="card-body p-0">
+
+          <div class="px-4 py-3 border-b flex flex-wrap items-center gap-2">
+            <select class="form-select form-select-sm w-full sm:w-auto"
+                    [ngModel]="year()" (ngModelChange)="year.set($event); load()">
+              @for (y of yearOptions(); track y) { <option [value]="y">{{ y }} 年</option> }
+            </select>
+            <select class="form-select form-select-sm w-full sm:w-auto"
+                    [ngModel]="month()" (ngModelChange)="month.set($event); load()">
+              @for (m of monthOptions; track m) { <option [value]="m">{{ m }} 月</option> }
+            </select>
+            <select class="form-select form-select-sm w-full sm:w-auto"
+                    [ngModel]="departmentId()" (ngModelChange)="departmentId.set($event ? +$event : null); load()">
+              <option [ngValue]="null">全部部門</option>
+              @for (d of departments(); track d.id) { <option [value]="d.id">{{ d.name }}</option> }
+            </select>
+
+            <div class="flex flex-wrap items-center gap-3 small text-secondary ms-auto">
+              <span class="flex items-center gap-1"><i class="ov-swatch ov-swatch--statutory-off"></i>例假日</span>
+              <span class="flex items-center gap-1"><i class="ov-swatch ov-swatch--rest-day"></i>休假日</span>
+              <span class="flex items-center gap-1"><i class="ov-swatch ov-swatch--public-holiday"></i>國定假日</span>
+              <span class="flex items-center gap-1"><i class="ov-swatch ov-swatch--activity"></i>活動日</span>
+            </div>
+          </div>
+
+          @if (unsatisfiedCount() || noCoverageDays().length) {
+            <div class="px-4 py-3 border-b flex flex-col gap-1 small">
+              @if (unsatisfiedCount()) {
+                <div style="color: var(--yellow)">
+                  有 {{ unsatisfiedCount() }} 位同仁尚未排滿當月配額。
+                </div>
+              }
+              @for (d of noCoverageDays(); track d.day) {
+                <div style="color: var(--red)">
+                  {{ d.date | date: 'M/d' }}（{{ weekdayLabels[d.weekday] }}）部門無人排定出勤，請確認是否已完成內部業務交接與協調。
+                </div>
+              }
+            </div>
+          }
+
+          <div class="table-responsive">
+            <table class="table table-hover table-sticky-first mb-0 ov-table"
+                   [style.min-width.px]="260 + (data()?.daysInMonth ?? 31) * 30">
+              <thead>
+                <tr>
+                  <th>員工姓名</th>
+                  <th>部門</th>
+                  @for (s of data()?.dayStats ?? []; track s.day) {
+                    <th class="text-center ov-day-head"
+                        [class.ov-day-head--holiday]="s.isPublicHoliday"
+                        [title]="s.holidayName ?? ''">
+                      <div>{{ s.day }}</div>
+                      <div class="ov-weekday">{{ weekdayLabels[s.weekday] }}</div>
+                    </th>
+                  }
+                  <th class="text-center whitespace-nowrap">當月配額</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (r of data()?.rows ?? []; track r.userId) {
+                  <tr>
+                    <td class="whitespace-nowrap">{{ r.userName }}</td>
+                    <td class="whitespace-nowrap text-secondary small">{{ r.departmentName }}</td>
+                    @for (c of r.cells; track c.day) {
+                      <td class="text-center p-0">
+                        <div [class]="cellClass(c)" [title]="cellTitle(c, statOf(c.day))">
+                          {{ cellText[c.dayType] }}
+                        </div>
+                      </td>
+                    }
+                    <td class="text-center whitespace-nowrap small">
+                      例 {{ r.statutoryOffCount }}/{{ r.requiredStatutoryOff }}
+                      ・休 {{ r.restDayCount }}/{{ r.requiredRestDay }}
+                      @if (!r.quotaSatisfied) {
+                        <span class="d-block" style="color: var(--red)">尚未選滿</span>
+                      }
+                    </td>
+                  </tr>
+                } @empty {
+                  <tr>
+                    <td [attr.colspan]="3 + (data()?.daysInMonth ?? 31)" class="text-center text-secondary py-4">
+                      @if (loading()) { 載入中… } @else { 查無可檢視的同仁 }
+                    </td>
+                  </tr>
+                }
+              </tbody>
+              @if (data()?.rows?.length) {
+                <tfoot>
+                  <tr>
+                    <td class="fw-600">出勤數</td>
+                    <td></td>
+                    @for (s of data()?.dayStats ?? []; track s.day) {
+                      <td class="text-center small"
+                          [style.color]="s.noCoverage ? 'var(--red)' : 'inherit'"
+                          [style.font-weight]="s.noCoverage ? '700' : 'inherit'">
+                        {{ s.workingCount }}
+                      </td>
+                    }
+                    <td></td>
+                  </tr>
+                </tfoot>
+              }
+            </table>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

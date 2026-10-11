@@ -17,7 +17,7 @@ namespace Jabez.Api.Handlers;
 /// GET   /approval-tasks/{id}                               → 單筆
 /// PATCH /approval-tasks/{applicationType}/{id}/review      → 多步驟審核（核准 / 退回修改 / 拒絕）
 /// </summary>
-public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadService reader, IJwtService jwtService, IApprovalNotificationService notifier, IApprovalFlowService approvalFlow, IBlobStorageService blob, ICalendarDayReadService calendarReader, IWorkPatternReadService workPattern)
+public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadService reader, IJwtService jwtService, IApprovalNotificationService notifier, IApprovalFlowService approvalFlow, IBlobStorageService blob, ICalendarDayReadService calendarReader, IEmployeeWorkdaysFactory workdaysFactory, IShiftScheduleReadService shiftSchedule, IWorkdayScheduleProvider scheduleProvider)
 {
     private static readonly HashSet<string> ValidActions  = ["approved", "returned", "rejected"];
     /// <summary>
@@ -27,7 +27,7 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
     private static readonly HashSet<string> ValidListStatuses = ["pending", "approved", "returned", "rejected"];
     /// <summary>「已簽核（流程中）」頁籤的職級門檻：Level ≤ 3＝協理以上（Level 數字越小層級越高）</summary>
     private const int SeniorReviewerMaxLevel = 3;
-    public  static readonly HashSet<string> ValidAppTypes = ["payment_request", "leave", "leave_revocation", "travel", "overtime", "advance", "write_off", "travel_write_off", "holiday_travel", "travel_payment", "pre_review"];
+    public  static readonly HashSet<string> ValidAppTypes = ["payment_request", "leave", "leave_revocation", "travel", "overtime", "advance", "write_off", "travel_write_off", "holiday_travel", "travel_payment", "pre_review", "shift_change"];
 
     public async Task<IActionResult> GetAllAsync(HttpRequest req)
     {
@@ -195,7 +195,16 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
                     var appType = task.ApplicationType;
                     if (!await RequestViewAccess.CanViewAsync(
                             db, principal, callerId, appType, intId,
-                            await IsApplicantAsync(appType, intId, callerId)))
+                            await IsApplicantAsync(appType, intId, callerId),
+                            // 固定池關卡的待審者（尚無簽核足跡）：申請人不在其部門範圍時仍須放行，否則待審清單點得到、詳情 403
+                            isStepReviewer: async () =>
+                            {
+                                if (task.Status != "pending") return false;
+                                var applicantId = await GetApplicantIdAsync(appType, intId);
+                                if (applicantId is null) return false;
+                                var reviewers = await approvalFlow.ResolveStepReviewersAsync(appType, intId, task.Flow?.Id, applicantId.Value);
+                                return reviewers.Any(sr => sr.Reviewers.Any(r => r.Id == callerId));
+                            }))
                         return new ObjectResult(ApiResponse.Fail("您沒有權限查看此申請單。")) { StatusCode = 403 };
                 }
             }
@@ -203,6 +212,20 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
 
         // ── 各關卡的可簽核者：上層級 / 指定審核關卡本身沒有人名，時間軸不印就完全看不出誰要簽；
         //     某關為空清單代表該關查無可簽核人員（前端顯示警示） ──
+        // ── 改班申請：補上「套用後整月月曆 + 系統檢核」，審核者不必自行核對是否符合排班規範 ──
+        if (task.ShiftChangeDetail is not null)
+        {
+            var sc = await db.ShiftChangeRequests.AsNoTracking().FirstOrDefaultAsync(x => x.Id == intId);
+            if (sc is not null)
+                task = task with
+                {
+                    ShiftChangeDetail = task.ShiftChangeDetail with
+                    {
+                        View = await ShiftChangeRequestService.BuildMonthViewAsync(db, calendarReader, workdaysFactory, sc),
+                    },
+                };
+        }
+
         if (task.Status == "pending")
         {
             var applicantId = await GetApplicantIdAsync(task.ApplicationType, intId);
@@ -225,7 +248,8 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
         "payment_request"            => await db.PaymentRequests.AsNoTracking().Where(x => x.Id == id).Select(x => (Guid?)x.SubmittedById).FirstOrDefaultAsync(),
         "leave"                      => await db.LeaveRequests.AsNoTracking().Where(x => x.Id == id).Select(x => (Guid?)x.EmployeeId).FirstOrDefaultAsync(),
         "leave_revocation"           => await db.LeaveRevocations.AsNoTracking().Where(x => x.Id == id).Select(x => (Guid?)x.EmployeeId).FirstOrDefaultAsync(),
-        "travel" or "holiday_travel" => await db.TravelRequests.AsNoTracking().Where(x => x.Id == id).Select(x => (Guid?)x.EmployeeId).FirstOrDefaultAsync(),
+        "shift_change"           => await db.ShiftChangeRequests.AsNoTracking().Where(x => x.Id == id).Select(x => (Guid?)x.EmployeeId).FirstOrDefaultAsync(),
+        "travel" or "holiday_travel" => await db.TravelRequests.AsNoTracking().Where(x => x.Id == id && x.IsHolidayTravel == (applicationType == "holiday_travel")).Select(x => (Guid?)x.EmployeeId).FirstOrDefaultAsync(),
         "overtime"                   => await db.OvertimeRequests.AsNoTracking().Where(x => x.Id == id).Select(x => (Guid?)x.EmployeeId).FirstOrDefaultAsync(),
         "advance"                    => await db.AdvanceRequests.AsNoTracking().Where(x => x.Id == id).Select(x => (Guid?)x.SubmittedById).FirstOrDefaultAsync(),
         "write_off"                  => await db.WriteOffRecords.AsNoTracking().Where(x => x.Id == id).Select(x => (Guid?)x.SubmittedById).FirstOrDefaultAsync(),
@@ -245,7 +269,8 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
         "payment_request"            => await db.PaymentRequests.AsNoTracking().AnyAsync(x => x.Id == id && x.SubmittedById == callerId),
         "leave"                      => await db.LeaveRequests.AsNoTracking().AnyAsync(x => x.Id == id && x.EmployeeId == callerId),
         "leave_revocation"           => await db.LeaveRevocations.AsNoTracking().AnyAsync(x => x.Id == id && x.EmployeeId == callerId),
-        "travel" or "holiday_travel" => await db.TravelRequests.AsNoTracking().AnyAsync(x => x.Id == id && x.EmployeeId == callerId),
+        "shift_change"           => await db.ShiftChangeRequests.AsNoTracking().AnyAsync(x => x.Id == id && x.EmployeeId == callerId),
+        "travel" or "holiday_travel" => await db.TravelRequests.AsNoTracking().AnyAsync(x => x.Id == id && x.EmployeeId == callerId && x.IsHolidayTravel == (applicationType == "holiday_travel")),
         "overtime"                   => await db.OvertimeRequests.AsNoTracking().AnyAsync(x => x.Id == id && x.EmployeeId == callerId),
         "advance"                    => await db.AdvanceRequests.AsNoTracking().AnyAsync(x => x.Id == id && x.SubmittedById == callerId),
         "write_off"                  => await db.WriteOffRecords.AsNoTracking().AnyAsync(x => x.Id == id && x.SubmittedById == callerId),
@@ -454,6 +479,11 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
                     setStatus:     s  => lr.ApprovalStatus   = s,
                     incrementStep: () => lr.CurrentStepOrder++,
                     setReviewed:   () => { lr.ReviewedAt = Clock.Now; lr.ReviewedById = reviewerId; lr.ReviewNote = reviewNote?.Trim(); });
+
+                // 補休 lot 扣抵：整組重算（冪等）。pending → approved 不變動、
+                // → returned / rejected 則把時數歸還給 lot。不歸還的話那批補休就永遠鎖死。
+                await CompensatoryLotService.SyncUsageAsync(db, scheduleProvider, lr);
+
                 await db.SaveChangesAsync();
                 break;
             }
@@ -468,6 +498,15 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
                     ? await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == rv.EmployeeId.Value)
                     : null;
                 await AuthorizeStepAsync(rv.ApprovalItemId, rv.CurrentStepOrder, reviewer, rvApplicant?.DepartmentId, LeaveRevocationService.AppType, rv.Id, rvApplicant?.JobTitleId);
+                // 核准當下重驗（V23）：所有銷假日都已過去則無可銷之日，擋下請審核者退回 / 拒絕（部分已過者由 ApplyAsync 剔除）
+                if (action == "approved")
+                {
+                    var rvToday = Clock.Now.Date;
+                    var hasFutureDate = await db.LeaveRevocationDates.AsNoTracking()
+                        .AnyAsync(d => d.LeaveRevocationId == rv.Id && d.Date >= rvToday);
+                    if (!hasFutureDate)
+                        throw AppException.BadRequest("銷假日期已全部過去，無法核准；請退回申請人重送或拒絕。");
+                }
                 await ProcessReviewAsync(LeaveRevocationService.AppType, rv.Id, rv.CurrentStepOrder,
                     rv.ApprovalItemId, action, reviewNote, reviewerId, rv.EmployeeId,
                     setStatus:     s  => rv.ApprovalStatus   = s,
@@ -478,7 +517,14 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
                 // 退回 / 拒絕不需任何回滾 —— 父單自始至終維持 approved
                 if (rv.ApprovalStatus == "approved")
                 {
-                    await LeaveRevocationService.ApplyAsync(db, calendarReader, workPattern, rv);
+                    await LeaveRevocationService.ApplyAsync(db, workdaysFactory, rv);
+
+                    // 銷的若是補休假，父單 Hours 已遞減 → 扣抵紀錄必須跟著縮，
+                    // 否則被銷掉的那幾天仍佔著 lot，同仁憑空少一批補休。
+                    var rvParent = await db.LeaveRequests.FindAsync(rv.LeaveRequestId);
+                    if (rvParent is not null)
+                        await CompensatoryLotService.SyncUsageAsync(db, scheduleProvider, rvParent);
+
                     await db.SaveChangesAsync();
                     await notifier.NotifyLeaveRevocationAgentAsync(rv.Id);
                 }
@@ -486,11 +532,56 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
                     await db.SaveChangesAsync();
                 break;
             }
+            case ShiftChangeRequestService.AppType:
+            {
+                var sc = await db.ShiftChangeRequests.FindAsync(intId)
+                    ?? throw AppException.NotFound("ShiftChangeRequest");
+                if (sc.ApprovalStatus != "pending")
+                    throw AppException.BadRequest("Only pending shift change requests can be reviewed.");
+
+                var scApplicant = sc.EmployeeId.HasValue
+                    ? await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == sc.EmployeeId.Value)
+                    : null;
+                await AuthorizeStepAsync(sc.ApprovalItemId, sc.CurrentStepOrder, reviewer, scApplicant?.DepartmentId, ShiftChangeRequestService.AppType, sc.Id, scApplicant?.JobTitleId);
+
+                // 每一關核准前以「現行班表 + 本單異動」重驗：簽核期間班表若被其他途徑改動而不再合規，
+                // 不可放行（排在 ProcessReviewAsync 之前，才不會留下核准紀錄與通知）
+                if (action == "approved")
+                {
+                    // 核准當下重驗日期（V23）：建立 / 修改時驗過 date >= today，簽核期間可能已過；
+                    // 已過去的日子不可再改班（會與已發生的出勤、薪資對不起來）
+                    if (!ShiftScheduleWindow.OpenAllFutureMonths)
+                    {
+                        var scToday = Clock.Now.Date;
+                        var hasPast = await db.ShiftChangeRequestDates.AsNoTracking()
+                            .AnyAsync(d => d.ShiftChangeRequestId == sc.Id && d.Date < scToday);
+                        if (hasPast)
+                            throw AppException.BadRequest("改班目標日期已過，無法核准；請退回申請人調整日期後重送。");
+                    }
+                    await ShiftChangeRequestService.EnsureValidAsync(db, calendarReader, workdaysFactory, sc,
+                        "班表已變動，套用本改班申請後不符合排班規範，請退回申請人調整：");
+                }
+                await ProcessReviewAsync(ShiftChangeRequestService.AppType, sc.Id, sc.CurrentStepOrder,
+                    sc.ApprovalItemId, action, reviewNote, reviewerId, sc.EmployeeId,
+                    setStatus:     s  => sc.ApprovalStatus   = s,
+                    incrementStep: () => sc.CurrentStepOrder++,
+                    setReviewed:   () => { sc.ReviewedAt = Clock.Now; sc.ReviewedById = reviewerId; sc.ReviewNote = reviewNote?.Trim(); });
+
+                // **核准才寫入班表**；未核准前 ShiftScheduleDay 完全沒動過，
+                // 故退回 / 拒絕都不需要任何回滾（同銷假申請的思路）
+                if (sc.ApprovalStatus == "approved")
+                    await ShiftChangeRequestService.ApplyAsync(db, sc);
+
+                await db.SaveChangesAsync();
+                break;
+            }
             case "travel":
             {
                 var tr = await db.TravelRequests.Include(t => t.Installments)
                     .FirstOrDefaultAsync(t => t.Id == intId)
                     ?? throw AppException.NotFound("TravelRequest");
+                // 2026-10 安全修正：出差 / 假日執行活動共用一張表，型別須與資料一致，否則可冒用另一型的流程與財務撥款判定
+                if (tr.IsHolidayTravel) throw AppException.NotFound("TravelRequest");
                 if (tr.ApprovalStatus != "pending")
                     throw AppException.BadRequest("Only pending travel requests can be reviewed.");
 
@@ -519,6 +610,7 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
             {
                 var htr = await db.TravelRequests.FindAsync(intId)
                     ?? throw AppException.NotFound("TravelRequest");
+                if (!htr.IsHolidayTravel) throw AppException.NotFound("TravelRequest");
                 if (htr.ApprovalStatus != "pending")
                     throw AppException.BadRequest("Only pending travel requests can be reviewed.");
 
@@ -526,6 +618,12 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
                     ? await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == htr.EmployeeId.Value)
                     : null;
                 await AuthorizeStepAsync(htr.ApprovalItemId, htr.CurrentStepOrder, reviewer, htrApplicant?.DepartmentId, "holiday_travel", htr.Id, htrApplicant?.JobTitleId);
+
+                // 2026-10 安全稽核：核准時再擋一次參與人員的重複給付（只比對已核准的其他單，
+                // 避免兩張同時 pending 的既有單互相擋死）。退回 / 拒絕不受影響。
+                if (action == "approved")
+                    await HolidayTravelParticipantGuard.EnsureNoConflictsAsync(
+                        db, calendarReader, workdaysFactory, htr.Id, onlyAgainstApproved: true);
                 await ProcessReviewAsync("holiday_travel", htr.Id, htr.CurrentStepOrder,
                     htr.ApprovalItemId, action, reviewNote, reviewerId, htr.EmployeeId,
                     setStatus:     s  => htr.ApprovalStatus   = s,
@@ -540,6 +638,13 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
                     ?? throw AppException.NotFound("OvertimeRequest");
                 if (ot.ApprovalStatus != "pending")
                     throw AppException.BadRequest("Only pending overtime requests can be reviewed.");
+
+                // 防灌工時（2026-10）：核准時再檢一次每月上限（只計已核准 + 本單，見 OvertimeRequestGuard）
+                if (action == "approved")
+                    await OvertimeRequestGuard.EnsureMonthlyLimitOnApprovalAsync(db, ot);
+                // 反向重複給付：核准時再擋一次同日假日執行活動參與（含補休型）
+                if (action == "approved" && ot.EmployeeId is { } otOwner)
+                    await HolidayTravelParticipantGuard.EnsureNoOvertimeConflictAsync(db, calendarReader, otOwner, ot.OvertimeDate);
 
                 var otApplicant = ot.EmployeeId.HasValue
                     ? await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == ot.EmployeeId.Value)
@@ -556,9 +661,13 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
                 // ProcessReviewAsync 只在最後一關才把狀態設成 approved，故這裡天然只在終局觸發。
                 // 本 switch 位於 ExecuteReviewAsync，單筆審核與 BatchApproveAsync 共用同一段。
                 if (ot.ApprovalStatus == "approved")
-                    await OvertimeCompensationService.ApplyAsync(db, calendarReader, workPattern, ot);
+                    await OvertimeCompensationService.ApplyAsync(db, shiftSchedule, scheduleProvider, ot);
                 else if (ot.ApprovalStatus is "returned" or "rejected")
                     OvertimeCompensationService.ClearSnapshot(ot);
+
+                // 補休 lot：終局核准且補償方式為補休時開一筆（帶原始費率快照與到期日）；
+                // 其餘狀態收掉。ApplyAsync 內部自行判斷，故無條件呼叫。
+                await CompensatoryLotService.ApplyAsync(db, shiftSchedule, scheduleProvider, ot);
 
                 await db.SaveChangesAsync();
                 break;
@@ -614,8 +723,13 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
                     : null;
                 await AuthorizeStepAsync(wo.ApprovalItemId, wo.CurrentStepOrder, reviewer, woApplicant?.DepartmentId, "write_off", wo.Id, woApplicant?.JobTitleId);
                 // 設定預支申請退款日（審核者可在審核沖銷時填寫）
+                // 2026-10 安全修正：只有財務關卡（DepartmentCodes.FinanceStep）可登記退款日；
+                // 其他關卡帶了就 400，否則任何關卡的審核者都能改寫母單的退款紀錄。
                 if (estimatedRefundDate.HasValue || refundedAt.HasValue)
                 {
+                    if (!await IsFinanceStepAsync(wo.ApprovalItemId, wo.CurrentStepOrder, reviewer))
+                        throw AppException.BadRequest("僅財務管理部的簽核步驟可登記退款日。");
+
                     var adv = await db.AdvanceRequests.FindAsync(wo.AdvanceRequestId);
                     if (adv is not null)
                     {
@@ -684,8 +798,12 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
                 await AuthorizeStepAsync(two.ApprovalItemId, two.CurrentStepOrder, reviewer, twoApplicant?.DepartmentId, "travel_write_off", two.Id, twoApplicant?.JobTitleId);
 
                 // 設定出差申請退款日（審核者可在審核出差沖銷時填寫）
+                // 2026-10 安全修正：只有財務關卡可登記退款日（同預支沖銷）
                 if (estimatedRefundDate.HasValue || refundedAt.HasValue)
                 {
+                    if (!await IsFinanceStepAsync(two.ApprovalItemId, two.CurrentStepOrder, reviewer))
+                        throw AppException.BadRequest("僅財務管理部的簽核步驟可登記退款日。");
+
                     var travel = await db.TravelRequests.FindAsync(two.TravelRequestId);
                     if (travel is not null)
                     {
@@ -891,10 +1009,24 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
         int? applicantDepartmentId = null, string? applicationType = null, int? applicationId = null,
         int? applicantJobTitleId = null)
     {
-        if (approvalItemId is null) return;
-
         // Superadmin 可審核任何步驟
         if (reviewer.IsSuperAdmin) return;
+
+        // 2026-10 安全修正：任何人（含擁有全部權限者）都不可審核自己送出的申請。
+        // 正式資料證實發生過：財務協理在財務關卡核准自己的請款單、總監在總監關卡核准自己的預支 / 沖銷單 ——
+        // 因為推進流程時「固定池關卡」不檢查申請人是否就是池中唯一的人，而授權只比對部門 / 職稱。
+        // 單筆審核、批次核准、指定審核者、升級審核者一律適用（本方法是所有審核入口的共同授權點）。
+        if (applicationType is not null && applicationId.HasValue)
+        {
+            var applicantId = await GetApplicantIdAsync(applicationType, applicationId.Value);
+            if (applicantId.HasValue && applicantId.Value == reviewer.Id)
+                throw AppException.Forbidden("不可審核自己送出的申請。");
+        }
+
+        // 2026-10 安全修正：原本「查無簽核流程 / 查無目前關卡」直接放行（任何持 approval-tasks:write 者皆可核准），
+        // 改為一律拒絕，只有 Superadmin（上方已放行）可處理這類異常單據。
+        if (approvalItemId is null)
+            throw AppException.Forbidden("此申請單未綁定簽核流程，僅 Superadmin 可審核。");
 
         // 跨步驟同人去重防呆（限縮版）：僅當 reviewer 為「總監（JobTitle.Level=1）」時，
         // 已審過則不允許再次審核（總監絕不重審，留一道兜底）。非總監放寬以對齊 SkipUnreviewableStepsAsync 的限縮邏輯。
@@ -935,7 +1067,8 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
             .AsNoTracking()
             .FirstOrDefaultAsync(s => s.ApprovalItemId == approvalItemId && s.StepOrder == currentStepOrder);
 
-        if (step is null) return;
+        if (step is null)
+            throw AppException.Forbidden("查無此申請單目前所在的簽核關卡，僅 Superadmin 可審核。");
 
         // ── 指定審核模式（原生 UseApplicantDesignated 或例外命中）：
         //    查詢「本步驟」的 RequestDesignatedReviewers，找當前 pending 最小 StepOrder 的審核者 ──
@@ -1497,6 +1630,10 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
         if (wo is null)
             return new NotFoundObjectResult(ApiResponse.Fail("Write-off record not found."));
 
+        // 2026-10 安全修正：申請人不可替自己的沖銷單結案（Superadmin 例外）
+        if (!user.IsSuperAdmin && wo.SubmittedById == userId)
+            return new ObjectResult(ApiResponse.Fail("不可對自己的申請單執行結案。")) { StatusCode = 403 };
+
         if (wo.ApprovalStatus != "approved")
             return new BadRequestObjectResult(ApiResponse.Fail("僅已核准的沖銷申請可執行結案。"));
 
@@ -1531,6 +1668,10 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
         var two = await db.TravelWriteOffRecords.AsNoTracking().FirstOrDefaultAsync(w => w.Id == intId);
         if (two is null)
             return new NotFoundObjectResult(ApiResponse.Fail("Travel write-off record not found."));
+
+        // 2026-10 安全修正：申請人不可替自己的沖銷單結案（Superadmin 例外）
+        if (!user.IsSuperAdmin && two.SubmittedById == userId)
+            return new ObjectResult(ApiResponse.Fail("不可對自己的申請單執行結案。")) { StatusCode = 403 };
 
         if (two.ApprovalStatus != "approved")
             return new BadRequestObjectResult(ApiResponse.Fail("僅已核准的沖銷申請可執行結案。"));

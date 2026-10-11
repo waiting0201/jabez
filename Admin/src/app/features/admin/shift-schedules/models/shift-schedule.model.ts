@@ -1,0 +1,142 @@
+/**
+ * 個人排班（四週彈性工時 · 功能 A）
+ *
+ * 日別四值與後端 `Api/Common/WorkDayType.cs` 的 `WorkDayTypes` 一一對應，**兩處必須同步**。
+ * 國定假日（public_holiday）由公司行事曆解析，員工不可勾選、不佔 4 例 4 休配額。
+ */
+export type ShiftDayType = 'work' | 'rest_day' | 'statutory_off' | 'public_holiday';
+
+/** 員工可勾選的三種（國定假日唯讀，不在其中）。點擊月曆格時依此順序循環。 */
+export const SELECTABLE_DAY_TYPES: ShiftDayType[] = ['work', 'statutory_off', 'rest_day'];
+
+export const DAY_TYPE_LABELS: Record<ShiftDayType, string> = {
+  work:           '上班日',
+  statutory_off:  '例假日',
+  rest_day:       '休假日',
+  public_holiday: '國定假日',
+};
+
+/**
+ * 月曆格的配色。三種可勾選狀態各一色，國定假日另一色 —— 與〈出勤／排休總覽表〉的三色一致。
+ * 值為 tailwind.css 的 CIS token，不可改寫成字面色碼。
+ */
+export const DAY_TYPE_STYLES: Record<ShiftDayType, { bg: string; fg: string; border: string }> = {
+  work:           { bg: 'var(--bg-surface)',  fg: 'var(--text-primary)',   border: 'var(--border)' },
+  statutory_off:  { bg: '#F0E4E4',            fg: 'var(--red)',            border: 'var(--red)' },
+  rest_day:       { bg: '#E7EFE1',            fg: 'var(--green)',          border: 'var(--green)' },
+  public_holiday: { bg: 'var(--bg-elevated)', fg: 'var(--text-secondary)', border: 'var(--border)' },
+};
+
+export interface ShiftScheduleDay {
+  date: string;                  // ISO yyyy-MM-ddTHH:mm:ss
+  dayType: ShiftDayType;
+  holidayName: string | null;    // 國定假日名稱（國慶日、彈性休假日…）
+  readOnly: boolean;             // 國定假日、活動日預定人力、已請假日、或此刻不可編輯的日期
+  isActivityDay: boolean;        // 主管排定的活動日（疊加旗標，與 dayType 並存）
+  activityTitle: string | null;
+  isActivityAssignee: boolean;   // 本人是否為該活動日的預定人力
+  /** 鎖定為上班日的原因：activity（活動日預定人力）/ leave（已請假）/ change（已在另一張改班單內） */
+  lockReason?: ShiftDayLockReason | null;
+  leaveLabel?: string | null;    // 該日的假別（例「年假」「事假（簽核中）」）
+  /** 該日全部活動日（全公司，本人被指派者在前）；上面三個 activity 欄位取自其中第一筆 */
+  activities?: ShiftScheduleActivity[] | null;
+}
+
+/** 排班月曆格上的一個活動日：格內顯示「名稱／部門｜建立者」，hover 列出參與人員。 */
+export interface ShiftScheduleActivity {
+  id: number;
+  title: string;
+  departmentName: string | null;
+  createdByName: string | null;
+  isAssignee: boolean;           // 本人是否為預定人力
+  assigneeNames: string[];
+}
+
+export type ShiftDayLockReason = 'activity' | 'leave' | 'change';
+
+/**
+ * 擋存判準結果。**進入畫面時就要顯示** —— 空白月曆必然擋存，
+ * 不可等到按下儲存才報錯（客戶已確認此為預期行為）。
+ */
+export interface ShiftScheduleValidation {
+  canSave: boolean;
+  blocks: string[];
+  warnings: string[];
+  statutoryOffCount: number;
+  restDayCount: number;
+  requiredStatutoryOff: number;
+  /** 休假應排天數 ＝ requiredOffDays − max(4, 已排例假)：多排的例假由休假轉入 */
+  requiredRestDay: number;
+  /** 例假＋休假合計應排天數（31 日曆月為 9，其餘 8） */
+  requiredOffDays: number;
+}
+
+/** 可編輯情形。同 `Api/Common/ShiftScheduleWindow.cs` 的 `ShiftScheduleEditMode`。 */
+export type ShiftEditMode = 'open' | 'grace_period' | 'same_day_only' | 'closed';
+
+export interface ShiftScheduleMonth {
+  userId: string;
+  userName: string;
+  year: number;
+  month: number;
+  editable: boolean;
+  editMode: ShiftEditMode;
+  editReason: string;
+  status: 'draft' | 'committed' | 'auto' | null;
+  committedAt: string | null;
+  autoAssignedAt: string | null;
+  days: ShiftScheduleDay[];
+  validation: ShiftScheduleValidation;
+  /** 前月月底與次月月初各 13 天，僅供月曆對照（與跨月檢核讀同一份資料）。 */
+  adjacentDays: ShiftScheduleAdjacentDay[];
+}
+
+/**
+ * 前後月的一天（唯讀對照）。對應後端 `ShiftScheduleAdjacentDayDto`。
+ * `dayType` 為 null ＝ 該月尚未定案（未排定）—— 跨月檢核同樣不看這些日子。
+ */
+export interface ShiftScheduleAdjacentDay {
+  date: string;
+  dayType: ShiftDayType | null;
+  holidayName: string | null;
+}
+
+export interface SaveShiftScheduleRequest {
+  year: number;
+  month: number;
+  days: { date: string; dayType: ShiftDayType }[];
+}
+
+/** 點一下切到下一個狀態：上班日 → 例假日 → 休假日 → 上班日。 */
+export function nextDayType(current: ShiftDayType): ShiftDayType {
+  const i = SELECTABLE_DAY_TYPES.indexOf(current);
+  return SELECTABLE_DAY_TYPES[(i + 1) % SELECTABLE_DAY_TYPES.length];
+}
+
+/** 取日期字串的 yyyy-MM-dd 部分。刻意用字串切割避免 UTC 位移（同 leave-request.model 的 isoTime）。 */
+export function dateKey(iso: string): string {
+  return iso.slice(0, 10);
+}
+
+/**
+ * 活動日覆蓋個人排班的通知（2026-09-29 活動日優先）。對應後端 `ShiftScheduleAdjustmentDto`。
+ * 主管把活動日排在本人的例假／休假上時，該日改為上班日、原例假／休假搬到 `relocatedTo`；
+ * `relocatedTo` 為 null ＝ 系統找不到合法的日子，待本人自行補排。
+ */
+export interface ShiftScheduleAdjustment {
+  id: number;
+  date: string;
+  activityTitle: string;
+  originalDayType: ShiftDayType;
+  relocatedTo: string | null;
+  createdAt: string;
+}
+
+/**
+ * 鎖定格（活動日預定人力／已請假）卻排著例假／休假 —— 後端此時放行點選，但只允許改成上班日
+ * （否則格子點不動、存檔又被擋，兩邊都改不了）。個人排班與改班申請兩頁共用此判斷。
+ */
+export function isLockedOffCell(cell: ShiftScheduleDay, current: ShiftDayType): boolean {
+  return (cell.lockReason === 'activity' || cell.lockReason === 'leave')
+    && (current === 'statutory_off' || current === 'rest_day');
+}

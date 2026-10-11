@@ -6,11 +6,24 @@
       </svg>
       <h4 class="mb-0">假日執行活動申請</h4>
     </div>
-    <a *appHasPermission="'holiday-travel-requests:write'" routerLink="new" class="btn btn-primary inline-flex items-center gap-1">
-      <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#plus"></use></svg>
-      新增申請
-    </a>
+    @if (!retired()) {
+      <a *appHasPermission="'holiday-travel-requests:write'" routerLink="new" class="btn btn-primary inline-flex items-center gap-1">
+        <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#plus"></use></svg>
+        新增申請
+      </a>
+    }
   </div>
+
+  @if (retired()) {
+    <!-- 退場說明：不寫清楚的話，使用者只會看到「新增鈕不見了」而不知道該去哪裡提單 -->
+    <div class="alert alert-info flex items-start gap-2 mb-6">
+      <svg class="sa-icon shrink-0 mt-0.5" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#info"></use></svg>
+      <div class="small">
+        本申請別已隨<strong>四週彈性工時</strong>上線退場，不再受理新增與送簽；假日出勤請改提<strong>〈加班申請〉</strong>。
+        既有單據仍可查閱，歷史假日津貼不受影響。
+      </div>
+    </div>
+  }
 
   <div class="card border-0 shadow-sm">
     <div class="card-body p-0">
@@ -55,19 +68,21 @@
                 </td>
                 <td class="text-right" style="white-space: nowrap">
                   <div class="flex justify-end gap-1">
-                    @if (canWrite() && (r.approvalStatus === 'draft' || r.approvalStatus === 'returned')) {
+                    <!-- 退場後不再提供編輯，改顯示「檢視」；**刪除仍保留**，
+                         否則切換當下還開著的草稿會永遠卡在清單上、使用者清不掉 -->
+                    @if (!retired() && canWrite() && (r.approvalStatus === 'draft' || r.approvalStatus === 'returned')) {
                       <a [routerLink]="[r.id, 'edit']" class="btn btn-sm btn-ghost-primary inline-flex items-center" title="編輯">
                         <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#edit"></use></svg>
                       </a>
-                      @if (canDelete() && r.approvalStatus === 'draft') {
-                        <button class="btn btn-sm btn-ghost-danger inline-flex items-center" (click)="delete(r)" title="刪除">
-                          <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#trash"></use></svg>
-                        </button>
-                      }
                     } @else {
                       <a [routerLink]="[r.id]" class="btn btn-sm btn-ghost-secondary inline-flex items-center" title="檢視">
                         <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#eye"></use></svg>
                       </a>
+                    }
+                    @if (canWrite() && canDelete() && r.approvalStatus === 'draft') {
+                      <button class="btn btn-sm btn-ghost-danger inline-flex items-center" (click)="delete(r)" title="刪除">
+                        <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#trash"></use></svg>
+                      </button>
                     }
                   </div>
                 </td>

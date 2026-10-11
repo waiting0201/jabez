@@ -4,6 +4,49 @@
 
 > 修改任何通知行為時，**必須同步更新此文件**。
 
+## 非正式環境的訊息標記（2026-09 新增）
+
+**LINE 與 Email 共用同一個設定鍵** `App:EnvironmentLabel`
+（Azure App Setting `App__EnvironmentLabel`），正式站**不設此值**故輸出完全不變。
+單一真相為 [`Api/Common/Constants.cs` 的 `EnvironmentLabel`](../../Api/Common/Constants.cs)。
+
+> ⚠️ 拆成兩個設定鍵的必然結果是有人只設了一邊，症狀是「LINE 標了、Email 沒標」
+> 而且**不會有任何錯誤**。一個概念就給一個鍵。
+
+| 通道 | 套用位置 | 為什麼兩個位置都要 |
+|---|---|---|
+| LINE | `altText` | 手機通知列與聊天列表看到的是這個 |
+| LINE | bubble header 第一行 | 點開訊息後看到的是這個 |
+| Email | 主旨前綴 | 信箱列表看到的是這個 |
+| Email | 內文頂端橫幅 | 轉寄或列印出來時看到的是這個 |
+
+只加其中一個會出現「列表看得出是測試、點開卻看不出來」的半吊子狀態。
+
+兩個實作點都是該通道的**唯一收斂點**，故日後新增訊息模板自動涵蓋：
+
+- LINE → [`LineFlexMessageBuilder.BuildBubble`](../../Api/Services/LineFlexMessageBuilder.cs)（11 種模板全部走它，已逐一確認）
+- Email → [`EmailService.SendAsync`](../../Api/Services/EmailService.cs)（14 個寄信點全部走它）
+
+兩個類別都是 static / 無 DI，故由 `Program.cs` 於啟動時設定一次（composition root）。
+
+**為什麼需要**：測試站與正式站送的是同一批真實員工看得懂的訊息，收件人手機／信箱上
+完全分不出哪一則是測試 —— 2026-09 曾因此讓 29 位同仁各收到 2 則測試 LINE 推播而
+無從判斷真偽，且**訊息送出後收不回來**。
+
+> ⚠️ **不要以為關掉通知開關就安全了**：`SystemSetting.ApprovalEmailEnabled` /
+> `ApprovalLineEnabled` **只管簽核通知**。以下路徑完全不受它們管制，關了照送：
+> | 路徑 | 通道 |
+> |---|---|
+> | 帳號通知信（`UserHandler`） | Email |
+> | 薪資明細信（`PayrollHandler`） | Email |
+> | 打卡提醒（`AttendanceReminderFunction`） | LINE |
+> | 撥款提醒（`PaymentReminderFunction`） | LINE + Email |
+> | 排班提醒（`ShiftScheduleReminderFunction`） | LINE |
+>
+> 環境標記是唯一能涵蓋全部路徑的機制。
+
+現值：測試站 `【測試站｜此為測試訊息】`；正式站未設定。
+
 ---
 
 ## 1. 概述
@@ -27,7 +70,11 @@
 
 除 Email / LINE 外，前端右上角鈴鐺提供**站內準即時通知**：
 
-- **資料來源**：`GET /me/notification-counts` 回 `{approvals, myRequests, recentApprovals}`。
+- **資料來源**：`GET /me/notification-counts` 回 `{approvals, myRequests, recentApprovals, shiftAdjustments}`。
+- **班表異動（2026-09-29 新增）**：`shiftAdjustments` ＝ 主管的活動日覆蓋了本人例假／休假（系統已改上班日並自動補排）、
+  尚未按「我知道了」的筆數，**與其他兩段不同，這段有「已讀」資料表** `ShiftScheduleAdjustment.AcknowledgedAt`。
+  dropdown 顯示「班表異動 → 活動日調整了我的班表」並導向個人排班頁（頁首提示卡列出改了什麼，按「我知道了」呼叫
+  `POST /shift-schedules/adjustments/ack`）；筆數增加時跳 warning toast「主管排定的活動日調整了您的班表」。不發 LINE / Email。
 - **輪詢**：前端 `NotificationService.startPolling()`（由 `MainLayout` 啟停）每 **60 秒**呼叫一次更新 signal；鈴鐺紅點與 dropdown 明細同步更新（Angular signal 精準更新，**畫面不刷新**）。分頁切到背景（`document.hidden`）時**暫停發送**以省 Azure Functions 請求，切回前景立即補抓一次。
 - **Toast（ngx-toastr）**：比對基準後跳出兩種提示：
   - **待我簽核增加** → `您有 N 件新的待簽核`（純前端比對 `approvals` 總和增量，零後端依賴）。
@@ -151,7 +198,7 @@
 
 - **觸發**：`AttendanceReminderFunction` (TimerTrigger)，cron 由 `AttendanceReminderCron` app setting 控制，預設限定台北時間 7-9 點與 16-18 點每分鐘執行一次
 - **判斷時點**：以 `WorkStartTime` / `WorkEndTime` 為準，提醒提前 2 分鐘；命中條件為**時間窗** `[提前 2 分, +30 分)`（吸收冷啟動延遲，2026-09-09 由 10 分鐘放寬，見 [attendance-reminder.md](attendance-reminder.md)），同一槽一天只發一次由 `batchStart` 冪等閘保證
-- **過濾條件**：非週末 + 當日無覆蓋該時刻的請假記錄 + 有 LineUserId
+- **過濾條件**：非週末 + 當日無覆蓋該時刻的請假記錄 + 有 LineUserId + **持有 `attendances:write`**（約聘 / 外聘等無打卡權限的角色不收打卡提醒，但申請 / 簽核通知照收）
 - **持久化**：每次執行與每筆推播結果寫入 `AttendanceReminderLogs`（Superadmin 可於前端 `/admin/attendance-reminder-logs` 查詢）
 - **推播間隔**：100ms（避免觸發 LINE 速率限制）
 - **不受 `ApprovalLineEnabled` 影響**
@@ -201,3 +248,18 @@
 - **薪資明細產生公式** → [payroll-formula.md](payroll-formula.md)
 - **API 端點清單** → [../api-routes.md](../api-routes.md)
 - **SystemSetting 欄位** → [../database-schema.md](../database-schema.md)
+
+---
+
+## 改班申請（shift_change，2026-09 新增）
+
+沿用既有簽核通知機制，不新增通知種類 —— `ApprovalNotificationService` 的
+`AppTypeLabels`（「改班申請」）、`GetSummaryAsync`（`GetShiftChangeSummaryAsync`，
+摘要格式「2026/12 調整 2 天（12/12 休假日→上班日、12/18 上班日→休假日）」）、
+`BuildRequestUrl`（`shift-changes`）三處各加一筆即可。
+
+## 排班相關推播（四週彈性工時）
+
+見 [attendance-reminder.md](attendance-reminder.md)：排班提醒四個時點（10／20／25／26 號）
+與個人化下班提醒、半天假 12:55 交接提醒。
+⚠ 手動觸發端點**預設乾跑**，要真的發送必須明確帶 `send=true`。

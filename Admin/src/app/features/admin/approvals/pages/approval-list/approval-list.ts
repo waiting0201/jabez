@@ -86,8 +86,13 @@ export class ApprovalList {
 
   readonly appTypeLabels  = APPLICATION_TYPE_LABELS;
   readonly appTypeClasses = APPLICATION_TYPE_CLASSES;
+  // ⚠ 這是**硬式清單**，不是從 APPLICATION_TYPE_LABELS 自動來的（那是 approval-task-list 的篩選下拉）。
+  // 新增申請類型時漏改這裡 → 管理員在 UI 上根本選不到該類型，流程一條也建不出來。
+  //
   // 刻意不含 leave_revocation（銷假）：銷假沿用請假的流程設定，
   // 後端 ResolveApprovalItemIdAsync 固定以 "leave" 解析，另建銷假流程不會生效。
+  // shift_change（改班）則**必須在清單裡** —— 它以自己的 ApplicationType 解析，
+  // §3.5.2 的逐部門六條簽核路線要靠管理員在此建出 6 個 ApprovalItem。
   readonly appTypeOptions: {value: ApplicationType | ''; label: string}[] = [
     {value: '',                label: '通用（不綁定）'},
     {value: 'payment_request', label: '請款申請'},
@@ -100,6 +105,7 @@ export class ApprovalList {
     {value: 'holiday_travel',   label: '假日執行活動申請'},
     {value: 'travel_payment',   label: '出差請款申請'},
     {value: 'pre_review',       label: '預審申請'},
+    {value: 'shift_change',     label: '改班申請'},
   ];
 
   form = this.fb.group({

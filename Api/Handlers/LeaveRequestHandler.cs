@@ -28,7 +28,8 @@ public sealed class LeaveRequestHandler(
     IApprovalNotificationService notifier,
     IApprovalFlowService approvalFlow,
     ICalendarDayReadService calendarReader,
-    IWorkPatternReadService workPattern)
+    IEmployeeWorkdaysFactory workdaysFactory,
+    IWorkdayScheduleProvider scheduleProvider)
 {
     private static readonly HashSet<string> ValidLeaveTypes =
         ["annual", "personal", "sick", "compensatory", "marriage", "bereavement",
@@ -174,33 +175,26 @@ public sealed class LeaveRequestHandler(
     /// 計算 [start, end] 內的請假日 / 假日清單。
     /// 行事曆有資料 → 以 CalendarDay.IsHoliday（已含六日 + 國定假、補班六為工作日）為準；
     /// 無資料 → 退回以星期六日判定（僅扣六日，國定假需匯入行事曆才會扣）。
-    /// 實作已抽至 WorkCalendarHelper（與打卡的休假日判定共用同一份規則）。
+    /// 四週彈性工時切換日起改看**假單所有人的個人排班**（只有排定上班的日子算請假日），見 <see cref="EmployeeWorkdays"/>。
+    /// 必須與 <see cref="LeaveDayExpander"/> 同一套判定，否則送簽與銷假重算的 Hours 會不一致。
     /// </summary>
     private async Task<(bool hasData, List<DateTime> holidays, List<DateTime> working)>
         ComputeWorkingDatesAsync(Guid ownerId, DateTime start, DateTime end)
-        => await WorkCalendarHelper.ComputeWorkingDatesAsync(
-            calendarReader, await workPattern.IsShiftWorkerAsync(ownerId), start, end, CalendarScope.Leave);
+        => await (await workdaysFactory.ForAsync(ownerId)).ComputeAsync(start, end, CalendarScope.Leave);
 
     /// <summary>
-    /// HalfDay 時數在 body.Hours 未帶時的退路：以 LeaveDayExpander 同一套「起 &lt; 13:00 ＝上午、
-    /// 訖 &gt; 13:00 ＝下午」時段分類推時數，不用 End − Start 時間差 —— 補休的上午時段為 09:00–13:00
-    /// （見前端 halfDayAmStartHour / halfDayAmEndHour），時間差會算成 4 小時但界線若用 12:00
-    /// 會把訖 13:00 判成下午而算出全日 8 小時。
-    /// 跨日半天假一律由 client 帶 Hours（時間差對跨日本來就沒有意義），此處僅處理同日。
+    /// 半天型假別（年假 / 補休 / 高階主管假）的時數：**一律由後端依起訖與上午 / 下午時段逐日計算**，
+    /// 完全忽略前端送來的 Hours（2026-10 防灌工時；原本「信任 client」，改 payload 即可把 4 小時送成 400 小時）。
+    /// 走 <see cref="LeaveDayExpander"/> 的單一真相（與銷假逐日展開、出缺勤請假合併同一份判定）：
+    /// 起 &lt; 13:00 ＝上午、訖 &gt; 13:00 ＝下午；單日 am→am 4 / am→pm 8 / pm→pm 4；
+    /// 多日首日 + 中間 8 + 末日；只算排班 / 行事曆上的工作日。pm→am（單日）等無效組合回 0，呼叫端擋「時數必須大於 0」。
+    /// Create / Update / Submit 三處共用，三者結果一致。
     /// </summary>
-    private static decimal ComputeHalfDaySlotHours(DateTime start, DateTime end)
+    private async Task<decimal> ComputeHalfDayHoursAsync(Guid ownerId, string leaveType, DateTime start, DateTime end)
     {
-        if (start.Date != end.Date) return (decimal)(end - start).TotalHours;
-
-        bool startIsAm = start.Hour < WorkdayHours.LunchEndHour;  // 08:00 / 09:00 → am、13:00 → pm
-        bool endIsPm   = end.Hour   > WorkdayHours.LunchEndHour;  // 17:00 → pm、12:00 / 13:00 → am
-        return (startIsAm, endIsPm) switch
-        {
-            (true,  false) => 4m,   // am → am
-            (true,  true)  => 8m,   // am → pm（全日）
-            (false, true)  => 4m,   // pm → pm
-            _              => 0m,   // pm → am：單日無效
-        };
+        var workdays = await workdaysFactory.ForAsync(ownerId);
+        var days = await LeaveDayExpander.ExpandAsync(workdays, leaveType, start, end);
+        return days.Sum(d => d.Hours);
     }
 
     /// <summary>
@@ -213,6 +207,8 @@ public sealed class LeaveRequestHandler(
     {
         var (hasData, _, working) = await ComputeWorkingDatesAsync(ownerId, start, end);
         var workingSet = working.Select(d => d.Date).ToHashSet();
+        // 跨日首末日的邊界依假單 StartDate 選新舊制時段（與 LeaveDayExpander.ExpandHourUnit 一致）
+        var sch = await scheduleProvider.ForAsync(start);
 
         if (start.Date == end.Date)
         {
@@ -224,9 +220,9 @@ public sealed class LeaveRequestHandler(
         foreach (var d in workingSet)
         {
             if (d == start.Date)
-                total += Math.Clamp(WorkdayHours.EndHour - start.Hour, 0, 8);
+                total += Math.Clamp(sch.End.Hour - start.Hour, 0, sch.FullDayHours);
             else if (d == end.Date)
-                total += Math.Clamp(end.Hour - WorkdayHours.StartHour, 0, 8);
+                total += Math.Clamp(end.Hour - sch.Start.Hour, 0, sch.FullDayHours);
             else
                 total += 8m;
         }
@@ -355,7 +351,7 @@ public sealed class LeaveRequestHandler(
                 return new BadRequestObjectResult(ApiResponse.Fail("EndDate 必須為整點（分鐘 00）。"));
         }
 
-        // 時數計算：Hour → 逐日累加只算工作日；HalfDay → 信任 client；Day → 工作日數 × 8。
+        // 時數計算：Hour → 逐日累加只算工作日；HalfDay → 後端依時段逐日計算（不信任 client）；Day → 工作日數 × 8。
         // 工作日型假別（除歲時祭儀假外皆是）扣除國定假日與六日；產假區間仍為起始日 +55 天，只計其中工作日。
         // 草稿階段行事曆若尚無資料 → 退回原始算式（送出時會強制要求行事曆並權威重算）。
         bool isWorkingDayType = WorkingDayLeaveTypes.Contains(body.LeaveType);
@@ -369,12 +365,17 @@ public sealed class LeaveRequestHandler(
             var (_, _, working) = await ComputeWorkingDatesAsync(employeeId, effectiveStart, effectiveEnd);
             hours = working.Count * 8m;
         }
+        else if (isWorkingDayType && unit == LeaveTimeUnit.HalfDay)
+        {
+            // 半天型假別時數一律由後端算，忽略 body.Hours（見 ComputeHalfDayHoursAsync）
+            hours = await ComputeHalfDayHoursAsync(employeeId, body.LeaveType, effectiveStart, effectiveEnd);
+        }
         else
         {
             hours = unit switch
             {
                 LeaveTimeUnit.Hour    => (decimal)(effectiveEnd - effectiveStart).TotalHours,
-                LeaveTimeUnit.HalfDay => body.Hours,
+                LeaveTimeUnit.HalfDay => 0m,   // 半天型假別皆為工作日型，已走上一個分支；此處不再信任 body.Hours
                 LeaveTimeUnit.Day     => ((effectiveEnd.Date - effectiveStart.Date).Days + 1) * 8m,
                 _                     => (decimal)(effectiveEnd - effectiveStart).TotalHours,
             };
@@ -408,7 +409,7 @@ public sealed class LeaveRequestHandler(
         var item = new LeaveRequest
         {
             EmployeeId              = employeeId,   // 強制使用 JWT 身分，忽略 body.EmployeeId
-            ApprovalItemId          = body.ApprovalItemId,
+            // ApprovalItemId 不採用前端值：一律於 SubmitAsync 依申請人部門解析（防止竄改流程）
             LeaveType               = body.LeaveType,
             StartDate               = effectiveStart,
             EndDate                 = effectiveEnd,
@@ -597,12 +598,17 @@ public sealed class LeaveRequestHandler(
                 var (_, _, working) = await ComputeWorkingDatesAsync(item.EmployeeId ?? Guid.Empty, item.StartDate, item.EndDate);
                 recalcHours = working.Count * 8m;
             }
+            else if (isWorkingDayType && unit == LeaveTimeUnit.HalfDay)
+            {
+                // 半天型假別時數一律由後端算，忽略 body.Hours（見 ComputeHalfDayHoursAsync）
+                recalcHours = await ComputeHalfDayHoursAsync(item.EmployeeId ?? Guid.Empty, effectiveLeaveType, item.StartDate, item.EndDate);
+            }
             else
             {
                 recalcHours = unit switch
                 {
                     LeaveTimeUnit.Hour    => (decimal)(item.EndDate - item.StartDate).TotalHours,
-                    LeaveTimeUnit.HalfDay => body.Hours ?? ComputeHalfDaySlotHours(item.StartDate, item.EndDate),
+                    LeaveTimeUnit.HalfDay => 0m,   // 半天型假別皆為工作日型，已走上一個分支
                     LeaveTimeUnit.Day     => ((item.EndDate.Date - item.StartDate.Date).Days + 1) * 8m,
                     _                     => (decimal)(item.EndDate - item.StartDate).TotalHours,
                 };
@@ -654,6 +660,10 @@ public sealed class LeaveRequestHandler(
         db.RequestDesignatedReviewers.RemoveRange(
             await db.RequestDesignatedReviewers.Where(r => r.RequestType == "leave" && r.RequestId == item.Id).ToListAsync());
 
+        // 補休扣抵紀錄：LeaveRequestId 的 FK 是 NoAction，殘留列會擋住刪單；
+        // 走 SyncUsageAsync 先把時數歸還給 lot，再由它清掉 usage 列（狀態必為 draft / returned → target 0）。
+        await CompensatoryLotService.SyncUsageAsync(db, scheduleProvider, item);
+
         db.LeaveRequests.Remove(item);
         await db.SaveChangesAsync();
 
@@ -666,6 +676,16 @@ public sealed class LeaveRequestHandler(
     /// </summary>
     private async Task<CompensatoryBalance.Result> ComputeCompensatoryAsync(Guid userId)
     {
+        // 四週彈性工時上線後改以逐筆 lot 為準（有到期日、有原始費率、FIFO 可稽核）。
+        // 切換日為 null 時仍走下方的聚合版，確保地基上線不改變任何可見行為。
+        if (await scheduleProvider.GetSwitchDateAsync() is not null)
+        {
+            var b = await CompensatoryLotService.GetBalanceAsync(db, userId);
+            return new CompensatoryBalance.Result(
+                b.OpeningHours, b.OpeningRemaining, b.OvertimeHours,
+                b.UsedHours, b.AvailableHours, b.OpeningExpired);
+        }
+
         var opening = await db.Users.AsNoTracking()
             .Where(u => u.Id == userId)
             .Select(u => u.CompensatoryOpeningHours)
@@ -678,7 +698,7 @@ public sealed class LeaveRequestHandler(
             .Where(o => o.EmployeeId == userId
                      && o.ApprovalStatus == "approved"
                      && o.CompensationType == OvertimeCompensationService.Compensatory)
-            .SumAsync(o => o.EstimatedHours);
+            .SumAsync(o => o.SettledHours ?? o.EstimatedHours);   // 給付基準＝OvertimeSettlement.BillableHours（舊單 SettledHours 為 null 沿用申請時數）
 
         // 已補休時數：已送出（pending / approved）的補休假 Hours 合計
         var used = await db.LeaveRequests
@@ -696,11 +716,16 @@ public sealed class LeaveRequestHandler(
         var userId = await GetUserIdAsync(req);
         var b = await ComputeCompensatoryAsync(userId);
 
+        // lot 制的期初到期日存在期初 lot 上（由切換時的一次性腳本寫入），不再是程式常數
+        var lotExpiry = await scheduleProvider.GetSwitchDateAsync() is not null
+            ? (await CompensatoryLotService.GetBalanceAsync(db, userId)).OpeningExpiry
+            : null;
+
         return new OkObjectResult(ApiResponse.Ok(new
         {
             openingHours          = b.OpeningHours,       // 期初匯入
             openingRemaining      = b.OpeningRemaining,   // 舊補休剩餘
-            openingExpiry         = CompensatoryBalance.OpeningExpiry,
+            openingExpiry         = lotExpiry ?? CompensatoryBalance.OpeningExpiry,
             openingExpired        = b.OpeningExpired,
             totalOvertimeHours    = b.OvertimeHours,      // 系統加班可補休
             usedCompensatoryHours = b.UsedHours,
@@ -1075,11 +1100,11 @@ public sealed class LeaveRequestHandler(
 
         // 工作日型假別（除歲時祭儀假外皆是）：送出時強制要求行事曆已匯入並權威重算 Hours（扣國定假日與六日）。
         // Day → 工作日數 × 8（產假亦走此路徑）；Hour → 逐日累加只算工作日；
-        // HalfDay 沿用既有「信任 client」原則不重算。
+        // HalfDay（年假 / 補休 / 高階主管假）2026-10 起同樣由後端依時段逐日重算，不再信任 client 的 Hours。
         // 確保後續 requestDays（Hours/8）分流與天數上限驗證皆以正確工作日為準。
         var submitUnit = GetTimeUnit(item.LeaveType);
         if (WorkingDayLeaveTypes.Contains(item.LeaveType) &&
-            submitUnit is LeaveTimeUnit.Day or LeaveTimeUnit.Hour)
+            submitUnit is LeaveTimeUnit.Day or LeaveTimeUnit.Hour or LeaveTimeUnit.HalfDay)
         {
             var yearLabel = item.StartDate.Year == item.EndDate.Year
                 ? $"{item.StartDate:yyyy}"
@@ -1095,6 +1120,17 @@ public sealed class LeaveRequestHandler(
                     return new BadRequestObjectResult(ApiResponse.Fail("此區間全為國定假日或六日，無可請假的工作日。"));
                 item.Hours = working.Count * 8m;
             }
+            else if (submitUnit == LeaveTimeUnit.HalfDay)
+            {
+                var (hasData, _, _) = await ComputeWorkingDatesAsync(item.EmployeeId ?? Guid.Empty, item.StartDate, item.EndDate);
+                if (!hasData)
+                    return new BadRequestObjectResult(ApiResponse.Fail(
+                        $"尚未匯入 {yearLabel} 年行事曆，無法計算扣除假日後的請假時數，請先於「行事曆設定」匯入。"));
+                var halfDayHours = await ComputeHalfDayHoursAsync(item.EmployeeId ?? Guid.Empty, item.LeaveType, item.StartDate, item.EndDate);
+                if (halfDayHours <= 0)
+                    return new BadRequestObjectResult(ApiResponse.Fail("此區間全為國定假日或六日，或半天時段無效，無可請假的時數。"));
+                item.Hours = halfDayHours;
+            }
             else
             {
                 var (hasData, hours) = await ComputeHourUnitHoursAsync(item.EmployeeId ?? Guid.Empty, item.StartDate, item.EndDate);
@@ -1108,28 +1144,27 @@ public sealed class LeaveRequestHandler(
         }
 
         // 退回重送時清除舊審核記錄，重置指定審核者狀態，重新走流程
-        if (item.ApprovalStatus == "returned")
+        // 2026-10 安全修正：不論 draft 或 returned 送出一律清空舊簽核足跡（原只清 returned）。
+        // 殘留的舊 approved 紀錄會讓後續關卡誤判「此人已審過」而被自動代簽，未經審核即核准。
+        var oldRecords = await db.ApprovalRecords
+            .Where(r => r.ApplicationType == "leave" && r.ApplicationId == item.Id)
+            .ToListAsync();
+        db.ApprovalRecords.RemoveRange(oldRecords);
+
+        var oldOverrides = await db.EscalationOverrides
+            .Where(o => o.ApplicationType == "leave" && o.ApplicationId == item.Id)
+            .ToListAsync();
+        db.EscalationOverrides.RemoveRange(oldOverrides);
+
+        // 重置指定審核者狀態為 pending
+        var rdrsToReset = await db.RequestDesignatedReviewers
+            .Where(r => r.RequestType == "leave" && r.RequestId == item.Id)
+            .ToListAsync();
+        foreach (var rdr in rdrsToReset)
         {
-            var oldRecords = await db.ApprovalRecords
-                .Where(r => r.ApplicationType == "leave" && r.ApplicationId == item.Id)
-                .ToListAsync();
-            db.ApprovalRecords.RemoveRange(oldRecords);
-
-            var oldOverrides = await db.EscalationOverrides
-                .Where(o => o.ApplicationType == "leave" && o.ApplicationId == item.Id)
-                .ToListAsync();
-            db.EscalationOverrides.RemoveRange(oldOverrides);
-
-            // 重置指定審核者狀態為 pending
-            var rdrsToReset = await db.RequestDesignatedReviewers
-                .Where(r => r.RequestType == "leave" && r.RequestId == item.Id)
-                .ToListAsync();
-            foreach (var rdr in rdrsToReset)
-            {
-                rdr.Status     = "pending";
-                rdr.ReviewedAt = null;
-                rdr.Comment    = null;
-            }
+            rdr.Status     = "pending";
+            rdr.ReviewedAt = null;
+            rdr.Comment    = null;
         }
 
         // 日期重疊檢查：排除自身（送出階段再驗一次，防範 draft 期間其他申請已先被建立）
@@ -1161,6 +1196,7 @@ public sealed class LeaveRequestHandler(
             item.ReviewedAt       = Clock.Now;
             item.ReviewedById     = userId;
             item.ReviewNote       = "系統自動核准（Superadmin）";
+            await CompensatoryLotService.SyncUsageAsync(db, scheduleProvider, item);
             await db.SaveChangesAsync();
             await notifier.NotifyLeaveAgentAsync(item.Id);
             var saDto = await reader.GetByIdAsync(item.Id);
@@ -1211,6 +1247,11 @@ public sealed class LeaveRequestHandler(
                 CreatedAt        = Clock.Now,
             });
         }
+
+        // 補休 lot：送出即佔用（pending 與 approved 同樣佔用，比照現行補休池語意）。
+        // 三個出口（Superadmin 自動核准 / 全自審自動核准 / 一般送簽）都要走到 ——
+        // 漏掉任一個，那批時數就會一直顯示為可用而被重複申請。
+        await CompensatoryLotService.SyncUsageAsync(db, scheduleProvider, item);
 
         await db.SaveChangesAsync();
 
@@ -1330,7 +1371,9 @@ public sealed class LeaveRequestHandler(
             if (totalDays <= 0)
                 return "年資不足，尚無年假額度。";
 
-            var usedHours = await GetUsedHoursAsync(userId, "annual", item.Id, now.Year);
+            // 已用時數依「本張假單的假期年度」（StartDate.Year）計，不是 Clock.Now.Year ——
+            // 否則 12 月連送明年 1 月的年假彼此不互計而超額（2026-10 修正，同高階主管假 / 生理假寫法）
+            var usedHours = await GetUsedHoursAsync(userId, "annual", item.Id, item.StartDate.Year);
             var totalUsedDays = (usedHours + item.Hours) / 8m;
             if (totalUsedDays > totalDays)
                 return $"年假額度不足。上限 {totalDays} 天，已使用 {Math.Round(usedHours / 8m, 1)} 天，本次申請 {Math.Round(item.Hours / 8m, 1)} 天。";
@@ -1357,7 +1400,7 @@ public sealed class LeaveRequestHandler(
                 return "僅原住民身份之員工可申請歲時祭儀假。";
 
             const int totalDays = 3;
-            var usedHours = await GetUsedHoursAsync(userId, "ceremonial_festival", item.Id, now.Year);
+            var usedHours = await GetUsedHoursAsync(userId, "ceremonial_festival", item.Id, item.StartDate.Year);
             var totalUsedDays = (usedHours + item.Hours) / 8m;
             if (totalUsedDays > totalDays)
                 return $"歲時祭儀假額度不足。上限 {totalDays} 天，已使用 {Math.Round(usedHours / 8m, 1)} 天，本次申請 {Math.Round(item.Hours / 8m, 1)} 天。";
@@ -1420,7 +1463,7 @@ public sealed class LeaveRequestHandler(
         {
             // 產假類別不限年度，其他按年度計算
             bool isMaternityType = item.LeaveType is "maternity" or "miscarriage_3m" or "miscarriage_2to3m" or "miscarriage_under2m" or "prenatal_checkup" or "paternity";
-            int? year = isMaternityType ? null : now.Year;
+            int? year = isMaternityType ? null : item.StartDate.Year;
 
             var usedHours = await GetUsedHoursAsync(userId, item.LeaveType, item.Id, year);
             var totalUsedDays = (usedHours + item.Hours) / 8m;

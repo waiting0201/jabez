@@ -71,7 +71,8 @@ public sealed class AdvanceRequestHandler(
             return new NotFoundObjectResult(ApiResponse.Fail("Advance request not found."));
 
         var principal = await jwtService.ValidateRequestAsync(req);
-        if (!await RequestViewAccess.CanViewAsync(db, principal, userId, "advance", intId, submittedById == userId))
+        if (!await RequestViewAccess.CanViewAsync(db, principal, userId, "advance", intId, submittedById == userId,
+                RequestViewAccess.StepReviewerProbe(db, approvalFlow, "advance", intId, userId)))
             return new NotFoundObjectResult(ApiResponse.Fail("Advance request not found."));
 
         var item = await reader.GetByIdAsync(intId);
@@ -108,6 +109,11 @@ public sealed class AdvanceRequestHandler(
         if (itemsMeta is null || itemsMeta.Length == 0)
             return new BadRequestObjectResult(ApiResponse.Fail("At least one item is required."));
 
+        // 金額合理性（2026-10 安全稽核）：不可為負數，且總價 = 現金 + 支票
+        AmountGuard.EnsureItems(itemsMeta,
+            i => new AmountGuard.ItemAmounts(i.UnitPrice, i.TotalPrice, i.CashAmount, i.CheckAmount),
+            "預支費用明細", requireCashPlusCheck: true);
+
         if (!await db.Projects.AnyAsync(p => p.Id == projectId))
             throw AppException.NotFound("Project");
 
@@ -136,10 +142,7 @@ public sealed class AdvanceRequestHandler(
             if (meta.FileIndex >= 0 && meta.FileIndex < files.Count)
             {
                 var file = files[meta.FileIndex];
-                var ext = Path.GetExtension(file.FileName);
-                var blobName = $"{Clock.Now:yyyy/MM}/{Guid.NewGuid()}{ext}";
-                using var stream = file.OpenReadStream();
-                fileUrl  = await blob.UploadAsync(ContainerName, blobName, stream, file.ContentType);
+                fileUrl = await AttachmentProcessor.UploadItemFileAsync(file, blob, ContainerName);
                 fileName = file.FileName;
             }
 
@@ -207,6 +210,9 @@ public sealed class AdvanceRequestHandler(
 
         if (ar.ApprovalStatus != "draft" && ar.ApprovalStatus != "returned")
             throw AppException.BadRequest("Only draft or returned advance requests can be edited.");
+        // 2026-10 安全修正：財務已填撥款日（PaidAt）的單據即使被退回，也不可再修改 / 刪除（已撥款是事實，不可被抹除；Superadmin 亦同）
+        if (await db.AdvanceRequestInstallments.AsNoTracking().AnyAsync(i => i.AdvanceRequestId == ar.Id && i.PaidAt != null))
+            throw AppException.BadRequest("此申請單已有撥款紀錄，不可修改或刪除，請洽財務。");
 
         EnsureNoSupplementInFlight(ar);
 
@@ -272,6 +278,11 @@ public sealed class AdvanceRequestHandler(
             var itemsMeta = JsonSerializer.Deserialize<ItemMetadata[]>(itemsJson, JsonOpts);
             if (itemsMeta is { Length: > 0 })
             {
+                // 金額合理性（2026-10 安全稽核）：不可為負數，且總價 = 現金 + 支票
+                AmountGuard.EnsureItems(itemsMeta,
+                i => new AmountGuard.ItemAmounts(i.UnitPrice, i.TotalPrice, i.CashAmount, i.CheckAmount),
+                "預支費用明細", requireCashPlusCheck: true);
+
                 // 收集舊的 blob URLs
                 var oldFileUrls = ar.Items
                     .Where(i => !string.IsNullOrEmpty(i.FileUrl))
@@ -286,16 +297,13 @@ public sealed class AdvanceRequestHandler(
 
                 foreach (var (meta, idx) in itemsMeta.Select((m, i) => (m, i)))
                 {
-                    string? fileUrl  = meta.FileUrl;
+                    string? fileUrl  = AttachmentProcessor.KeepExistingUrl(meta.FileUrl, oldFileUrls); // 僅限本單 DB 既有值
                     string? fileName = meta.FileName;
 
                     if (meta.FileIndex >= 0 && meta.FileIndex < files.Count)
                     {
                         var file = files[meta.FileIndex];
-                        var ext = Path.GetExtension(file.FileName);
-                        var blobName = $"{Clock.Now:yyyy/MM}/{Guid.NewGuid()}{ext}";
-                        using var stream = file.OpenReadStream();
-                        fileUrl  = await blob.UploadAsync(ContainerName, blobName, stream, file.ContentType);
+                        fileUrl = await AttachmentProcessor.UploadItemFileAsync(file, blob, ContainerName);
                         fileName = file.FileName;
                     }
 
@@ -362,6 +370,9 @@ public sealed class AdvanceRequestHandler(
 
         if (ar.ApprovalStatus != "draft" && ar.ApprovalStatus != "returned")
             throw AppException.BadRequest("Only draft or returned advance requests can be deleted.");
+        // 2026-10 安全修正：財務已填撥款日（PaidAt）的單據即使被退回，也不可再修改 / 刪除（已撥款是事實，不可被抹除；Superadmin 亦同）
+        if (await db.AdvanceRequestInstallments.AsNoTracking().AnyAsync(i => i.AdvanceRequestId == ar.Id && i.PaidAt != null))
+            throw AppException.BadRequest("此申請單已有撥款紀錄，不可修改或刪除，請洽財務。");
 
         EnsureNoSupplementInFlight(ar);
 
@@ -428,23 +439,22 @@ public sealed class AdvanceRequestHandler(
         var roundNo = ar.CurrentRoundNo;
 
         // 退回重送 / 追加新輪次：清除「本輪」審核記錄，重置指定審核者狀態
-        if (ar.ApprovalStatus == "returned" || isSupplementRound)
-        {
-            // 追加輪只刪本輪紀錄，第 1 輪（含更早批次）的簽核歷程必須保留
-            var oldRecords = await db.ApprovalRecords
-                .Where(r => r.ApplicationType == "advance" && r.ApplicationId == ar.Id
-                         && (roundNo == 1 || r.RoundNo == roundNo))
-                .ToListAsync();
-            db.ApprovalRecords.RemoveRange(oldRecords);
+        // 2026-10 安全修正：不論 draft 或 returned 送出一律清空舊簽核足跡（原只清 returned）。
+        // 殘留的舊 approved 紀錄會讓後續關卡誤判「此人已審過」而被自動代簽，未經審核即核准。
+        // 追加輪只刪本輪紀錄，第 1 輪（含更早批次）的簽核歷程必須保留
+        var oldRecords = await db.ApprovalRecords
+            .Where(r => r.ApplicationType == "advance" && r.ApplicationId == ar.Id
+                     && (roundNo == 1 || r.RoundNo == roundNo))
+            .ToListAsync();
+        db.ApprovalRecords.RemoveRange(oldRecords);
 
-            var oldOverrides = await db.EscalationOverrides
-                .Where(o => o.ApplicationType == "advance" && o.ApplicationId == ar.Id)
-                .ToListAsync();
-            db.EscalationOverrides.RemoveRange(oldOverrides);
+        var oldOverrides = await db.EscalationOverrides
+            .Where(o => o.ApplicationType == "advance" && o.ApplicationId == ar.Id)
+            .ToListAsync();
+        db.EscalationOverrides.RemoveRange(oldOverrides);
 
-            // 重置指定審核者狀態為 pending
-            await AdvanceSupplementService.ResetDesignatedReviewersAsync(db, ar.Id);
-        }
+        // 重置指定審核者狀態為 pending
+        await AdvanceSupplementService.ResetDesignatedReviewersAsync(db, ar.Id);
 
         var roundSuffix = roundNo > 1 ? $"（第 {roundNo} 次追加）" : "";
         var submitter = await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == userId);
@@ -565,6 +575,10 @@ public sealed class AdvanceRequestHandler(
                          .FirstOrDefaultAsync(a => a.Id == intId)
                  ?? throw AppException.NotFound("AdvanceRequest");
 
+        // 2026-10 安全修正：申請人不可操作自己單據的撥款明細（Superadmin 例外）
+        if (!user.IsSuperAdmin && ar.SubmittedById == userId)
+            throw AppException.Forbidden("不可設定自己申請單的撥款明細。");
+
         if (ar.ApprovalStatus != "approved")
             return new BadRequestObjectResult(ApiResponse.Fail("只有已核准的預支申請可以設定撥款明細。"));
 
@@ -629,6 +643,11 @@ public sealed class AdvanceRequestHandler(
         if (itemsMeta is null || itemsMeta.Length == 0)
             return new BadRequestObjectResult(ApiResponse.Fail("At least one item is required."));
 
+        // 金額合理性（2026-10 安全稽核）：不可為負數，且總價 = 現金 + 支票
+        AmountGuard.EnsureItems(itemsMeta,
+            i => new AmountGuard.ItemAmounts(i.UnitPrice, i.TotalPrice, i.CashAmount, i.CheckAmount),
+            "預支費用明細", requireCashPlusCheck: true);
+
         var roundNo = ar.CurrentRoundNo + 1;
 
         // 快照父單目前的核准狀態，供追加被駁回時回滾
@@ -647,7 +666,7 @@ public sealed class AdvanceRequestHandler(
             PrevReviewNote       = ar.ReviewNote,
         });
 
-        var newItems = await BuildItemsAsync(form, itemsMeta, ar.Id, roundNo);
+        var newItems = await BuildItemsAsync(form, itemsMeta, ar.Id, roundNo, AttachmentProcessor.NoOwnedUrls);
         db.AdvanceRequestItems.AddRange(newItems);
 
         ar.CurrentRoundNo = roundNo;
@@ -693,6 +712,11 @@ public sealed class AdvanceRequestHandler(
         if (itemsMeta is null || itemsMeta.Length == 0)
             return new BadRequestObjectResult(ApiResponse.Fail("At least one item is required."));
 
+        // 金額合理性（2026-10 安全稽核）：不可為負數，且總價 = 現金 + 支票
+        AmountGuard.EnsureItems(itemsMeta,
+            i => new AmountGuard.ItemAmounts(i.UnitPrice, i.TotalPrice, i.CashAmount, i.CheckAmount),
+            "預支費用明細", requireCashPlusCheck: true);
+
         // 只替換本批次明細；blob 差集僅在本批次內比對，避免誤刪其他批次的檔案
         var roundItems = ar.Items.Where(i => i.RoundNo == roundNo).ToList();
         var oldFileUrls = roundItems
@@ -701,7 +725,7 @@ public sealed class AdvanceRequestHandler(
             .ToHashSet();
         db.AdvanceRequestItems.RemoveRange(roundItems);
 
-        var newItems = await BuildItemsAsync(form, itemsMeta, ar.Id, roundNo);
+        var newItems = await BuildItemsAsync(form, itemsMeta, ar.Id, roundNo, oldFileUrls);
         db.AdvanceRequestItems.AddRange(newItems);
 
         // 同上：只取其他批次的明細再併本批次新明細，避免 EF fixup 造成重複計算
@@ -770,23 +794,21 @@ public sealed class AdvanceRequestHandler(
 
     /// <summary>由 multipart 的 items JSON + files 建立指定批次的明細（含 Blob 上傳）。</summary>
     private async Task<List<AdvanceRequestItem>> BuildItemsAsync(
-        IFormCollection form, ItemMetadata[] itemsMeta, int advanceRequestId, int roundNo)
+        IFormCollection form, ItemMetadata[] itemsMeta, int advanceRequestId, int roundNo,
+        IReadOnlySet<string> ownedUrls)
     {
         var files = form.Files.GetFiles("files");
         var result = new List<AdvanceRequestItem>();
 
         foreach (var (meta, idx) in itemsMeta.Select((m, i) => (m, i)))
         {
-            string? fileUrl  = meta.FileUrl;
+            string? fileUrl  = AttachmentProcessor.KeepExistingUrl(meta.FileUrl, ownedUrls); // 僅限本批次 DB 既有值
             string? fileName = meta.FileName;
 
             if (meta.FileIndex >= 0 && meta.FileIndex < files.Count)
             {
                 var file = files[meta.FileIndex];
-                var ext = Path.GetExtension(file.FileName);
-                var blobName = $"{Clock.Now:yyyy/MM}/{Guid.NewGuid()}{ext}";
-                using var stream = file.OpenReadStream();
-                fileUrl  = await blob.UploadAsync(ContainerName, blobName, stream, file.ContentType);
+                fileUrl = await AttachmentProcessor.UploadItemFileAsync(file, blob, ContainerName);
                 fileName = file.FileName;
             }
 

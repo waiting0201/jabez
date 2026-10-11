@@ -43,7 +43,10 @@ public sealed record UserDto(
     // 排班制員工（賣店 / 營業所）：六日與國定假日視為工作日
     bool      IsShiftWorker = false,
     // 勞退自提率（%，null = 0%，直接欄位、非覆寫、無 lookup）
-    decimal?  LaborPensionSelfContributionRate = null);
+    decimal?  LaborPensionSelfContributionRate = null,
+    // 自訂上下班時段（"HH:mm"；null ＝ 公司預設，僅新制生效）
+    string?   CustomWorkStartTime = null,
+    string?   CustomWorkEndTime   = null);
 
 public sealed record CreateUserRequest(
     string    Name,

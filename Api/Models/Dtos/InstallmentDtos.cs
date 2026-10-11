@@ -22,9 +22,12 @@ public sealed record InstallmentInput(
     string?   Note);
 
 /// <summary>upsert 分期撥款請求（4 種申請類型共用）</summary>
+/// <remarks>
+/// 2026-10 安全修正：移除 ApprovalStatus 欄位。撥款明細端點只管撥款資料，不得藉此改單據簽核狀態
+/// （曾可讓財務體系人員把請款單由任何狀態直接改成 approved / draft，繞過簽核）。
+/// </remarks>
 public sealed record UpsertInstallmentsRequest(
-    List<InstallmentInput> Installments,
-    string?                ApprovalStatus = null);   // 沿用 ApprovalStatus 寫回能力（如：財務節點審核時同步改狀態）
+    List<InstallmentInput> Installments);
 
 /// <summary>撥款 status 三態</summary>
 public enum PaymentInstallmentStatus

@@ -1,0 +1,226 @@
+<div class="container-fluid py-3">
+  <div class="flex flex-wrap items-center justify-between gap-2 mb-6">
+    <div class="flex items-center gap-2">
+      <svg class="sa-icon text-primary" style="stroke: currentColor">
+        <use href="/assets/icons/sprite.svg#calendar"></use>
+      </svg>
+      <h4 class="mb-0">個人排班</h4>
+    </div>
+
+    <div class="flex flex-wrap items-center gap-2">
+      <select class="form-select form-select-sm w-full sm:w-auto"
+              [ngModel]="year()" (ngModelChange)="year.set($event); onPeriodChange()">
+        @for (y of yearOptions(); track y) {
+          <option [value]="y">{{ y }} 年</option>
+        }
+      </select>
+      <select class="form-select form-select-sm w-full sm:w-auto"
+              [ngModel]="month()" (ngModelChange)="month.set($event); onPeriodChange()">
+        @for (m of monthOptions; track m) {
+          <option [value]="m">{{ m }} 月</option>
+        }
+      </select>
+    </div>
+  </div>
+
+  <div class="row g-4">
+    <div class="col-12 col-xl-10">
+
+      <!-- 活動日覆蓋通知（鈴鐺點進來看的就是這張）：主管的活動日排在本人的例假／休假上，系統已改為上班日並自動補排 -->
+      @if (adjustments().length > 0) {
+        <div class="card border-0 shadow-sm mb-4 bg-[rgba(255,193,7,0.08)]">
+          <div class="card-body">
+            <div class="flex items-center gap-2 text-warning fw-600 mb-2">
+              <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#alert-triangle"></use></svg>
+              您的班表因主管排定的活動日而調整
+            </div>
+            <ul class="mb-3 ps-4 small">
+              @for (a of adjustments(); track a.id) {
+                <li class="mb-1">
+                  <a href="#" class="text-primary" (click)="$event.preventDefault(); viewAdjustment(a)">{{ md(a.date) }}</a>
+                  （{{ a.activityTitle }}）原為{{ labels[a.originalDayType] }}，已改為上班日；
+                  @if (a.relocatedTo) {
+                    原{{ labels[a.originalDayType] }}已移至
+                    <a href="#" class="text-primary" (click)="$event.preventDefault(); viewAdjustment(a)">{{ md(a.relocatedTo) }}</a>。
+                  } @else {
+                    <span class="text-danger">系統找不到合適的日子，請自行另選一天補排{{ labels[a.originalDayType] }}。</span>
+                  }
+                </li>
+              }
+            </ul>
+            <div class="text-secondary small mb-2">如需調整，開放排班期間可直接修改班表，其餘期間請提出改班申請。</div>
+            <button type="button" class="btn btn-sm btn-outline-secondary"
+                    [disabled]="acknowledging()" (click)="acknowledgeAdjustments()">
+              @if (acknowledging()) {
+                <span class="spinner-border spinner-border-sm me-1"></span>
+              }
+              我知道了
+            </button>
+          </div>
+        </div>
+      }
+
+      <!-- 開放狀態：進畫面就講清楚此刻能不能改、為什麼 -->
+      <div class="card border-0 shadow-sm mb-4">
+        <div class="card-body flex flex-wrap items-center justify-between gap-3">
+          <div class="flex items-start gap-2">
+            <svg class="sa-icon" style="stroke: currentColor"
+                 [style.color]="data()?.editable ? 'var(--green)' : 'var(--text-secondary)'">
+              <use [attr.href]="'/assets/icons/sprite.svg#' + (data()?.editable ? 'unlock' : 'lock')"></use>
+            </svg>
+            <div>
+              <div class="fw-600">{{ data()?.editable ? '開放排班' : '目前無法編輯' }}</div>
+              <!-- 班表定案後的異動途徑（§3.5.2）：當日臨時調休以外一律走改班申請 -->
+              @if (data() && !data()!.editable) {
+                <a class="btn btn-sm btn-outline-primary mt-2" routerLink="/admin/shift-changes/new">
+                  提出改班申請
+                </a>
+              }
+              <div class="text-secondary small">{{ data()?.editReason }}</div>
+            </div>
+          </div>
+
+          <div class="flex items-center gap-4">
+            <div class="text-center">
+              <div class="small text-secondary">例假日</div>
+              <div class="fw-600"
+                   [style.color]="statutoryOffSatisfied() ? 'var(--green)' : 'var(--red)'">
+                {{ statutoryOffCount() }} / {{ requiredStatutoryOff() }}
+              </div>
+            </div>
+            <div class="text-center">
+              <div class="small text-secondary">休假日</div>
+              <div class="fw-600">{{ restDayCount() }} / {{ requiredRestDay() }}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 擋存原因與警示：來自後端，前端不自行判斷規則 -->
+      @if (data(); as d) {
+        @if (d.validation.blocks.length) {
+          <div class="alert alert-danger border-0 shadow-sm mb-4">
+            <div class="fw-600 mb-1">尚未符合排班規定，目前無法儲存</div>
+            <ul class="mb-0 ps-3">
+              @for (b of d.validation.blocks; track b) { <li>{{ b }}</li> }
+            </ul>
+          </div>
+        }
+        @if (d.validation.warnings.length) {
+          <div class="alert alert-warning border-0 shadow-sm mb-4">
+            <ul class="mb-0 ps-3">
+              @for (w of d.validation.warnings; track w) { <li>{{ w }}</li> }
+            </ul>
+          </div>
+        }
+      }
+
+      <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header bg-transparent border-bottom flex flex-wrap items-center justify-between gap-2 fw-600">
+          <div class="flex items-center gap-2">
+            <svg class="sa-icon text-primary" style="stroke: currentColor">
+              <use href="/assets/icons/sprite.svg#calendar"></use>
+            </svg>
+            {{ year() }} 年 {{ month() }} 月班表
+          </div>
+
+        </div>
+
+        <div class="card-body">
+          @if (loading() && !data()) {
+            <div class="text-center text-secondary py-5">載入中…</div>
+          } @else if (data(); as d) {
+            <p class="text-secondary small mb-3">
+              點一下格子切換狀態：上班日 → 例假日 → 休假日。
+              國定假日、已請假日、您被指派的活動日，以及已定案的日期不可變更。
+              要請假時，點上班日格子裡的「請假」即可開啟請假申請並帶入該日。
+              淡色格子是前後月的班表，僅供對照（「連續上班 12 天」與「14 天內 2 天例假」會跨月計算）。
+            </p>
+            <app-shift-month-calendar
+              [year]="d.year" [month]="d.month"
+              [days]="d.days" [dayTypes]="dayTypes()"
+              [leaveDates]="leaveDates()"
+              [adjacentDays]="d.adjacentDays"
+              (cellClick)="onCellClick($event)"
+              (leaveClick)="onLeaveClick($event)" />
+          }
+        </div>
+      </div>
+
+      <div class="card border-0 shadow-sm mb-4">
+        <div class="card-body">
+          <div class="small text-secondary mb-3">
+            <div class="mb-1">1. 請於上方月曆勾選 <b>例假日 {{ requiredStatutoryOff() }} 天</b>
+              與 <b>休假日 {{ requiredRestDay() }} 天</b>（合計 {{ requiredOffDays() }} 天）。
+              若系統提示某 14 天內例假日不足，可把其中 1 天休假改排為例假，休假應排天數會自動減少。</div>
+            <div class="mb-1">2. <b>例假日</b>依法嚴禁出勤。如遇業主或承辦人於例假日提出公務需求，
+              請禮貌告知將於上班日再行處理；若有急件，請委由當日之職務代理人協助。</div>
+            <div>3. <b>休假日</b>如因緊急公務必要需求需加班者，請務必事前至《加班申請系統》提出加班申請，
+              經主管核准後方可出勤。</div>
+          </div>
+
+          <div class="flex flex-wrap items-center gap-2">
+            <button type="button" class="btn btn-primary"
+                    [disabled]="!data()?.editable || !dirty() || saving()"
+                    (click)="save()">
+              @if (saving()) {
+                <span class="spinner-border spinner-border-sm me-1"></span>
+              }
+              儲存排班
+            </button>
+            <button type="button" class="btn btn-outline-secondary"
+                    [disabled]="!dirty() || saving()" (click)="reset()">
+              還原變更
+            </button>
+            @if (data()?.status === 'auto') {
+              <span class="badge text-bg-warning">系統自動排班</span>
+            } @else if (data()?.status === 'committed') {
+              <span class="badge text-bg-success">已完成排班</span>
+            }
+          </div>
+        </div>
+      </div>
+
+      @if (myChanges().length) {
+        <div class="card border-0 shadow-sm mb-4">
+          <div class="card-header bg-transparent border-bottom flex flex-wrap items-center justify-between gap-2 fw-600">
+            <div class="flex items-center gap-2">
+              <svg class="sa-icon text-primary" style="stroke: currentColor">
+                <use href="/assets/icons/sprite.svg#file-text"></use>
+              </svg>
+              我的改班申請
+            </div>
+            <span class="small text-secondary fw-normal">同一月份同時只能有一張進行中的申請</span>
+          </div>
+          <div class="card-body p-0">
+            <div class="table-responsive">
+              <table class="table mb-0 align-middle">
+                <thead>
+                  <tr><th>單號</th><th>月份</th><th>狀態</th><th>申請日期</th><th class="text-end">操作</th></tr>
+                </thead>
+                <tbody>
+                  @for (c of myChanges(); track c.id) {
+                    <tr>
+                      <td class="font-monospace">{{ c.requestNo || '—' }}</td>
+                      <td>{{ c.year }}/{{ c.month }}</td>
+                      <td><span class="badge" [class]="statusClass(c.approvalStatus)">{{ statusLabel(c.approvalStatus) }}</span></td>
+                      <td>{{ c.submittedAt ? (c.submittedAt | date: 'yyyy/MM/dd') : '—' }}</td>
+                      <td class="text-end">
+                        @if (c.approvalStatus === 'draft' || c.approvalStatus === 'returned') {
+                          <a class="btn btn-sm btn-outline-primary" [routerLink]="['/admin/shift-changes', c.id, 'edit']">編輯</a>
+                        } @else {
+                          <a class="btn btn-sm btn-outline-secondary" [routerLink]="['/admin/shift-changes', c.id]">檢視</a>
+                        }
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      }
+
+    </div>
+  </div>
+</div>

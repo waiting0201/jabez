@@ -22,6 +22,67 @@ namespace Jabez.Api.Data.Migrations
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
 
+            modelBuilder.Entity("Jabez.Api.Models.Entities.ActivityDay", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("CreatedByUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("Date")
+                        .HasColumnType("date");
+
+                    b.Property<int>("DepartmentId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Date");
+
+                    b.HasIndex("DepartmentId", "Date");
+
+                    b.ToTable("ActivityDays");
+                });
+
+            modelBuilder.Entity("Jabez.Api.Models.Entities.ActivityDayAssignee", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("ActivityDayId")
+                        .HasColumnType("int");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId");
+
+                    b.HasIndex("ActivityDayId", "UserId")
+                        .IsUnique();
+
+                    b.ToTable("ActivityDayAssignees");
+                });
+
             modelBuilder.Entity("Jabez.Api.Models.Entities.AdvanceRequest", b =>
                 {
                     b.Property<int>("Id")
@@ -999,6 +1060,75 @@ namespace Jabez.Api.Data.Migrations
                     b.ToTable("ApprovalStepExceptions", (string)null);
                 });
 
+            modelBuilder.Entity("Jabez.Api.Models.Entities.AttendanceAuditLog", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<int>("AttendanceRecordId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("ClockInAfter")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("ClockInBefore")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("ClockOutAfter")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("ClockOutBefore")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("ModifiedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("ModifiedById")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("ModifiedByName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<DateTime?>("OvertimeEndAfter")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("OvertimeEndBefore")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("OvertimeStartAfter")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("OvertimeStartBefore")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("OwnerUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("RecordDate")
+                        .HasColumnType("date");
+
+                    b.Property<string>("RemarkAfter")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("RemarkBefore")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AttendanceRecordId", "ModifiedAt");
+
+                    b.HasIndex("OwnerUserId", "RecordDate");
+
+                    b.ToTable("AttendanceAuditLogs");
+                });
+
             modelBuilder.Entity("Jabez.Api.Models.Entities.AttendancePunchLog", b =>
                 {
                     b.Property<long>("Id")
@@ -1042,6 +1172,10 @@ namespace Jabez.Api.Data.Migrations
                     b.Property<bool>("Succeeded")
                         .HasColumnType("bit");
 
+                    b.Property<string>("TurnstileResult")
+                        .HasMaxLength(16)
+                        .HasColumnType("nvarchar(16)");
+
                     b.Property<string>("UserAgent")
                         .HasMaxLength(512)
                         .HasColumnType("nvarchar(512)");
@@ -1083,6 +1217,10 @@ namespace Jabez.Api.Data.Migrations
                     b.Property<double?>("ClockOutLongitude")
                         .HasColumnType("float");
 
+                    b.Property<string>("ClockOutReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
                     b.Property<DateTime?>("ClockOutTime")
                         .HasColumnType("datetime2");
 
@@ -1105,6 +1243,27 @@ namespace Jabez.Api.Data.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("bit")
                         .HasDefaultValue(false);
+
+                    b.Property<bool>("IsEarlyLeave")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsLate")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsManuallyAdjusted")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(false);
+
+                    b.Property<DateTime?>("LastAdjustedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("LastAdjustedById")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("LateReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
 
                     b.Property<double?>("OvertimeEndLatitude")
                         .HasColumnType("float");
@@ -1267,6 +1426,89 @@ namespace Jabez.Api.Data.Migrations
                     b.HasIndex("Year", "IsHoliday");
 
                     b.ToTable("CalendarDays");
+                });
+
+            modelBuilder.Entity("Jabez.Api.Models.Entities.CompensatoryLot", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("EarnedDate")
+                        .HasColumnType("date");
+
+                    b.Property<DateTime>("ExpiresAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<decimal>("Hours")
+                        .HasColumnType("decimal(6,1)");
+
+                    b.Property<bool>("IsOpening")
+                        .HasColumnType("bit");
+
+                    b.Property<decimal?>("RateSnapshot")
+                        .HasColumnType("decimal(4,2)");
+
+                    b.Property<decimal>("RemainingHours")
+                        .HasColumnType("decimal(6,1)");
+
+                    b.Property<decimal?>("SettledAmount")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<DateTime?>("SettledAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int?>("SourceOvertimeRequestId")
+                        .HasColumnType("int");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SourceOvertimeRequestId")
+                        .IsUnique()
+                        .HasFilter("[SourceOvertimeRequestId] IS NOT NULL");
+
+                    b.HasIndex("ExpiresAt", "SettledAt");
+
+                    b.HasIndex("UserId", "EarnedDate");
+
+                    b.ToTable("CompensatoryLots");
+                });
+
+            modelBuilder.Entity("Jabez.Api.Models.Entities.CompensatoryUsage", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<decimal>("Hours")
+                        .HasColumnType("decimal(6,1)");
+
+                    b.Property<int>("LeaveRequestId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("LotId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("LeaveRequestId");
+
+                    b.HasIndex("LotId");
+
+                    b.ToTable("CompensatoryUsages");
                 });
 
             modelBuilder.Entity("Jabez.Api.Models.Entities.Department", b =>
@@ -2783,6 +3025,49 @@ namespace Jabez.Api.Data.Migrations
                     b.ToTable("LeaveRevocationDates");
                 });
 
+            modelBuilder.Entity("Jabez.Api.Models.Entities.LoginAttempt", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<DateTime>("AttemptedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Email")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
+                    b.Property<string>("FailureReason")
+                        .HasMaxLength(40)
+                        .HasColumnType("nvarchar(40)");
+
+                    b.Property<string>("IpAddress")
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
+                    b.Property<bool>("Succeeded")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("UserAgent")
+                        .HasMaxLength(512)
+                        .HasColumnType("nvarchar(512)");
+
+                    b.Property<Guid?>("UserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Email", "AttemptedAt");
+
+                    b.HasIndex("UserId", "AttemptedAt");
+
+                    b.ToTable("LoginAttempts");
+                });
+
             modelBuilder.Entity("Jabez.Api.Models.Entities.OvertimeRequest", b =>
                 {
                     b.Property<int>("Id")
@@ -2824,6 +3109,9 @@ namespace Jabez.Api.Data.Migrations
                     b.Property<decimal>("EstimatedHours")
                         .HasColumnType("decimal(5,1)");
 
+                    b.Property<decimal?>("ExcessHours")
+                        .HasColumnType("decimal(5,1)");
+
                     b.Property<decimal?>("HourlyRateSnapshot")
                         .HasColumnType("decimal(18,2)");
 
@@ -2832,6 +3120,10 @@ namespace Jabez.Api.Data.Migrations
 
                     b.Property<DateTime>("OvertimeDate")
                         .HasColumnType("datetime2");
+
+                    b.Property<string>("OvertimeDayType")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
 
                     b.Property<decimal?>("OvertimePayAmount")
                         .HasColumnType("decimal(18,2)");
@@ -2857,6 +3149,9 @@ namespace Jabez.Api.Data.Migrations
 
                     b.Property<Guid?>("ReviewedById")
                         .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal?>("SettledHours")
+                        .HasColumnType("decimal(5,1)");
 
                     b.Property<DateTime?>("SubmittedAt")
                         .HasColumnType("datetime2");
@@ -4271,6 +4566,14 @@ namespace Jabez.Api.Data.Migrations
                         .HasColumnType("bit")
                         .HasDefaultValue(false);
 
+                    b.Property<DateTime?>("RevokedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("SessionStartedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasDefaultValueSql("DATEADD(hour, 8, GETUTCDATE())");
+
                     b.Property<string>("Token")
                         .IsRequired()
                         .HasMaxLength(500)
@@ -5579,6 +5882,236 @@ namespace Jabez.Api.Data.Migrations
                     b.ToTable("SalaryAdjustmentRecords");
                 });
 
+            modelBuilder.Entity("Jabez.Api.Models.Entities.ShiftChangeRequest", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int?>("ApprovalItemId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("ApprovalStatus")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)")
+                        .HasDefaultValue("draft");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("CurrentStepOrder")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(1);
+
+                    b.Property<Guid?>("EmployeeId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("Month")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("RequestNo")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("ReviewNote")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<DateTime?>("ReviewedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("ReviewedById")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("SubmittedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("Year")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ApprovalItemId");
+
+                    b.HasIndex("RequestNo")
+                        .IsUnique()
+                        .HasFilter("[RequestNo] IS NOT NULL");
+
+                    b.HasIndex("ReviewedById");
+
+                    b.HasIndex("EmployeeId", "Year", "Month", "ApprovalStatus");
+
+                    b.ToTable("ShiftChangeRequests");
+                });
+
+            modelBuilder.Entity("Jabez.Api.Models.Entities.ShiftChangeRequestDate", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("Date")
+                        .HasColumnType("date");
+
+                    b.Property<string>("FromDayType")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<int>("ShiftChangeRequestId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("ToDayType")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ShiftChangeRequestId", "Date")
+                        .IsUnique();
+
+                    b.ToTable("ShiftChangeRequestDates");
+                });
+
+            modelBuilder.Entity("Jabez.Api.Models.Entities.ShiftScheduleAdjustment", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime?>("AcknowledgedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int?>("ActivityDayId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("ActivityTitle")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("Date")
+                        .HasColumnType("date");
+
+                    b.Property<string>("OriginalDayType")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<DateTime?>("RelocatedTo")
+                        .HasColumnType("date");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ActivityDayId");
+
+                    b.HasIndex("UserId", "AcknowledgedAt");
+
+                    b.ToTable("ShiftScheduleAdjustments");
+                });
+
+            modelBuilder.Entity("Jabez.Api.Models.Entities.ShiftScheduleDay", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("Date")
+                        .HasColumnType("date");
+
+                    b.Property<string>("DayType")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Date");
+
+                    b.HasIndex("UserId", "Date")
+                        .IsUnique();
+
+                    b.ToTable("ShiftScheduleDays");
+                });
+
+            modelBuilder.Entity("Jabez.Api.Models.Entities.ShiftScheduleMonth", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime?>("AutoAssignedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("CommittedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("Month")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)")
+                        .HasDefaultValue("draft");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("Year")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Year", "Month");
+
+                    b.HasIndex("UserId", "Year", "Month")
+                        .IsUnique();
+
+                    b.ToTable("ShiftScheduleMonths");
+                });
+
             modelBuilder.Entity("Jabez.Api.Models.Entities.SystemSetting", b =>
                 {
                     b.Property<int>("Id")
@@ -5600,6 +6133,9 @@ namespace Jabez.Api.Data.Migrations
                         .IsRequired()
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
+
+                    b.Property<DateTime?>("FlexibleWorkStartDate")
+                        .HasColumnType("datetime2");
 
                     b.Property<string>("Language")
                         .IsRequired()
@@ -6375,6 +6911,17 @@ namespace Jabez.Api.Data.Migrations
                         .HasColumnType("datetime2")
                         .HasDefaultValueSql("DATEADD(hour, 8, GETUTCDATE())");
 
+                    b.Property<DateTime?>("CredentialsSentAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("CustomWorkEndTime")
+                        .HasMaxLength(5)
+                        .HasColumnType("nvarchar(5)");
+
+                    b.Property<string>("CustomWorkStartTime")
+                        .HasMaxLength(5)
+                        .HasColumnType("nvarchar(5)");
+
                     b.Property<int?>("DepartmentId")
                         .HasColumnType("int");
 
@@ -6470,6 +7017,9 @@ namespace Jabez.Api.Data.Migrations
                     b.Property<DateTime?>("ResignDate")
                         .HasColumnType("datetime2");
 
+                    b.Property<Guid>("SecurityStamp")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<bool>("SendPaySlip")
                         .HasColumnType("bit");
 
@@ -6524,6 +7074,7 @@ namespace Jabez.Api.Data.Migrations
                             MustChangePassword = false,
                             Name = "System Admin",
                             PasswordHash = "$2a$11$hBaZunc8xtFIsRVh738SJuHisvnVAsIODyfkzLxjMN.is7jZn3K7e",
+                            SecurityStamp = new Guid("00000000-0000-0000-0000-000000000000"),
                             SendPaySlip = false,
                             Status = "active",
                             UpdatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc)
@@ -6550,6 +7101,7 @@ namespace Jabez.Api.Data.Migrations
                             MustChangePassword = false,
                             Name = "洪薇淳",
                             PasswordHash = "$2a$11$uanLV/06EWO8c4vt4h0gv.NwFEDxbAzLGfO7M1wvbeyZW0oScGCqy",
+                            SecurityStamp = new Guid("00000000-0000-0000-0000-000000000000"),
                             SendPaySlip = false,
                             Status = "active",
                             UpdatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc)
@@ -6576,6 +7128,7 @@ namespace Jabez.Api.Data.Migrations
                             MustChangePassword = false,
                             Name = "Bob Wang",
                             PasswordHash = "$2a$11$jnbTwU3kFJLXuVyQecTy4e1rMkMfsBa191aEHHZswHpLcI2jRnJzW",
+                            SecurityStamp = new Guid("00000000-0000-0000-0000-000000000000"),
                             SendPaySlip = false,
                             Status = "active",
                             UpdatedAt = new DateTime(2024, 2, 10, 0, 0, 0, 0, DateTimeKind.Utc)
@@ -6602,6 +7155,7 @@ namespace Jabez.Api.Data.Migrations
                             MustChangePassword = false,
                             Name = "Carol Liu",
                             PasswordHash = "$2a$11$zq1cZo7mM27tuI.W4ZwbKuu5rn3PBsBeP7IzdEPw8i1ynhJJltP5m",
+                            SecurityStamp = new Guid("00000000-0000-0000-0000-000000000000"),
                             SendPaySlip = false,
                             Status = "active",
                             UpdatedAt = new DateTime(2024, 3, 5, 0, 0, 0, 0, DateTimeKind.Utc)
@@ -6628,6 +7182,7 @@ namespace Jabez.Api.Data.Migrations
                             MustChangePassword = false,
                             Name = "Hank",
                             PasswordHash = "$2a$11$yNJIPqp5rr/PhDhajQJwIOoQ88yVQbJQLuU.tRPOmH4/xEmlsPb3i",
+                            SecurityStamp = new Guid("00000000-0000-0000-0000-000000000000"),
                             SendPaySlip = false,
                             Status = "active",
                             UpdatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc)
@@ -6656,6 +7211,7 @@ namespace Jabez.Api.Data.Migrations
                             Name = "Charles",
                             OvertimePay = 3000m,
                             PasswordHash = "$2a$11$J5eke3qMONqpznSkAUKQ9OaIwKYOv52VqF2cu.fSU3qtKiYaS7NLO",
+                            SecurityStamp = new Guid("00000000-0000-0000-0000-000000000000"),
                             SendPaySlip = false,
                             Status = "active",
                             UpdatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc)
@@ -6684,6 +7240,7 @@ namespace Jabez.Api.Data.Migrations
                             Name = "Ting",
                             OvertimePay = 2400m,
                             PasswordHash = "$2a$11$FXRjg2SgqKby.WL/hEMkoupv3pl/iffpeyvBxRjF0qY51SFwClWiK",
+                            SecurityStamp = new Guid("00000000-0000-0000-0000-000000000000"),
                             SendPaySlip = false,
                             Status = "active",
                             UpdatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc)
@@ -6712,6 +7269,7 @@ namespace Jabez.Api.Data.Migrations
                             Name = "陳珊雯",
                             OvertimePay = 2570m,
                             PasswordHash = "$2a$11$QajMz1QlJ4W.w.EdwzAH6eRQjThAHAbtYK09WM0RfOehln.FKH8ym",
+                            SecurityStamp = new Guid("00000000-0000-0000-0000-000000000000"),
                             SendPaySlip = false,
                             Status = "active",
                             UpdatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc)
@@ -6738,6 +7296,7 @@ namespace Jabez.Api.Data.Migrations
                             MustChangePassword = false,
                             Name = "張雅婷",
                             PasswordHash = "$2a$11$UVOY3lj8t7A4YnxhKBAigedGTYYIkBfFxl3bmBaUuBxq0JEs54k6e",
+                            SecurityStamp = new Guid("00000000-0000-0000-0000-000000000000"),
                             SendPaySlip = false,
                             Status = "active",
                             UpdatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc)
@@ -6764,10 +7323,44 @@ namespace Jabez.Api.Data.Migrations
                             MustChangePassword = false,
                             Name = "徐嘉秀",
                             PasswordHash = "$2a$11$2v7wVtBf77gz0vuZ/jZGseOQ2dvureuLomMb5HVECKoBNO3wcyzYy",
+                            SecurityStamp = new Guid("00000000-0000-0000-0000-000000000000"),
                             SendPaySlip = false,
                             Status = "active",
                             UpdatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc)
                         });
+                });
+
+            modelBuilder.Entity("Jabez.Api.Models.Entities.UserAuditLog", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Action")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("Changes")
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("OperatorUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("TargetUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OperatorUserId", "CreatedAt");
+
+                    b.HasIndex("TargetUserId", "CreatedAt");
+
+                    b.ToTable("UserAuditLogs");
                 });
 
             modelBuilder.Entity("Jabez.Api.Models.Entities.UserRole", b =>
@@ -7166,6 +7759,36 @@ namespace Jabez.Api.Data.Migrations
                     b.ToTable("WriteOffRecords");
                 });
 
+            modelBuilder.Entity("Jabez.Api.Models.Entities.ActivityDay", b =>
+                {
+                    b.HasOne("Jabez.Api.Models.Entities.Department", "Department")
+                        .WithMany()
+                        .HasForeignKey("DepartmentId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.Navigation("Department");
+                });
+
+            modelBuilder.Entity("Jabez.Api.Models.Entities.ActivityDayAssignee", b =>
+                {
+                    b.HasOne("Jabez.Api.Models.Entities.ActivityDay", "ActivityDay")
+                        .WithMany("Assignees")
+                        .HasForeignKey("ActivityDayId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Jabez.Api.Models.Entities.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.Navigation("ActivityDay");
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("Jabez.Api.Models.Entities.AdvanceRequest", b =>
                 {
                     b.HasOne("Jabez.Api.Models.Entities.ApprovalItem", "ApprovalItem")
@@ -7356,6 +7979,17 @@ namespace Jabez.Api.Data.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("Jabez.Api.Models.Entities.AttendanceAuditLog", b =>
+                {
+                    b.HasOne("Jabez.Api.Models.Entities.AttendanceRecord", "AttendanceRecord")
+                        .WithMany()
+                        .HasForeignKey("AttendanceRecordId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("AttendanceRecord");
+                });
+
             modelBuilder.Entity("Jabez.Api.Models.Entities.AttendancePunchLog", b =>
                 {
                     b.HasOne("Jabez.Api.Models.Entities.User", "User")
@@ -7400,6 +8034,43 @@ namespace Jabez.Api.Data.Migrations
                     b.Navigation("TriggeredByUser");
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("Jabez.Api.Models.Entities.CompensatoryLot", b =>
+                {
+                    b.HasOne("Jabez.Api.Models.Entities.OvertimeRequest", "SourceOvertimeRequest")
+                        .WithMany()
+                        .HasForeignKey("SourceOvertimeRequestId")
+                        .OnDelete(DeleteBehavior.NoAction);
+
+                    b.HasOne("Jabez.Api.Models.Entities.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.Navigation("SourceOvertimeRequest");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("Jabez.Api.Models.Entities.CompensatoryUsage", b =>
+                {
+                    b.HasOne("Jabez.Api.Models.Entities.LeaveRequest", "LeaveRequest")
+                        .WithMany()
+                        .HasForeignKey("LeaveRequestId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.HasOne("Jabez.Api.Models.Entities.CompensatoryLot", "Lot")
+                        .WithMany("Usages")
+                        .HasForeignKey("LotId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("LeaveRequest");
+
+                    b.Navigation("Lot");
                 });
 
             modelBuilder.Entity("Jabez.Api.Models.Entities.Department", b =>
@@ -7904,6 +8575,81 @@ namespace Jabez.Api.Data.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("Jabez.Api.Models.Entities.ShiftChangeRequest", b =>
+                {
+                    b.HasOne("Jabez.Api.Models.Entities.ApprovalItem", "ApprovalItem")
+                        .WithMany()
+                        .HasForeignKey("ApprovalItemId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("Jabez.Api.Models.Entities.User", "Employee")
+                        .WithMany()
+                        .HasForeignKey("EmployeeId")
+                        .OnDelete(DeleteBehavior.NoAction);
+
+                    b.HasOne("Jabez.Api.Models.Entities.User", "ReviewedBy")
+                        .WithMany()
+                        .HasForeignKey("ReviewedById")
+                        .OnDelete(DeleteBehavior.NoAction);
+
+                    b.Navigation("ApprovalItem");
+
+                    b.Navigation("Employee");
+
+                    b.Navigation("ReviewedBy");
+                });
+
+            modelBuilder.Entity("Jabez.Api.Models.Entities.ShiftChangeRequestDate", b =>
+                {
+                    b.HasOne("Jabez.Api.Models.Entities.ShiftChangeRequest", "ShiftChangeRequest")
+                        .WithMany("Dates")
+                        .HasForeignKey("ShiftChangeRequestId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("ShiftChangeRequest");
+                });
+
+            modelBuilder.Entity("Jabez.Api.Models.Entities.ShiftScheduleAdjustment", b =>
+                {
+                    b.HasOne("Jabez.Api.Models.Entities.ActivityDay", "ActivityDay")
+                        .WithMany()
+                        .HasForeignKey("ActivityDayId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("Jabez.Api.Models.Entities.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("ActivityDay");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("Jabez.Api.Models.Entities.ShiftScheduleDay", b =>
+                {
+                    b.HasOne("Jabez.Api.Models.Entities.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("Jabez.Api.Models.Entities.ShiftScheduleMonth", b =>
+                {
+                    b.HasOne("Jabez.Api.Models.Entities.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("Jabez.Api.Models.Entities.TravelPaymentRequest", b =>
                 {
                     b.HasOne("Jabez.Api.Models.Entities.ApprovalItem", "ApprovalItem")
@@ -8233,6 +8979,11 @@ namespace Jabez.Api.Data.Migrations
                     b.Navigation("SubmittedBy");
                 });
 
+            modelBuilder.Entity("Jabez.Api.Models.Entities.ActivityDay", b =>
+                {
+                    b.Navigation("Assignees");
+                });
+
             modelBuilder.Entity("Jabez.Api.Models.Entities.AdvanceRequest", b =>
                 {
                     b.Navigation("Installments");
@@ -8268,6 +9019,11 @@ namespace Jabez.Api.Data.Migrations
                     b.Navigation("DesignatedJobTitles");
 
                     b.Navigation("Exceptions");
+                });
+
+            modelBuilder.Entity("Jabez.Api.Models.Entities.CompensatoryLot", b =>
+                {
+                    b.Navigation("Usages");
                 });
 
             modelBuilder.Entity("Jabez.Api.Models.Entities.Department", b =>
@@ -8353,6 +9109,11 @@ namespace Jabez.Api.Data.Migrations
                     b.Navigation("RolePermissions");
 
                     b.Navigation("UserRoles");
+                });
+
+            modelBuilder.Entity("Jabez.Api.Models.Entities.ShiftChangeRequest", b =>
+                {
+                    b.Navigation("Dates");
                 });
 
             modelBuilder.Entity("Jabez.Api.Models.Entities.TravelPaymentRequest", b =>

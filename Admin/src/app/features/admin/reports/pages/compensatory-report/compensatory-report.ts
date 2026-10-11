@@ -18,7 +18,7 @@ export interface CompensatoryReportRow {
   tier134Hours: number;
   /** 期間取得：3~8 小時（×1.67；平日第 3 小時起皆屬此級） */
   tier167Hours: number;
-  /** 期間取得：9 小時起（×2.67，僅休假日） */
+  /** 期間取得：9 小時起（×2.67，僅休假日 / 例假日） */
   tier267Hours: number;
   periodEarnedHours: number;
   periodUsedHours: number;

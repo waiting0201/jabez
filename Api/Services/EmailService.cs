@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Mail;
+using Jabez.Api.Common;
 using Microsoft.Extensions.Configuration;
 
 namespace Jabez.Api.Services;
@@ -31,11 +32,22 @@ public class EmailService : IEmailService
             EnableSsl   = _enableSsl,
         };
 
+        // 非正式環境標記：主旨前綴（信箱列表看到的）＋ 內文頂端橫幅（點開後看到的）。
+        // 只加主旨的話，轉寄或列印出來的信就看不出是測試了。
+        // 正式站未設定時兩者皆不套用，輸出與加此功能之前完全相同。
+        var finalSubject = EnvironmentLabel.Prefix(subject);
+        var finalBody    = EnvironmentLabel.HasValue
+            ? "<div style=\"background:#B8892A;color:#FFFFFF;padding:10px 16px;font-weight:bold;"
+              + "font-family:'Microsoft JhengHei',Arial,sans-serif;font-size:14px\">"
+              + System.Net.WebUtility.HtmlEncode(EnvironmentLabel.Value)
+              + "</div>" + htmlBody
+            : htmlBody;
+
         var msg = new MailMessage
         {
             From       = new MailAddress(_from),
-            Subject    = subject,
-            Body       = htmlBody,
+            Subject    = finalSubject,
+            Body       = finalBody,
             IsBodyHtml = true,
         };
         msg.To.Add(to);

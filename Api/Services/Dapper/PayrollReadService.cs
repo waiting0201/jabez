@@ -1,5 +1,7 @@
 using Dapper;
+using Jabez.Api.Common;
 using Jabez.Api.Models.Dtos;
+using Jabez.Api.Services;
 using System.Data;
 
 namespace Jabez.Api.Services.Dapper;
@@ -78,6 +80,80 @@ public sealed class PayrollReadService(IDbConnection db) : IPayrollReadService
               AND o.OvertimeDate <  @CurrMonthFirstDay
               AND (@EmployeeId IS NULL OR o.EmployeeId = @EmployeeId)
             GROUP BY o.EmployeeId
+            """;
+
+        // 2c. 國定假日出勤加倍工資（四週彈性工時 §6.3.1）：
+        //     國定假日出勤者，前 8 小時**加發 1 日日薪**（月薪已內含當日 1 日工資，故當日合計 2 倍）。
+        //     歸月規則同假日津貼與加班費：**加班日所屬月份的次月**薪資。
+        //
+        //     ⚠ 出勤事實有**兩種來源**，必須 UNION 兩張表並依 (人, 日期) 去重：
+        //       A 主管排了活動日、本人為預定人力 → 當天直接打上下班卡，**根本不會有加班單**
+        //       B 未排活動日 → 上下班卡鎖定，一律走加班申請
+        //     只掃加班單，來源 A 整批領不到；兩表相加而不去重，來源 A 又提第 9 小時起加班單者
+        //     會**領兩份日薪**。此處用 UNION（非 UNION ALL）達成去重，故一天恆計 1。
+        //
+        //     ⚠ 出勤即加發一日、**不按時數比例折算**（客戶明訂），故只算天數、不看時數。
+        //
+        //     切換日（SystemSetting.FlexibleWorkStartDate）之前**一律不計** —— 這個薪資項是
+        //     新制才有的東西，回溯到舊月份會讓歷史薪資憑空變大。null ＝ 尚未切換 ＝ 全部不計。
+        const string publicHolidayWorkSql = """
+            WITH PublicHolidays AS (
+                SELECT c.Date
+                FROM CalendarDays c
+                CROSS JOIN (SELECT TOP 1 FlexibleWorkStartDate AS SwitchDate
+                            FROM SystemSettings ORDER BY Id) s
+                WHERE c.IsHoliday = 1
+                  -- 國定假日的判準是「IsHoliday 且 Description 非空」：行事曆把週六日也標成
+                  -- IsHoliday = 1，只是沒有名稱。只看旗標會把每個週末都算成國定假日。
+                  AND c.Description IS NOT NULL AND LTRIM(RTRIM(c.Description)) <> ''
+                  AND c.Date >= @PrevMonthFirstDay
+                  AND c.Date <  @CurrMonthFirstDay
+                  AND s.SwitchDate IS NOT NULL
+                  AND c.Date >= s.SwitchDate
+            ),
+            Worked AS (
+                SELECT a.UserId AS EmployeeId, CAST(a.RecordDate AS date) AS WorkDate
+                FROM AttendanceRecords a
+                JOIN PublicHolidays h ON h.Date = CAST(a.RecordDate AS date)
+                WHERE a.ClockInTime IS NOT NULL
+                UNION
+                SELECT o.EmployeeId, CAST(o.OvertimeDate AS date)
+                FROM OvertimeRequests o
+                JOIN PublicHolidays h ON h.Date = CAST(o.OvertimeDate AS date)
+                WHERE o.ApprovalStatus = 'approved'
+                  AND o.EmployeeId IS NOT NULL
+                  -- 防灌工時（2026-10）：新單依實際加班打卡結算（SettledHours），沒打加班卡＝0 即不算出勤；
+                  -- 舊單 SettledHours 為 NULL → 沿用申請時數，歷史月份薪資不變。
+                  AND ISNULL(o.SettledHours, o.EstimatedHours) > 0
+            )
+            SELECT EmployeeId, COUNT(*) AS Days
+            FROM Worked
+            WHERE (@EmployeeId IS NULL OR EmployeeId = @EmployeeId)
+            GROUP BY EmployeeId
+            """;
+
+        // 2d. 補休未休完加班津貼（四週彈性工時 §7.5）：
+        //     補休 lot 到期仍未休完者，依該 lot 的**原始加班費率快照**換算為加班津貼，
+        //     於到期月的**次月**薪資單獨立顯示。7/31 到期 → 8 月薪資；隔年 1/31 → 隔年 2 月。
+        //
+        //     ⚠ 費率必須取 lot 上的 RateSnapshot（加班核准當下寫入），**不可事後重算** ——
+        //     重算會拿到改版後的費率。時薪則取**現行**底薪（薪資本來就是即時重算、無月結快照）。
+        //
+        //     ⚠ 視窗是「ExpiresAt 落在上個月」的半開區間，故同一個 lot 只會被結算到一次；
+        //     這也是本項**不寫 CompensatoryLots.SettledAt / SettledAmount** 的原因 ——
+        //     薪資端即時重算，另寫一份落地金額等於製造第二個真相，兩者遲早對不起來。
+        //     那兩個欄位保留給日後「明確結算批次」的設計，目前恆為 null。
+        const string compensatorySettlementSql = """
+            SELECT l.UserId AS EmployeeId,
+                   SUM(l.RemainingHours)                            AS Hours,
+                   SUM(l.RemainingHours * ISNULL(l.RateSnapshot, 0)) AS WeightedHours,
+                   MIN(l.ExpiresAt)                                 AS ExpiresAt
+            FROM CompensatoryLots l
+            WHERE l.RemainingHours > 0
+              AND l.ExpiresAt >= @PrevMonthFirstDay
+              AND l.ExpiresAt <  @CurrMonthFirstDay
+              AND (@EmployeeId IS NULL OR l.UserId = @EmployeeId)
+            GROUP BY l.UserId
             """;
 
         // 3. 查詢所有勞健保級距
@@ -170,6 +246,21 @@ public sealed class PayrollReadService(IDbConnection db) : IPayrollReadService
             .ToList();
         var calcOvertimePayMap   = overtimePayRows.ToDictionary(r => (Guid)r.EmployeeId, r => (decimal)r.TotalPay);
         var calcOvertimeHoursMap = overtimePayRows.ToDictionary(r => (Guid)r.EmployeeId, r => (decimal)r.TotalHours);
+        // 國定假日出勤天數（上月；打卡 ∪ 已核准加班單，依日期去重）
+        var publicHolidayDaysMap = (await db.QueryAsync<dynamic>(publicHolidayWorkSql, new {
+                PrevMonthFirstDay = prevMonthFirstDay,
+                CurrMonthFirstDay = firstDay,
+                EmployeeId        = employeeId,
+            }))
+            .ToDictionary(r => (Guid)r.EmployeeId, r => (int)r.Days);
+        // 到期未休完的補休 lot（上月到期者，於本月薪資結算）
+        var compSettlementMap = (await db.QueryAsync<dynamic>(compensatorySettlementSql, new {
+                PrevMonthFirstDay = prevMonthFirstDay,
+                CurrMonthFirstDay = firstDay,
+                EmployeeId        = employeeId,
+            }))
+            .ToDictionary(r => (Guid)r.EmployeeId,
+                          r => ((decimal)r.Hours, (decimal)r.WeightedHours, (DateTime)r.ExpiresAt));
         var brackets = (await db.QueryAsync<dynamic>(bracketSql)).ToList();
         var adjustments = (await db.QueryAsync<dynamic>(adjustmentSql, new { Year = year, Month = month, EmployeeId = employeeId }))
             .ToDictionary(r => (Guid)r.EmployeeId, r => r);
@@ -216,6 +307,27 @@ public sealed class PayrollReadService(IDbConnection db) : IPayrollReadService
             // 原始底薪推算的日薪為基準，避免留停按比例後又被重複折減一次。
             decimal dailySalary    = Math.Round(baseSalary / 30m, 0);
 
+            // 上月國定假日出勤天數（打卡 ∪ 已核准加班單，已依日期去重）。
+            // 提早取出是因為下方「整月留停是否整列剔除」要看它 —— 漏看會讓整月留停卻在
+            // 國定假日出勤過的人整列消失，該筆加倍工資憑空不見。
+            int publicHolidayWorkDays = publicHolidayDaysMap.TryGetValue((Guid)emp.EmployeeId, out var phd) ? phd : 0;
+
+            // 上月到期、仍未休完的補休 lot（見下方 netSalary；同樣提早取出供留停判定）。
+            // 時薪與加班費同一支公式（ROUND(底薪 ÷ 240, 2)），刻意不沿用 dailySalary ÷ 8
+            //（後者已先 ROUND 到整數元，再除 8 會繼承取整誤差）。
+            // 底薪取**折減前**的值 —— 這批時數是過去半年賺得的，不該因為結算當月剛好在育嬰留停而縮水。
+            decimal compSettlementHours  = 0m;
+            decimal compSettlementAmount = 0m;
+            string? compSettlementNote   = null;
+            if (compSettlementMap.TryGetValue((Guid)emp.EmployeeId, out var cs))
+            {
+                compSettlementHours  = cs.Item1;
+                compSettlementAmount = Math.Round(
+                    cs.Item2 * OvertimePayCalculator.HourlyRate(baseSalary),
+                    0, MidpointRounding.AwayFromZero);
+                compSettlementNote   = CompensatoryLotService.SettlementLabel(cs.Item3);
+            }
+
             decimal holidayDays = travelDays.TryGetValue((Guid)emp.EmployeeId, out var days) ? days : 0m;
 
             // 加班申請試算加班費：與手填的 User.OvertimePay 併存、不取代 —— 兩者是不同來源的兩筆錢
@@ -240,6 +352,7 @@ public sealed class PayrollReadService(IDbConnection db) : IPayrollReadService
                 // 有加班費、上月假日津貼或當月薪資調整（其他加項／扣項）時仍須出單，
                 // 否則這些已賺得的金額會憑空消失且不計入月合計。
                 bool hasOtherItems = overtimePay != 0m || calcOvertimePay != 0m || holidayDays > 0m
+                                  || publicHolidayWorkDays > 0 || compSettlementAmount != 0m
                                   || (adjustments.TryGetValue((Guid)emp.EmployeeId, out var padj)
                                       && ((decimal)padj.OtherAddition != 0m || (decimal)padj.OtherDeduction != 0m));
                 if (parentalLeaveDays >= daysInMonth && !hasOtherItems) continue;
@@ -255,6 +368,11 @@ public sealed class PayrollReadService(IDbConnection db) : IPayrollReadService
             // dailySalary 已四捨五入為整數，奇數日薪 × .5 天必然落在中點，
             // 明確指定 AwayFromZero（Math.Round 預設是銀行家捨入，會少 1 元）。
             decimal holidayAllowance = Math.Round(dailySalary * holidayDays, 0, MidpointRounding.AwayFromZero);
+
+            // 國定假日出勤加倍工資：出勤天數 × 日薪（天數為整數，不會有 .5 的中點問題）。
+            // ⚠ 刻意用**折減前**的 dailySalary —— 與假日津貼同一基準；留停折減只作用在底薪與加給。
+            decimal publicHolidayDoublePay = dailySalary * publicHolidayWorkDays;
+
 
             // 查找級距：第一個 SalaryBracket >= 投保底薪的級距，若無則取最高級距
             var bracket = brackets.FirstOrDefault(b => (decimal)b.SalaryBracket >= insuredBaseSalary)
@@ -335,7 +453,8 @@ public sealed class PayrollReadService(IDbConnection db) : IPayrollReadService
 
             decimal netSalary = baseSalary + mealAllowance + overtimePay + calcOvertimePay
                               + otherAllow + adjDiff
-                              + holidayAllowance + otherAddition
+                              + holidayAllowance + publicHolidayDoublePay
+                              + compSettlementAmount + otherAddition
                               - laborIns - healthIns
                               - personalDeduction - sickDeduction - menstrualDeduction
                               - familyCareDeduction
@@ -381,7 +500,12 @@ public sealed class PayrollReadService(IDbConnection db) : IPayrollReadService
                 laborPensionSelfDeduction,
                 parentalLeaveDays,
                 calcOvertimePay,
-                calcOvertimeHours));
+                calcOvertimeHours,
+                publicHolidayWorkDays,
+                publicHolidayDoublePay,
+                compSettlementHours,
+                compSettlementAmount,
+                compSettlementNote));
         }
 
         return new MonthlyPayrollDto(
@@ -403,6 +527,8 @@ public sealed class PayrollReadService(IDbConnection db) : IPayrollReadService
             results.Sum(r => r.AdjustmentDifference),
             results.Sum(r => r.LaborPensionSelfDeduction),
             results.Sum(r => r.ParentalLeaveDays),
-            results.Sum(r => r.CalculatedOvertimePay));
+            results.Sum(r => r.CalculatedOvertimePay),
+            results.Sum(r => r.PublicHolidayDoublePay),
+            results.Sum(r => r.CompensatorySettlementAmount));
     }
 }

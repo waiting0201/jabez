@@ -1449,11 +1449,16 @@ overtimeStartHint = computed<string>(() => {
 前端不重組規則，避免前後端判定漂移。
 
 **打卡送出流程（防機器人打卡，2026-10）**：四鈕共用 `performAction()`，按下後
-`Promise.all([取 GPS, 取挑戰碼])` → **GPS 為選填**（正式站 2026-10-05 取消強制：取不到定位時右欄定位卡顯示黃色
-「無法取得定位（打卡仍有效）」、成功 toast 改為 warning 色，照常送出）→ 挑戰碼停留不足 `minWaitMs`
-時以「收到回應」起算補等（+300ms 緩衝）→ 送出時帶 `challengeToken` 與 `accuracy`。
-期間 `loading` 一律 true（按鈕 disabled），收尾放在 `finally`。
-防線在後端 `AttendancePunchGuard`，見 [business/attendance-clock-rules.md §防機器人打卡](business/attendance-clock-rules.md#防機器人打卡2026-10-hotfix)。
+`Promise.all([取 GPS, 取挑戰碼, 取 Turnstile token])` → **無 GPS 直接以紅字 toast 擋下、不呼叫打卡 API**（右欄定位卡改顯示紅色
+「無法取得定位，未完成打卡」＋開啟定位的指引，不再是黃色「打卡仍有效」）→ 挑戰碼停留不足 `minWaitMs`
+時以「收到回應」起算補等（+300ms 緩衝）→ 送出時帶 `challengeToken`、`turnstileToken` 與 `accuracy`。
+Turnstile 走 `shared/services/turnstile.service.ts`：script **第一次呼叫才動態載入**、每次 render 新 widget 取得 token 後立即 remove
+（token 只能驗證一次）、`appearance: 'interaction-only'`（容器 `#turnstileBox` 平常為空，Cloudflare 起疑才浮出勾選框）；
+**載入失敗 / 逾時（15 秒）/ sitekey 為空一律回 null、不在前端擋**，由後端 `Turnstile:Mode` 決定。
+sitekey 在 `environment*.ts` 的 `turnstileSiteKey`；`staticwebapp.config.json` 的 CSP 須於 `script-src` / `frame-src` / `connect-src`
+放行 `https://challenges.cloudflare.com`，漏了 widget 會被靜默擋下。
+期間 `loading` 一律 true（按鈕 disabled），收尾放在 `finally`。前端先擋 GPS 只為給明確指引，
+真正的防線在後端 `AttendancePunchGuard`，見 [business/attendance-clock-rules.md §防機器人打卡](business/attendance-clock-rules.md#防機器人打卡2026-10-hotfix)。
 
 ### 8.6 列印 PDF 按鈕的顯示條件
 
@@ -1688,7 +1693,9 @@ fetch(`/assets/fonts/NotoSansTC-Regular.subset.ttf?v=${FONT_SUBSET_VERSION}`)
 | 請假 | 請假 | `bg-primary-subtle text-primary` | `rowKind === 'leave'`（當日只有請假、無打卡） |
 | 缺勤 | 請假 | `bg-danger-subtle text-danger` | `rowKind === 'absent'`（工作日無打卡且無請假） |
 | 未打卡 | 請假 | `bg-danger-subtle text-danger` | `isMissingClockIn`（有應出勤時段卻無上班時間，例如只請半天卻整天沒打卡） |
-| 系統補卡 | 上班 / 下班 | `bg-warning-subtle text-warning-emphasis` | `isClockInAuto` / `isClockOutAuto`（登入時系統代打） |
+| 系統補卡 | 上班 | `bg-warning-subtle text-warning-emphasis` | `isClockInAuto`（登入時系統代打） |
+| 未打下班卡（待處理） | 下班 | `bg-danger-subtle text-danger` | `isMissingClockOut && !missingClockOutResolved`（系統補的下班卡 `isClockOutAuto`，或過去日期仍無下班卡；2026-10-07） |
+| 未打下班卡（已註記） | 下班 | `bg-success-subtle text-success` | `isMissingClockOut && missingClockOutResolved`（HR 於編輯填了備註＝原因，下班欄下方綠色小字顯示「原因：…」） |
 | 超過 9.5 小時 | 下班 | `bg-danger-subtle text-danger` | `isLongWorkday`（純前端 derived） |
 
 > **`rowKind` 是三種列的唯一判別依據**：請假列與缺勤列同樣 `id === null`，
@@ -2006,16 +2013,21 @@ async onFileSelected(event: Event) {
 | `/files/id-cards/{fileName}` | id-cards |
 | `/files/education-proofs/{fileName}` | education-proofs |
 
-不敏感者（簽名、頭像）走公開路由：`/files/signatures/{fileName}` / `/files/avatars/{fileName}`。
+只有**頭像**走公開路由：`/files/avatars/{fileName}`（topbar 顯示用，不帶 token）。
+
+**簽名檔 `/files/signatures/{fileName}` 自 2026-10 起需登入**（原為公開）：檔名＝userId 可推導，公開等於任何人只要知道（或猜到）員工 Guid 就能下載全公司的簽名圖。登入即可、免特殊權限（簽核者列印 PDF 要印所有關卡的簽名）。前端兩條取用路徑：
+
+- **`<img>` 顯示**（人員管理表單、個人資訊頁）→ 共用 directive [`AuthImageSrcDirective`](../Admin/src/app/shared/directives/auth-image-src.directive.ts)：`<img [appAuthSrc]="url" alt="...">`（**不要同時綁 `[src]`**）。內部以 HttpClient 取 blob → `createObjectURL`，換網址 / 銷毀時 revoke；`data:` / `blob:`（本機預覽）與非本站 API 網址原樣寫入、**不送 token**（interceptor 對任何 URL 都附 token，不可讓 token 送去第三方網域）。
+- **PDF 簽名欄**（8 種紙本單共用）→ 全部經 [`PdfCoreService.loadSignatureImages`](../Admin/src/app/shared/services/pdf-core.service.ts)，該處改以 HttpClient 取 blob（原本是原生 `fetch`，不帶 Authorization，上線後會 401 → 簽名欄整個空白而**不報錯**）。**新增任何 PDF 時一律走這支，不可自行 `fetch` 簽名檔。**
 
 廠商存摺封面（`/files/vendor-passbooks/{fileName}` → `vendor-passbooks` 容器）為**一般檔，需 JWT 但免特殊權限**：透過 `HttpClient` 走 Blob 代理（auth interceptor 自動附 Bearer），與 PII 同樣以 `URL.createObjectURL` 在新分頁開啟。
 
 報價單（`quotes`）與整單批次附件（`request-attachments`）同為**一般檔，需 JWT 但免特殊權限**，但 blob name 含日期子路徑（`yyyy/MM/{guid}{ext}`），代理路由為 `/files/quotes/{*path}` / `/files/request-attachments/{*path}`（多段）。DB 存的是原始私有 blob URL，前端取用前**一律先過** [`resolveFileProxyUrl()`](../Admin/src/app/shared/services/pdf-core.service.ts)（把原始 blob URL 轉成代理路徑），再經 HttpClient（帶 JWT）下載。
 
 > **鐵則：需 JWT 的檔案不可直接放 `<img [src]>` 或 `<iframe [src]>`。** `<img>` / `<a href>` / `<iframe>` 無法帶 Authorization header，會 401 破圖。
-> - **公開容器**（signatures / avatars）→ 直接 `<img [src]="apiUrl + '/files/...'">`。
-> - **需 token 的容器**（PII、vendor-passbooks、quotes、request-attachments、以及員工自助 `/me/files/...`）→ 一律 `HttpClient` 下載 Blob（interceptor 帶 token）→ `URL.createObjectURL` 設給 `<img>` / `<iframe>` 或 `window.open` 開新分頁。
-> 員工「個人資訊」唯讀頁 [my-profile](../Admin/src/app/features/account/pages/my-profile/) 即依此規則：簽名 / 頭像走公開 `/files/`，身分證 / 學歷 / 三證明走 `/me/files/` blob 下載。
+> - **公開容器**（僅 avatars）→ 直接 `<img [src]="apiUrl + '/files/...'">`。
+> - **需 token 的容器**（signatures、PII、vendor-passbooks、quotes、request-attachments、以及員工自助 `/me/files/...`）→ 一律 `HttpClient` 下載 Blob（interceptor 帶 token）→ `URL.createObjectURL` 設給 `<img>` / `<iframe>` 或 `window.open` 開新分頁。
+> 員工「個人資訊」唯讀頁 [my-profile](../Admin/src/app/features/account/pages/my-profile/) 即依此規則：頭像走公開 `/files/`，簽名檔用 `[appAuthSrc]`，身分證 / 學歷 / 三證明走 `/me/files/` blob 下載。
 >
 > **`FilePreviewModal` 預覽私有檔案**：modal 的 iframe / img 同樣不帶 JWT，故報價單 / 整單附件的「檢視」一律改用共用 [`FilePreviewLoader`](../Admin/src/app/shared/services/file-preview-loader.ts)（`resolveFileProxyUrl` → `HttpClient` 取 blob → `createObjectURL` → 回傳 `PreviewFileData`，關閉時 `revoke`），**不可**把原始 blob URL 直接丟進 modal。**歷史教訓（2026-06）**：預審 PDF 合併上傳檔曾因直接 `fetch()` 私有 blob URL 而 403 / CORS 靜默失敗（檔案沒被合併進去）；詳情頁 / 簽核頁的預覽亦同病，皆改走代理修正。
 
@@ -2203,6 +2215,129 @@ cell.z = '#,##0';
 
 ---
 
+## 11.7 共用確認對話框（`<app-confirm-modal>`）
+
+[`shared/components/confirm-modal.ts`](../Admin/src/app/shared/components/confirm-modal.ts)。
+專案原本**沒有**共用 confirm 元件，20+ 處都用原生 `window.confirm` —— 它無法附加輸入欄位、
+樣式也跟系統不一致。四週彈性工時的下班打卡需要「確認 ＋ 視情況附一個必填原因」，
+且規格明訂**不另開第二個視窗**，故建立此元件。
+
+```ts
+const ref = this.modal.open(ConfirmModal, {centered: true});
+const ci = ref.componentInstance as ConfirmModal;
+ci.title = '確認下班打卡';
+ci.message = '目前出勤 8 小時 30 分';
+ci.detail = '今日出勤未達應下班時間（18:00），尚差 30 分鐘。';
+ci.reasonLabel = '早退原因';       // 有值才顯示原因欄位
+ci.reasonRequired = true;          // false → 顯示「（選填）」
+ci.tone = 'warning';               // 標題左側加驚嘆號 icon
+
+try {
+  const result: ConfirmModalResult = await ref.result;   // { confirmed, reason }
+  // 按「確定」才會走到這裡
+} catch {
+  // 按「取消」或關閉 → dismiss() 會 reject，什麼都不做
+}
+```
+
+使用點：下班打卡（早退／逾時原因）、**上班打卡遲到原因**（2026-10-06，`dashboard.ts` 的 `confirmAndClockIn()`，
+未遲到時直接打卡不跳視窗，避免一般情況多一步）。
+
+三個約定：
+- **取消走 `dismiss()`**（reject），確定走 `close(result)`。呼叫端用 try/catch 區分，
+  不要用 `result.confirmed` 判斷取消 —— 取消根本不會 resolve。
+- 必填未填時**在 modal 內顯示錯誤、不關閉視窗**；使用者一開始輸入就把錯誤收掉。
+- `reasonLabel` 為空字串時整個原因區塊不渲染，此時它就是一個單純的確認框，
+  可用來取代既有的 `window.confirm`（逐步汰換，不必一次改完）。
+
+---
+
+## 12.8 月曆格狀 UI（FullCalendar）
+
+專案的月曆一律用 **FullCalendar `dayGridMonth`**（`@fullcalendar/angular`，peer 支援 Angular 12–21）。
+FullCalendar v6 的 CSS 由 JS 自動注入，**不需要改 `angular.json`**。
+
+**排班月曆一律用共用元件 [`<app-shift-month-calendar>`](../Admin/src/app/shared/components/shift-month-calendar/shift-month-calendar.ts)**
+（2026-09-28 由個人排班頁抽出；個人排班 / 改班申請 / 簽核詳情頁三處共用），FullCalendar 細節全收在元件內：
+
+| input / output | 說明 |
+|---|---|
+| `year` / `month`（required） | 顯示的月份。改值即 `gotoDate()` + `render()` |
+| `days` | 每格附加資訊（`readOnly` / `holidayName` / 活動 / `lockReason` / `leaveLabel`）。活動讀 `activities[]`（2026-10-01）：同日多筆全列，每筆「名稱」＋小字「部門｜建立者」（各限一行 …），**參與人員放原生 `title`**；舊回應無 `activities` 時退回 `activityTitle` |
+| `dayTypes` | 目前要呈現的日別（父層編輯中的狀態）；未給者取 `days[].dayType` |
+| `changedFrom` | 改班異動格：key → 原日別，虛線框 + 「原：xx」 |
+| `interactive` | false ＝ 唯讀檢視 |
+| `(cellClick)` | `{key, cell}`；要不要切換由父層決定，被鎖的格子用共用的 `lockedCellMessage()` 出提示 |
+| `leaveDates` / `(leaveClick)` | （2026-09-29）`leaveDates` 有值且**目前日別仍為上班日**的格子顯示「請假」小鈕（`--accent` 外框膠囊；滑鼠裝置平時 35% 淡化、hover 格子才完整顯示，觸控裝置恆顯示），點了 emit 日期字串、**不會**同時觸發 `cellClick`。哪些日子可請假由父層決定（個人排班頁＝**已儲存**為上班日 ∩ 今天以後 ∩ `leave-requests:write`，有未儲存變更時擋下並提示），父層導向 `/admin/leave-requests/new?date=yyyy-MM-dd` |
+
+⚠ 格內按鈕是 `dayCellContent` 產生的原生 `<button>`：點擊以**元件 host 上的委派 click 監聽**接住（`closest('[data-leave-date]')`），
+不能只靠 FullCalendar 的 `dateClick` —— 鍵盤（Enter / 空白鍵）觸發的 click 不走它的 pointer 事件；
+`dateClick` 端則須反過來忽略落在按鈕上的點擊，否則按請假會順便把日別切掉。
+請假表單接 `?date=` 時，**切換假別清空日期的邏輯要改成回到帶入日期**，否則使用者一選假別日期就不見了。
+
+⚠ **格內 hover 提示一律用原生 `title`，不用 `ngbTooltip`**：格子內容是 `dayCellContent` 回傳的 HTML 字串，
+Angular 指令不會被編譯；自刻 CSS popover 又會被 FullCalendar 格子的 overflow 裁掉。多行內容以 `\n` 分隔（瀏覽器會換行），
+文字一律經 `escapeHtml`。限制：觸控裝置沒有 hover，看不到 title 內容。
+
+⚠ 傳給 `changedFrom` / `dayTypes` 的物件**必須是穩定參考**（signal / computed / 自行快取）：
+模板若每次變更偵測都回新物件，元件的 effect 會反覆重繪。
+
+### 用法：借骨架，不用 event 模型
+
+排班這類「一格一個狀態」的需求**不要塞進 FullCalendar 的 event**。做法是：
+
+| 目的 | 掛鉤 |
+|---|---|
+| 每格上色 | `dayCellClassNames: (arg) => string[]`（回傳自訂 class，於元件 `.scss` 內定義） |
+| 每格文字 | `dayCellContent: (arg) => ({html})` |
+| 點擊切換 | `dateClick: (arg) => …`，`arg.dateStr` 已是 `yyyy-MM-dd` |
+| 月份切換 | 頁面自備年／月下拉 + `headerToolbar: false`，切換走 `getApi().gotoDate()` |
+
+狀態本身存在元件的 signal（`Record<yyyy-MM-dd, T>`），不存在 FullCalendar 裡。
+
+### 四個踩過的坑
+
+1. **重繪一定要走 `getApi().render()`**。換掉 options 物件（`{...o}`）**沒有用** ——
+   `dayCellClassNames` / `dayCellContent` 是同一個函式參考，FullCalendar 比對後認定「沒變更」而不重繪。
+   症狀很誤導：狀態、計數、按鈕 disabled 全部正確，**只有格子顏色停在舊值**。
+   取 ref 用 `viewChild<FullCalendarComponent>('calendar')`。
+
+2. **首次渲染吃 `initialDate`，之後才用 `gotoDate()`**。`ngOnInit` 的資料載入早於 view 就緒，
+   此時 `viewChild()` 還是 `undefined`，只靠 `gotoDate` 會讓月曆停在「今天所在的月」而與資料對不上（整片格子查無日期）。
+   ⚠ **同一個坑的變形（2026-09-28 事故）**：舊個人排班頁在載入中以 `@if (loading())` 把 `<full-calendar>` 拆掉，
+   載入完才重建 —— 重建出來的新實例吃的是**寫死的預設月份** `initialDate`，而 `gotoDate` 在它就緒前就呼叫過了，
+   於是選 12 月卻顯示 10 月的格子、12 月資料一格都對不上（客戶回報「12/25 行憲紀念日沒顯示」）。
+   共用元件以 input 組 `initialDate`，且載入中不拆月曆。
+
+3. **`.fc-daygrid-day-top` 不可 `display: none`**。`dayCellContent` 產生的 HTML 就渲染在這個容器裡面，
+   藏掉它會讓整片格子只剩底色、日期與狀態文字全不見。要改版面請把它調成 `display: block; width: 100%`，
+   並把 `.fc-daygrid-day-number` 的連結樣式拿掉（`color: inherit; text-decoration: none; padding: 0`）。
+
+4. **手機必須橫向捲動，不要壓縮欄寬**。7 欄硬塞進 390px 時，長字串（如國定假日名稱
+   「臺灣光復暨金門古寧頭大捷紀念日」）會一字一行，把列高撐到數百 px。
+   做法同 §3 的表格方案 B：外層 `overflow-x: auto` ＋ **內層給 `min-width`**（排班頁用 `42rem`）——
+   只包 wrapper 是沒有用的。格內長文另以 `-webkit-line-clamp: 2` 截斷，完整內容放 `title`。
+
+### 前後月的對照格（2026-09-29）
+
+個人排班頁把月格首尾的前後月日子也畫出來（`showNonCurrentDates: true`），因為「連續上班 12 天」與「14 天內 2 天例假」
+都會跨月計算，同仁需要看得到月界另一側排了什麼。規則：
+
+- 共用元件以 input `adjacentDays` 開關：**非 null 才顯示**，改班申請 / 簽核頁不傳就維持只看當月。
+  `showNonCurrentDates` 只在 `ngOnInit` 決定一次，呼叫端要嘛一律給、要嘛一律不給。
+- 前後月格子掛 `shift-cell--adjacent`：保留日別底色、整格 `opacity: 0.5`、`cursor: default`；
+  日期寫成 `M/D`（避免與當月同號日混淆）；該月尚未定案者標「未排定」（`shift-cell--unknown`）。
+  點擊不會 emit —— `meta` 只收當月，`onDateClick` 自然查無。
+- 資料**與後端跨月檢核同一份**（`ShiftScheduleConstraintService.LoadAdjacentDaysAsync`），不在前端自行推算。
+
+### 色彩
+
+格子狀態一律引用 [tailwind.css](../Admin/src/tailwind.css) 的 CIS token（`--red` / `--green` / `--bg-elevated` / `--purple`），
+不寫死色碼。**疊加性的標記**（如「主管排定的活動日」與日別狀態並存）用**左側色條**而不是換底色，
+否則兩個維度會互相蓋掉。圖例與格子必須共用同一組色票。
+
+---
+
 ## 13. 路由與 Lazy Loading
 
 所有 feature 在 `app.routes.ts` 用 `loadComponent` / `loadChildren` lazy load：
@@ -2242,6 +2377,10 @@ export function resolveLandingUrl(auth: AuthService): string {
 ```
 
 已收斂到 `/` 的呼叫點：`no-auth.guard.ts`、`login.ts`（`returnUrl` 的預設值）、`line-bind-callback.ts`、`error-403.ts`、`error-404.ts`、`app-logo.ts`。**新增任何「首頁」連結時比照辦理**；未來若 `/account/my-profile` 也加上權限，只需改 `resolveLandingUrl` 一處。
+
+### 強制改密碼守衛（`passwordChangeGuard`，2026-10）
+
+JWT 帶 `pwd_change_required` claim（`AuthService.mustChangePassword()` signal）時，主版面內只准進 `/account/change-password`，其餘導航一律改導 `/account/change-password?forced=1`。掛在 `MainLayout` 路由的 **`canActivateChild`**（[password-change.guard.ts](../Admin/src/app/core/auth/guards/password-change.guard.ts)）——`canActivate` 只在進入父路由時跑一次，之後版面內子路由互跳不會重驗，所以不能掛在 `canActivate`。判定讀 token claim 而非登入回應的 `must_change_password`：重新整理或手打網址時回應早已不在。後端 `AppRouter` 才是真正的閘門（其餘端點 403），本守衛只負責讓使用者看到「請先改密碼」而非一堆載入失敗；強制期間 `MainLayout` 也不啟動鈴鐺輪詢（只會每分鐘吃一次 403）。改密碼成功後後端撤銷全部 refresh token，前端登出並回登入頁重登。
 
 ### 受權限控管的選單項目
 
@@ -2432,6 +2571,10 @@ export class AuthService {
 - **省請求**：每 tick 先判 `if (document.hidden) return;` 跳過發送；監聽 `visibilitychange`，切回前景立即補抓一次。
 - **Toast 去重**：service 內保留比對基準（`private prevXxx` / `safeLocal`，見 §15.5），**首次** refresh 只設基準不跳 toast；toast 邏輯統一寫在 `refresh()` 的 `tap` 內，使輪詢 / 開 dropdown / 自送單後共用同一比對而天然去重。
 - 間隔常數抽成 module 級 `const`（如 `POLL_INTERVAL_MS = 60_000`），勿散落魔術數字。
+- **需要「已讀」的通知**（2026-09-29 首例：活動日覆蓋班表 `shiftAdjustments`）：件數仍併入同一支 `/me/notification-counts`
+  與 `totalCount`，不另開輪詢；已讀狀態存**後端資料表**（`ShiftScheduleAdjustment.AcknowledgedAt`），不用 `safeLocal`
+  （換裝置後要一致、且紀錄本身就是業務資料）。落地頁顯示明細提示卡＋「我知道了」按鈕，ack 後呼叫
+  `notification.refresh()` 讓鈴鐺立即歸零。
 
 ### 15.5 瀏覽器儲存（`safeLocal` / `safeSession`）
 

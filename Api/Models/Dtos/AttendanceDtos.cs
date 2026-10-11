@@ -52,7 +52,21 @@ public sealed record AttendanceRecordDto(
     /// <summary>當日應出勤起（扣掉請假時段後）。null＝當日免出勤（全日請假）</summary>
     DateTime? ExpectedStart = null,
     /// <summary>當日應出勤訖（扣掉請假時段後）。null＝當日免出勤（全日請假）</summary>
-    DateTime? ExpectedEnd = null);
+    DateTime? ExpectedEnd = null,
+    /// <summary>曾被管理者修改過（與 IsClockInAuto / IsClockOutAuto 各自獨立：原本是系統補卡、後來被改過可同時為 true）。虛擬列恆為 false</summary>
+    bool      IsManuallyAdjusted = false,
+    /// <summary>最後修改者姓名（無 FK，由 LastAdjustedById 左連 Users；查無為 null）</summary>
+    string?   AdjustedByName = null,
+    /// <summary>最後修改時間</summary>
+    DateTime? AdjustedAt = null,
+    /// <summary>遲到（四週彈性工時切換後才判定；出差當日恆 false）。虛擬列恆為 false</summary>
+    bool      IsLate = false,
+    /// <summary>早退（四週彈性工時切換後才判定；出差當日恆 false）。虛擬列恆為 false</summary>
+    bool      IsEarlyLeave = false,
+    /// <summary>員工上班打卡時填寫的遲到原因</summary>
+    string?   LateReason = null,
+    /// <summary>員工下班打卡時填寫的早退／逾時原因（依 IsEarlyLeave 區分標籤）</summary>
+    string?   ClockOutReason = null);
 
 /// <summary>出缺勤報表列中的單張請假資訊（當日份）</summary>
 public sealed record AttendanceLeaveDto(
@@ -94,8 +108,42 @@ public sealed record TodayAttendanceDto(
     /// 有預設值 → Dapper 的 MapTodayRow 不需異動（此欄位不存在於 DB，由 Handler 以 with { } 補上）。
     /// </summary>
     bool CanOvertimeWithoutClockOut = false,
+    /// <summary>
+    /// 現在是否已可打「加班開始」卡（時間規則）：一般上班日須在應下班時間（避開請假）與實際下班卡之後；
+    /// 休假日 / 全日請假（<see cref="CanOvertimeWithoutClockOut"/>）恆為 true。
+    /// 與 AttendanceHandler.OvertimeStartAsync 共用 ComputeOvertimeNotBefore，false 時前端應停用按鈕、不要按下才 400。
+    /// </summary>
+    bool CanStartOvertimeNow = true,
+    /// <summary>尚不可打加班卡時，最早可打的時間（供按鈕提示「HH:mm 起可打」）；可打時為 null</summary>
+    DateTime? OvertimeStartNotBefore = null,
     /// <summary>該日已被標記為出差，供打卡頁的勾選框帶回既有狀態</summary>
-    bool IsBusinessTrip = false);
+    bool IsBusinessTrip = false,
+
+    // ── 四週彈性工時（切換日之前一律為預設值，前端據此維持舊行為）──────────
+    /// <summary>四週彈性工時是否已對今日生效。false 時前端不顯示確認對話框、不判早退逾時。</summary>
+    bool FlexibleEnabled = false,
+    /// <summary>今日日別：work / rest_day / statutory_off / public_holiday</summary>
+    string? DayType = null,
+    /// <summary>本人是否為今日活動日的預定人力（國定假日據此解鎖上下班打卡）</summary>
+    bool IsActivityAssignee = false,
+    /// <summary>今日可否打上下班卡（日別鎖定的結果）。前端不自行重組規則，只吃這個旗標。</summary>
+    bool CanClockInOut = true,
+    /// <summary>不可打卡時的說明，可直接顯示給使用者</summary>
+    string? ClockLockReason = null,
+    /// <summary>
+    /// 應下班時間 ＝ 實際上班打卡 ＋ 9 小時（請了上午半天假者為 ＋4 小時）；
+    /// 設有自訂上下班時段者（賣店等）為當日固定下班時刻。
+    /// 供前端在確認對話框顯示「目前出勤 X 小時 Y 分」與判斷是否要顯示原因欄位。
+    /// 尚未打上班卡時為 null。
+    /// </summary>
+    DateTime? ExpectedClockOutTime = null,
+    /// <summary>正常下班帶終點（應下班 ＋ 容許帶：公司預設 30 分、自訂上下班時段 5 分），晚於此即逾時。</summary>
+    DateTime? NormalClockOutUntil  = null,
+    /// <summary>
+    /// 今日遲到界線（超過即為遲到、上班打卡須填遲到原因）：公司 09:30、自訂時段 S+2 分、
+    /// 請上午半天假者 13:05（見 ClockRules.LateThreshold）。未切換時為 null。
+    /// </summary>
+    DateTime? LateAfter = null);
 
 /// <summary>
 /// 出缺勤報表合併用的原料列：區間內已核准的假單（尚未逐日展開）。
@@ -141,10 +189,17 @@ public sealed record ClockActionRequest(
     int?    OvertimeRequestId = null,
     /// <summary>本次打卡為出差：四個打卡動作皆以此值覆寫當日的 AttendanceRecord.IsBusinessTrip</summary>
     bool    IsBusinessTrip = false,
+    /// <summary>
+    /// 下班打卡的早退／逾時原因（四週彈性工時）。
+    /// 早退或逾時且**非出差**時為必填，否則後端回 400；出差當日可填可不填。
+    /// </summary>
+    string? Reason = null,
     /// <summary>瀏覽器回報的定位精度（公尺），僅供稽核</summary>
     double? Accuracy = null,
     /// <summary>POST /attendances/clock-challenge 取得的一次性挑戰碼（防機器人打卡，必填）</summary>
-    string? ChallengeToken = null);
+    string? ChallengeToken = null,
+    /// <summary>Cloudflare Turnstile token（防機器人打卡；是否必填依設定 Turnstile:Mode）</summary>
+    string? TurnstileToken = null);
 
 /// <summary>取得打卡挑戰碼</summary>
 public sealed record ClockChallengeRequest(string? Action);
