@@ -82,16 +82,17 @@ export class PaymentPdfService {
       // ── 明細表格 ──
       y += 8;
       const invoices = d.invoices || [];
-      const bodyRows = invoices.map(inv => [
+      const bodyRows = invoices.map((inv, idx) => [
         d.projectCode,
         inv.invoiceNo || '—',
+        String(idx + 1),   // 請款明細無項次欄，依列序（讀取一律 ORDER BY Id）
         inv.itemName || '—',
         fmt(inv.amount),
         inv.note || '',
       ]);
       // 合計列
       bodyRows.push([
-        {content: '合　計', colSpan: 3, styles: {halign: 'center', fontStyle: 'bold'}} as any,
+        {content: '合　計', colSpan: 4, styles: {halign: 'center', fontStyle: 'bold'}} as any,
         {content: fmt(d.totalAmount), styles: {fontStyle: 'bold'}} as any,
         '',
       ]);
@@ -124,13 +125,14 @@ export class PaymentPdfService {
           textColor: [...CIS.textPrimary],
         },
         columnStyles: {
-          0: {cellWidth: cw * 0.14, halign: 'center'},  // 案號
+          0: {cellWidth: cw * 0.13, halign: 'center'},  // 案號
           1: {cellWidth: cw * 0.16, halign: 'center'},  // 發票號碼
-          2: {cellWidth: cw * 0.30},                     // 項目
-          3: {cellWidth: cw * 0.16, halign: 'right'},    // 金額
-          4: {cellWidth: cw * 0.24},                     // 備註
+          2: {cellWidth: cw * 0.06, halign: 'center'},  // 項次
+          3: {cellWidth: cw * 0.27},                     // 項目
+          4: {cellWidth: cw * 0.16, halign: 'right'},    // 金額
+          5: {cellWidth: cw * 0.22},                     // 備註
         },
-        head: [['案 號', '發票號碼', '項　　目', '金　額', '備　註']],
+        head: [['案 號', '發票號碼', '項次', '項　　目', '金　額', '備　註']],
         body: bodyRows,
       });
 

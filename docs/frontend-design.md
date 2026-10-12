@@ -1012,7 +1012,8 @@ isFirstOfRound(r: AdvanceRequest, index: number): boolean {
 - **送出 payload**：`seqNo` 一律以列序寫入（`itemsMeta.length + 1` 或 `idx + 1`），不再讀 FormControl；`seqNo` 控制項保留只為載入舊資料。
 - **預支追加批次整張單連續編號**：`advance-form` 的 `seqOffset` ＝ 前面所有批次的明細筆數（`r.items.filter(x => x.roundNo < supplementRound).length`），追加批次顯示與送出都加上這個偏移。
 - **唯讀 / 詳情 / 簽核作業詳情頁 / PDF 一律顯示 DB 存的值**（與已列印紙本一致）；存的是 `0`（2026-10 前的沖銷單沒有項次欄、一律存 0）時退回列序 `i + 1`，寫法 `{{ item.seqNo || (i + 1) }}` / `String(item.seqNo || idx + 1)`。
-- 後端 `SeqNo` 不驗證、不重算（舊客戶端送來的值照存）。請款（InvoiceItem）與預審沒有項次欄。
+- 後端 `SeqNo` 不驗證、不重算（舊客戶端送來的值照存）。
+- **請款（InvoiceItem）沒有 `SeqNo` 欄位，項次純顯示 `i + 1`**（2026-10-12 補上）：表單 / 詳情頁 / 簽核作業詳情頁 / PDF 四處皆依列序顯示、不入庫。可行的前提是讀取一律 `ORDER BY ii.Id` 且存檔為整批替換（依表單列序重新 insert），故列序即穩定的項次；日後若改成逐列 upsert 或換排序鍵，須改為入庫。預審仍無項次欄。
 
 ### 7.2 ⚠ 刪除按鈕標準（**重要**）
 

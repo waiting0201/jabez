@@ -207,12 +207,13 @@
                           <th>發票號碼</th>
                           <th>發票日期</th>
                           <th class="text-right">金額</th>
+                          <th style="width:48px">項次</th>
                           <th>項目</th>
                           <th>備註</th>
                         </tr>
                       </thead>
                       <tbody>
-                        @for (inv of d.invoices; track inv.id) {
+                        @for (inv of d.invoices; track inv.id; let i = $index) {
                           <tr>
                             <td class="align-middle text-center">
                               @if (inv.previewUrl || inv.fileUrl) {
@@ -226,6 +227,7 @@
                             <td class="font-monospace small">{{ inv.invoiceNo }}</td>
                             <td class="small">{{ inv.invoiceDate ? (inv.invoiceDate | date:'yyyy-MM-dd') : '—' }}</td>
                             <td class="text-right fw-500">{{ inv.amount | number:'1.0-0' }}</td>
+                            <td class="small">{{ i + 1 }}</td>
                             <td class="small">{{ inv.itemName || '—' }}</td>
                             <td class="small">{{ inv.note || '—' }}</td>
                           </tr>
@@ -235,7 +237,7 @@
                         <tr class="table-light">
                           <td colspan="3" class="text-right fw-500 small">合計</td>
                           <td class="text-right fw-600">{{ d.totalAmount | number:'1.0-0' }}</td>
-                          <td colspan="2"></td>
+                          <td colspan="3"></td>
                         </tr>
                       </tfoot>
                     </table>

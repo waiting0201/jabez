@@ -221,6 +221,7 @@
                     <th style="min-width:160px">發票號碼</th>
                     <th style="min-width:130px">發票日期</th>
                     <th style="min-width:120px">金額</th>
+                    <th style="width:48px">項次</th>
                     <th style="min-width:140px">項目</th>
                     <th style="min-width:140px">備註</th>
                     @if (!isReadOnly) {
@@ -285,6 +286,7 @@
                           </div>
                         }
                       </td>
+                      <td class="align-middle small">{{ i + 1 }}</td>
                       <td class="align-middle">
                         @if (isReadOnly) {
                           <span class="small">{{ ctrl.get('itemName')?.value || '—' }}</span>
@@ -349,7 +351,7 @@
                     <tr class="table-light">
                       <td colspan="3" class="text-right fw-500 small">合計</td>
                       <td class="fw-600">{{ totalAmount | number:'1.0-0' }}</td>
-                      <td colspan="2"></td>
+                      <td colspan="3"></td>
                       @if (!isReadOnly) {
                         <td></td>
                       }
