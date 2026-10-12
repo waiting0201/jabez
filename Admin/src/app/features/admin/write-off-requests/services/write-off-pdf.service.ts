@@ -196,8 +196,8 @@ export class WriteOffPdfService {
         },
         columnStyles: {
           0: { cellWidth: cw * 0.07, halign: 'center' },  // 分類
-          1: { cellWidth: cw * 0.04, halign: 'center' },  // 項次
-          2: { cellWidth: cw * 0.19 },                     // 項目(說明)
+          1: { cellWidth: cw * 0.05, halign: 'center' },  // 項次
+          2: { cellWidth: cw * 0.18 },                     // 項目(說明)
           3: { cellWidth: cw * 0.09, halign: 'right' },    // 單價
           4: { cellWidth: cw * 0.07, halign: 'center' },   // 數量/單位
           5: { cellWidth: cw * 0.09, halign: 'right' },    // 總價

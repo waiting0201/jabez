@@ -127,8 +127,8 @@ export class PaymentPdfService {
         columnStyles: {
           0: {cellWidth: cw * 0.13, halign: 'center'},  // 案號
           1: {cellWidth: cw * 0.16, halign: 'center'},  // 發票號碼
-          2: {cellWidth: cw * 0.06, halign: 'center'},  // 項次
-          3: {cellWidth: cw * 0.27},                     // 項目
+          2: {cellWidth: cw * 0.09, halign: 'center'},  // 項次（可容 3 位數）
+          3: {cellWidth: cw * 0.24},                     // 項目
           4: {cellWidth: cw * 0.16, halign: 'right'},    // 金額
           5: {cellWidth: cw * 0.22},                     // 備註
         },
