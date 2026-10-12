@@ -103,8 +103,6 @@ public sealed class AttendanceHandler(
         if (record is not null && record.ClockInTime.HasValue)
             throw AppException.BadRequest("今日已打上班卡。");
 
-        var isTrip = await ResolveBusinessTripAsync(userId, today, body.IsBusinessTrip, record?.IsBusinessTrip == true);
-
         var ctx = await ResolveClockContextAsync(userId, now);
         if (ctx.Flexible)
         {
@@ -122,8 +120,8 @@ public sealed class AttendanceHandler(
         await EnsureNotOnLeaveAsync(userId, now, ctx.Flexible, forClockOut: false);
 
         // 遲到：超過準時界線（公司 09:30、自訂時段 S+2 分、上午請假者 13:05）須填遲到原因（2026-10-06）。
-        // 出差當日欄位仍顯示但改為非必填，比照下班打卡的早退／逾時原因。
-        if (ctx.Flexible && !isTrip
+        // 出差只是出缺勤紀錄上的標記，不影響遲到判定與原因必填（2026-10-12）。
+        if (ctx.Flexible
             && ClockRules.IsLate(now, ctx.Schedule, ctx.AfternoonOnly, ctx.Profile)
             && string.IsNullOrWhiteSpace(body.Reason))
             throw AppException.BadRequest(
@@ -144,10 +142,9 @@ public sealed class AttendanceHandler(
         record.ClockInLatitude   = body.Latitude;
         record.ClockInLongitude  = body.Longitude;
         record.IsClockInAuto     = false;   // 本人打卡
-        record.IsBusinessTrip    = isTrip;
+        record.IsBusinessTrip    = body.IsBusinessTrip;
         record.LateReason        = TrimReason(body.Reason);
-        // 出差當日不判定遲到（在外辦公本來就不是九點進辦公室）
-        RefreshExceptionFlags(record, ctx, isTrip);
+        RefreshExceptionFlags(record, ctx);
 
         await db.SaveChangesAsync();
 
@@ -174,8 +171,6 @@ public sealed class AttendanceHandler(
         if (record.ClockOutTime.HasValue)
             throw AppException.BadRequest("今日已打下班卡。");
 
-        var isTrip = await ResolveBusinessTripAsync(userId, today, body.IsBusinessTrip, record.IsBusinessTrip);
-
         var ctx = await ResolveClockContextAsync(userId, now);
         if (ctx.Flexible && !ClockDayPolicy.AllowsClockInOut(ctx.DayType, ctx.IsActivityAssignee))
             throw AppException.BadRequest(
@@ -188,8 +183,7 @@ public sealed class AttendanceHandler(
         {
             kind = ClockRules.ResolveClockOutKind(clockIn, now, ctx.Schedule, ctx.AfternoonOnly, ctx.Profile);
 
-            // 出差當日：原因欄位仍顯示但改為非必填（§5.1「改的是必填性，不是可見性」）
-            if (kind != ClockOutKind.Normal && !isTrip && string.IsNullOrWhiteSpace(body.Reason))
+            if (kind != ClockOutKind.Normal && string.IsNullOrWhiteSpace(body.Reason))
                 throw AppException.BadRequest(kind == ClockOutKind.Early
                     ? "今日出勤未達應下班時間，請填寫早退原因。"
                     : $"下班時間已超過應下班時間 {ctx.Profile.GraceMinutes} 分鐘，請填寫逾時原因。");
@@ -199,8 +193,8 @@ public sealed class AttendanceHandler(
         record.ClockOutLatitude   = body.Latitude;
         record.ClockOutLongitude  = body.Longitude;
         record.IsClockOutAuto     = false;   // 本人打卡
-        record.IsBusinessTrip     = isTrip;
-        RefreshExceptionFlags(record, ctx, isTrip, kind);
+        record.IsBusinessTrip     = body.IsBusinessTrip;
+        RefreshExceptionFlags(record, ctx, kind);
         record.ClockOutReason     = TrimReason(body.Reason);
 
         await db.SaveChangesAsync();
@@ -282,15 +276,11 @@ public sealed class AttendanceHandler(
             db.AttendanceRecords.Add(record);
         }
 
-        var isTrip = await ResolveBusinessTripAsync(userId, today, body.IsBusinessTrip, record.IsBusinessTrip);
-
         record.OvertimeStartTime      = now;
         record.OvertimeStartLatitude   = body.Latitude;
         record.OvertimeStartLongitude  = body.Longitude;
         record.OvertimeRequestId       = body.OvertimeRequestId;
-        record.IsBusinessTrip          = isTrip;
-        // 加班打卡也能設出差旗標，同樣要重算遲到／早退
-        RefreshExceptionFlags(record, await ResolveClockContextAsync(userId, now), isTrip);
+        record.IsBusinessTrip          = body.IsBusinessTrip;
 
         await db.SaveChangesAsync();
 
@@ -333,14 +323,9 @@ public sealed class AttendanceHandler(
         record.OvertimeEndTime      = now;
         record.OvertimeEndLatitude   = body.Latitude;
         record.OvertimeEndLongitude  = body.Longitude;
+        // 跨日補打（carriedOver）不動前一天的出差旗標 —— 那是前一天的整日屬性。
         if (!carriedOver)
-        {
-            var isTrip = await ResolveBusinessTripAsync(userId, record.RecordDate, body.IsBusinessTrip, record.IsBusinessTrip);
-            record.IsBusinessTrip = isTrip;
-            // 加班打卡也能設出差旗標，同樣要重算遲到／早退
-            RefreshExceptionFlags(record, await ResolveClockContextAsync(userId, now), isTrip);
-        }
-        // 跨日補打（carriedOver）不動前一天的出差旗標與遲到／早退 —— 那是前一天的整日屬性。
+            record.IsBusinessTrip = body.IsBusinessTrip;
 
         // 加班給付依實際打卡結算（2026-10 防灌工時）：min(核准時數, 開始～結束)。
         // 舊單（SettledHours 為 null）與未核准的單不處理，見 OvertimeSettlementService。
@@ -488,7 +473,7 @@ public sealed class AttendanceHandler(
                 ClockOutKind? kind = record.ClockInTime is { } inAt && record.ClockOutTime is { } outAt
                     ? ClockRules.ResolveClockOutKind(inAt, outAt, ctx.Schedule, ctx.AfternoonOnly, ctx.Profile)
                     : null;
-                RefreshExceptionFlags(record, ctx, record.IsBusinessTrip, kind);
+                RefreshExceptionFlags(record, ctx, kind);
                 if (kind is null) record.IsEarlyLeave = false;
             }
         }
@@ -539,53 +524,20 @@ public sealed class AttendanceHandler(
         WorkdaySchedule Schedule, bool AfternoonOnly, ClockProfile Profile);
 
     /// <summary>
-    /// 出差旗標的單一把關點（四個打卡動作共用）：宣告「出差」會抹掉當日遲到／早退標記，
-    /// 若本人自宣告即生效，等於自助免責。故勾選須有「當日涵蓋的已核准出差單」
-    /// （出差預支 TravelRequest〔非假日執行活動〕或出差請款 TravelPaymentRequest）才接受。
-    /// 當日紀錄既有旗標為 true（本次修補前的歷史自宣告、或先前已通過驗證）時不重驗，
-    /// 避免同一天後續的下班／加班打卡被擋；取消勾選（false）永遠放行。
-    /// </summary>
-    private async Task<bool> ResolveBusinessTripAsync(Guid userId, DateTime date, bool requested, bool alreadyFlagged)
-    {
-        if (!requested) return false;
-        if (alreadyFlagged) return true;
-
-        var day = date.Date;
-        var hasApprovedTrip =
-            await db.TravelRequests.AnyAsync(t =>
-                t.EmployeeId == userId && !t.IsHolidayTravel && t.ApprovalStatus == "approved"
-                && t.StartDate.Date <= day && t.EndDate.Date >= day)
-            || await db.TravelPaymentRequests.AnyAsync(t =>
-                t.EmployeeId == userId && t.ApprovalStatus == "approved"
-                && t.StartDate.Date <= day && t.EndDate.Date >= day);
-
-        if (!hasApprovedTrip)
-            throw AppException.BadRequest("勾選「出差」須有當日已核准的出差申請（出差預支或出差請款），請先完成出差申請與核准，或取消勾選。");
-        return true;
-    }
-
-    /// <summary>
-    /// 依「當日出差旗標」重算遲到／早退。
-    ///
-    /// ⚠ 出差是**整日**旗標，四個打卡動作任一個都能設定它 ——
-    /// 上班時沒勾、下班（或打加班卡）時才勾的人很常見。若只在上班打卡當下算一次遲到，
-    /// 事後勾出差不會把它清掉，出缺勤報表就會出現「出差卻被記遲到」的矛盾。
-    /// 故每次寫入 IsBusinessTrip 之後都要呼叫本方法重算。
+    /// 重算遲到／早退旗標。出差（`IsBusinessTrip`）只是出缺勤紀錄上的標記，**不免除**遲到／早退 ——
+    /// 2026-10-12 起勾出差不再要求已核准出差單，若仍免責等於本人自宣告即可抹掉遲到紀錄。
     /// </summary>
     private static void RefreshExceptionFlags(
-        AttendanceRecord record, ClockContext ctx, bool isBusinessTrip, ClockOutKind? clockOutKind = null)
+        AttendanceRecord record, ClockContext ctx, ClockOutKind? clockOutKind = null)
     {
         if (!ctx.Flexible) return;
 
-        record.IsLate = !isBusinessTrip
-                     && record.ClockInTime is { } ci
+        record.IsLate = record.ClockInTime is { } ci
                      && !record.IsClockInAuto            // 系統補卡不是本人遲到
                      && ClockRules.IsLate(ci, ctx.Schedule, ctx.AfternoonOnly, ctx.Profile);
 
         if (clockOutKind is { } kind)
-            record.IsEarlyLeave = !isBusinessTrip && kind == ClockOutKind.Early;
-        else if (isBusinessTrip)
-            record.IsEarlyLeave = false;
+            record.IsEarlyLeave = kind == ClockOutKind.Early;
     }
 
     /// <summary>打卡原因（遲到／早退／逾時）正規化：空白存 null、上限 500 字。</summary>
