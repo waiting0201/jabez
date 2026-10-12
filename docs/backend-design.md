@@ -509,7 +509,7 @@ RequestDateGuard.EnsurePastWithin(body.ChildBirthDate, "子女出生日期",
 | 明細 / 附件檔案 | `Common/AttachmentProcessor`（`UploadItemFileAsync` / `KeepExistingUrl`） | 上傳一律 10MB 上限 + magic-byte 白名單、副檔名取偵測型別；更新時「保留既有 FileUrl」只接受該單 DB 既有值（新建傳 `NoOwnedUrls`），刪 blob 只對 DB 舊值執行 |
 | 通知信 HTML | `ApprovalNotificationService.H()` / `WebUtility.HtmlEncode` | 凡進 HTML 信件的使用者可控字串（姓名、事由、摘要、地點、單號、href）一律編碼；LINE Flex 為 JSON 序列化，不需 HtmlEncode |
 | Access token 即時失效 | `Users.SecurityStamp` + `AppRouter.EnsureSecurityStampAsync` + `RefreshTokenRevoker` | token 帶 `sstamp` claim，AppRouter 每請求以 PK 比對 DB 現值與帳號狀態，不符 401；停用 / 改密碼 / 換角色（`RevokeAllAsync`）、改部門 / 職稱（`BumpSecurityStampAsync`，不撤 refresh）時換新。無 `sstamp` 的舊 token 放行至自然過期 |
-| 出差旗標 | `AttendanceHandler.ResolveBusinessTripAsync` | 勾選出差須有當日涵蓋的已核准出差預支 / 出差請款；當日紀錄已有旗標者不重驗 |
+| 出差旗標 | `AttendanceHandler.RefreshExceptionFlags` | 2026-10-12 改為純標記：不需出差單，但**不免除**遲到 / 早退與原因必填（原「須有已核准出差單」檢查已移除） |
 | 出缺勤修改 | `AttendanceHandler.UpdateAsync` | 不可改自己的紀錄；新時間須在紀錄日當天至隔日 06:00 前；修改者 JobTitle.Level 須嚴格小於被修改者（Superadmin 例外）；每次實質修改寫 `AttendanceAuditLogs`；不再清除 `IsClockInAuto / IsClockOutAuto`，改設 `IsManuallyAdjusted` |
 | 核准時重驗日期 | `ApprovalTaskHandler`（leave_revocation / shift_change） | 銷假核准時剔除已過去的日期（全過去則 400）；改班核准時有已過去日期則 400 |
 | 使用者管理防提權 | `UserHandler.EnsureSelfEditAllowed` / `EnsureNoPrivilegeEscalationAsync` / `EnsureTargetIsSubordinateAsync`（Create / Update / SendCredentials / SetPassword） | 非 Superadmin：不可實質變更**自己的**部門 / 職稱 / 在職狀態 / 職務代理人 / 補休期初 / 薪資 / 簽名檔（值與現況相同＝整表回送，放行）；調動至財務體系部門、或調高職級（Level ≤ 1 或高於自身）限 Superadmin（新建帳號同防）；改他人密碼 / email、寄帳號通知，目標帳號權限須為操作者權限的子集合。皆放在 Blob 上傳 / 寫入之前。異動寫 `UserAuditLogs`（update / set_password / send_credentials；薪資只記「已變更」、密碼只記「已重設」） |

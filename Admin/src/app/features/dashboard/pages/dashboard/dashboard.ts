@@ -247,7 +247,7 @@ export class Dashboard implements OnInit, OnDestroy {
 
   /**
    * 上班打卡：超過遲到界線（後端 `lateAfter`：公司 09:30、自訂上下班時段 S+2 分、請上午半天假者 13:05）
-   * 時先跳對話框填遲到原因，出差當日改為非必填；未遲到直接打卡（不增加一般情況的操作步驟）。
+   * 時先跳對話框填遲到原因（出差亦同）；未遲到直接打卡（不增加一般情況的操作步驟）。
    * 舊制（尚未切換）一律直接打卡。
    */
   async confirmAndClockIn(): Promise<void> {
@@ -268,7 +268,7 @@ export class Dashboard implements OnInit, OnDestroy {
     ci.tone = 'warning';
     ci.detail = `已超過上班準時時間（${this.timeText(lateAfter)}）${lateMin} 分鐘，將記為遲到。`;
     ci.reasonLabel = '遲到原因';
-    ci.reasonRequired = !this.isBusinessTrip();
+    ci.reasonRequired = true;
 
     let result: ConfirmModalResult;
     try {
@@ -284,7 +284,7 @@ export class Dashboard implements OnInit, OnDestroy {
    * （規格明訂不另開第二個視窗）。三種情況以應下班時間 T 為界，互斥且涵蓋全部：
    * `< T` 早退必填原因、`[T, T+30分]` 正常只需確認、`> T+30分` 逾時必填原因
    * （自訂上下班時段者 T 為固定下班時刻、容許帶 5 分，界線皆由後端 `normalClockOutUntil` 帶回）。
-   * 出差當日原因欄位仍顯示但改為非必填。
+   * 出差只是出缺勤紀錄上的標記，不影響原因必填。
    *
    * 舊制（尚未切換）不跳對話框，行為與原本完全一致。
    */
@@ -306,7 +306,6 @@ export class Dashboard implements OnInit, OnDestroy {
     // 逾時界線由後端依個人打卡參數算好（公司預設 +30 分、自訂上下班時段 +5 分），不在前端寫死
     const normalUntil = r.normalClockOutUntil ? new Date(r.normalClockOutUntil) : null;
     const isOvertime = !!normalUntil && now > normalUntil;
-    const businessTrip = this.isBusinessTrip();
 
     const ref = this.modal.open(ConfirmModal, {centered: true});
     const ci = ref.componentInstance as ConfirmModal;
@@ -318,12 +317,12 @@ export class Dashboard implements OnInit, OnDestroy {
       ci.tone = 'warning';
       ci.detail = `今日出勤未達應下班時間（${this.timeText(expected!)}），尚差 ${diffMin} 分鐘。`;
       ci.reasonLabel = '早退原因';
-      ci.reasonRequired = !businessTrip;
+      ci.reasonRequired = true;
     } else if (isOvertime) {
       ci.tone = 'warning';
       ci.detail = `已超過應下班時間（${this.timeText(expected!)}）${Math.abs(diffMin)} 分鐘。`;
       ci.reasonLabel = '逾時原因';
-      ci.reasonRequired = !businessTrip;
+      ci.reasonRequired = true;
     } else if (expected) {
       ci.detail = `應下班時間 ${this.timeText(expected)}，屬正常下班。`;
     }
