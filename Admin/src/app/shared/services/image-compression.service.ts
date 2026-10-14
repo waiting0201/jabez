@@ -75,4 +75,39 @@ export class ImageCompressionService {
     const baseName = file.name.replace(/\.[^.]+$/, '');
     return new File([compressed], `${baseName}.jpg`, { type: 'image/jpeg' });
   }
+
+  /**
+   * 將圖檔順時針旋轉 90°，輸出 JPEG File（供頭像「旋轉 90°」使用）。
+   * 長邊上限同 compress 的預設行為不再縮放——旋轉前通常已壓縮過；原檔若是 HEIC 會先轉 JPEG。
+   */
+  async rotate90(file: Blob, fileName = 'rotated.jpg', quality = 0.9): Promise<File> {
+    let workingBlob: Blob = file;
+    if (file instanceof File && await isHeicFile(file)) {
+      workingBlob = await convertHeicToJpeg(file, quality);
+    }
+    const url = URL.createObjectURL(workingBlob);
+    try {
+      const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+        const i = new Image();
+        i.onload  = () => resolve(i);
+        i.onerror = () => reject(new Error('Failed to load image'));
+        i.src = url;
+      });
+      const canvas = document.createElement('canvas');
+      canvas.width  = img.naturalHeight;
+      canvas.height = img.naturalWidth;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) throw new Error('Canvas context unavailable');
+      // 順時針 90°：原點移到右上角再旋轉
+      ctx.translate(canvas.width, 0);
+      ctx.rotate(Math.PI / 2);
+      ctx.drawImage(img, 0, 0);
+      const blob: Blob = await new Promise((resolve, reject) =>
+        canvas.toBlob(b => b ? resolve(b) : reject(new Error('toBlob returned null')), 'image/jpeg', quality));
+      const baseName = fileName.replace(/\.[^.]+$/, '');
+      return new File([blob], `${baseName}.jpg`, {type: 'image/jpeg'});
+    } finally {
+      URL.revokeObjectURL(url);
+    }
+  }
 }

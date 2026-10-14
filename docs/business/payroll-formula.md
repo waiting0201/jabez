@@ -227,7 +227,7 @@ EmployeePayrollDto / 月度合計 / 薪資編輯頁 / 薪資明細 Email + PDF
 3. `Api/Models/Dtos/UserDtos.cs` — `UserDto` / `CreateUserRequest` / `UpdateUserRequest`
 4. `Api/Services/Dapper/UserReadService.cs` — 3 處 SELECT / tuple / 映射
 5. `Api/Handlers/UserHandler.cs` — Create + Update 接收 form 欄位（薪資段落包在 `PayrollFieldAccess.CanSeeSalary` 內）
-6. ⚠️ `Api/Common/PayrollFieldAccess.cs` — `Mask(UserDto)` 的抹除清單（**漏改＝無 `payroll:read` 者看得到該欄**）
+6. ⚠️ `Api/Common/PayrollFieldAccess.cs` — `Mask(UserDto)` 的抹除清單（**漏改＝無 `users:salary-read` 者看得到該欄**）
 7. `Api/Handlers/EmployeeProfileHandler.cs` — 同步邏輯 `user.Xxx = latestSalary.Xxx`
 8. `Api/Services/Dapper/PayrollReadService.cs` — `employeeSql` SELECT、迴圈讀取、`netSalary` 公式、月度 `Sum`
 9. `Api/Models/Dtos/PayrollDtos.cs` — `EmployeePayrollDto` + `MonthlyPayrollDto` 的 `Total*`
@@ -255,16 +255,16 @@ EmployeePayrollDto / 月度合計 / 薪資編輯頁 / 薪資明細 Email + PDF
 
 ## 誰看得到薪資欄位（欄位級權限，2026-08）
 
-「進得了員工管理」不等於「看得到薪資」。`users:read` 只決定能否開啟員工管理，**薪資與可反推薪資的欄位另需 `payroll:read`** —— 沿用「人事薪資」模組同一把鑰匙，未另立權限碼。
+「進得了員工管理」不等於「看得到薪資」。`users:read` 只決定能否開啟員工管理，**薪資與可反推薪資的欄位另需 `users:salary-read`**（2026-10 起獨立權限碼，Module「員工管理」；原借用「人事薪資」模組的 `payroll:read`，已脫鉤）。
 
 | 範圍 | 需要 | 缺少時 |
 |---|---|---|
-| 員工管理 Tab1 的 8 個薪資 / 勞健保欄 | `payroll:read` | API 回 `null`，前端整段不 render、控制項 `disable()` |
-| 員工管理 Tab2「薪資調整歷史」 | `payroll:read` | API 回 `[]`，前端整區不 render |
-| Tab3「每月健保費試算」（＝健保覆寫 ×(1+眷屬數)，可反推投保金額） | `payroll:read` | getter 早退回 `null`，區塊自動關閉。**眷屬名單本身不受限** |
-| 列印人事資料卡 PDF 的薪資頁 | `payroll:read` | 整個 PAGE 3 連同 `addPage()` 一起跳過，輸出 2 頁 |
-| 勞健保級距 lookup（`insurance-brackets/lookup?salary=`） | `payroll:read`（前端不訂閱） | 不發出請求 —— 該端點權限與 users 正交，留著等於開一條由底薪反推級距的側門 |
-| **寫入**（`POST /users`、`PATCH /users/{id}`、`PUT /users/{id}/profile` 的薪資部分） | `payroll:read` | 靜默忽略（不回 403，其他欄位照常存檔）。薪資調整歷史為**條件式**整批替換，無權者送空陣列不會刪光既有歷史 |
+| 員工管理 Tab1 的 8 個薪資 / 勞健保欄 | `users:salary-read` | API 回 `null`，前端整段不 render、控制項 `disable()` |
+| 員工管理 Tab2「薪資調整歷史」 | `users:salary-read` | API 回 `[]`，前端整區不 render |
+| Tab3「每月健保費試算」（＝健保覆寫 ×(1+眷屬數)，可反推投保金額） | `users:salary-read` | getter 早退回 `null`，區塊自動關閉。**眷屬名單本身不受限** |
+| 列印人事資料卡 PDF 的薪資頁 | `users:salary-read` | 整個 PAGE 3 連同 `addPage()` 一起跳過，輸出 2 頁 |
+| 勞健保級距 lookup（`insurance-brackets/lookup?salary=`） | `users:salary-read`（前端不訂閱） | 不發出請求 —— 該端點權限與 users 正交，留著等於開一條由底薪反推級距的側門 |
+| **寫入**（`POST /users`、`PATCH /users/{id}`、`PUT /users/{id}/profile` 的薪資部分） | `users:salary-read` | 靜默忽略（不回 403，其他欄位照常存檔）。薪資調整歷史為**條件式**整批替換，無權者送空陣列不會刪光既有歷史 |
 | 加班紀錄報表的「加班費」欄（`GET /reports/overtime`） | `reports-overtime:read` + `reports-overtime:amount` | API 回 `null`，前端整欄消失（含 Excel 匯出的條件式 spread）；時數與「補償方式」照看 |
 | 簽核詳情頁的加班費（`GET /approval-tasks/{appType}/{id}`） | — | **一律不回金額**（`OvertimeTaskDetailDto` 已無 `OvertimePayAmount`），改回 `hourTiers` 級距；不另立權限碼 |
 
@@ -272,7 +272,7 @@ EmployeePayrollDto / 月度合計 / 薪資編輯頁 / 薪資明細 Email + PDF
 
 實作單一真相：後端 [`Api/Common/PayrollFieldAccess.cs`](../../Api/Common/PayrollFieldAccess.cs)、前端 `user-form.ts` 的 `canSeeSalary` + `SALARY_CONTROLS`。規範見 [backend-design.md 欄位級權限](../backend-design.md) 與 [frontend-design.md 依權限隱藏表單區塊](../frontend-design.md)。
 
-> ⚠️ **副作用**：`payroll:read` 同時是「人事薪資」選單與 `/admin/payroll` 月薪列表的進入權限。要讓某個角色看得到員工管理的薪資欄，就一併給了他人事薪資頁。若日後需要脫鉤，得另立 `users-salary:read` 獨立碼。
+> ✅ **已脫鉤（2026-10）**：`payroll:read` 只控「人事薪資」選單與 `/admin/payroll` 月薪列表；員工管理薪資欄改看 `users:salary-read`。上線時 migration 已為持有 `payroll:read` 的角色回填新碼（行為不變），之後由 Superadmin 於角色管理頁視需要取消勾選。
 > ⚠️ **JWT 快照**：`permissions` 是登入 / refresh 當下的快照，角色權限異動後需**重新登入**才生效。
 
 ## 員工自助查詢過往薪資（2026-08 新增）

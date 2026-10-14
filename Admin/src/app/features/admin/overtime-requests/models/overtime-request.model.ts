@@ -114,6 +114,8 @@ export interface OvertimeRequest {
    * null / undefined ＝ 舊單（給付沿用申請時數），畫面不顯示此欄。
    */
   settledHours?: number | null;
+  /** 補加班（加班日期早於送簽日；草稿以今天判定）。由後端推導，前端唯讀 */
+  isBackfill?: boolean;
   reason: string;
   approvalStatus: ApprovalStatus;
   /** 補償方式（補休 / 加班費，整單二擇一） */

@@ -6,7 +6,8 @@ import {AbstractControl, FormArray, FormBuilder, FormGroup, FormsModule, Reactiv
 import {DecimalPipe} from '@angular/common';
 import {HttpErrorResponse} from '@angular/common/http';
 import {debounceTime, distinctUntilChanged, switchMap, catchError} from 'rxjs/operators';
-import {of} from 'rxjs';
+import {firstValueFrom, of} from 'rxjs';
+import {HttpClient} from '@angular/common/http';
 import {ToastrService} from 'ngx-toastr';
 import {AuthService} from '../../../../../core/auth/services/auth.service';
 import {UserService} from '../../services/user.service';
@@ -26,7 +27,7 @@ import {EmployeeProfileDetail} from '../../models/employee-profile.model';
 const MAX_FILE_BYTES = 1 * 1024 * 1024; // 1 MB
 
 /**
- * Tab1 受 payroll:read 管制的薪資 / 勞健保控制項。
+ * Tab1 受 users:salary-read 管制的薪資 / 勞健保控制項。
  * 與後端 Api/Common/PayrollFieldAccess.cs 的 Mask 一一對應 —— 新增薪資欄位時兩邊都要改。
  */
 const SALARY_CONTROLS = [
@@ -49,6 +50,7 @@ export class UserForm implements OnInit {
   private profileService       = inject(EmployeeProfileService);
   private hrPdfService         = inject(HrProfilePdfService);
   private imageCompression     = inject(ImageCompressionService);
+  private http                 = inject(HttpClient);
   private roleService          = inject(RoleService);
   private deptService          = inject(DepartmentService);
   private jtService            = inject(JobTitleService);
@@ -64,10 +66,10 @@ export class UserForm implements OnInit {
   /**
    * 薪資欄位級權限：Tab1 的 11 個薪資 / 勞健保欄、Tab2 薪資調整歷史、Tab3 健保費試算、
    * 以及列印 PDF 的薪資頁，全部共用這一個真相。
-   * 沿用 payroll:read（與「人事薪資」模組同一把鑰匙）。後端 UserHandler / EmployeeProfileHandler
+   * 獨立權限碼 users:salary-read（員工管理專用，與人事薪資模組的 payroll:read 分開）。後端 UserHandler / EmployeeProfileHandler
    * 亦會抹除這些欄位並拒絕寫入 —— 前端隱藏只是視覺層（縱深防禦）。
    */
-  readonly canSeeSalary = this.authService.hasPermission('payroll:read');
+  readonly canSeeSalary = this.authService.hasPermission('users:salary-read');
   sending      = signal(false);
   printing     = signal(false);
   roles        = signal<Role[]>([]);
@@ -635,6 +637,38 @@ export class UserForm implements OnInit {
     } catch (err) {
       console.error('[UserForm] 頭像壓縮失敗', err);
       this.toastr.error('頭像處理失敗，請改用其他圖片。', '處理失敗');
+    }
+  }
+
+  /** 旋轉進行中（鎖按鈕，避免連按交錯） */
+  avatarRotating = signal(false);
+
+  /**
+   * 頭像順時針旋轉 90°（照片方向錯誤時使用）。
+   * - 已選新檔（待上傳）→ 直接旋轉該 File，更新預覽與待上傳檔
+   * - 只有後端既有頭像 → 經 /files/avatars 代理（帶 JWT）取 blob 旋轉後，當成新上傳檔，存檔時走既有上傳流程
+   * 旋轉後位置 / 縮放重設（原座標在新方向上已無意義）。
+   */
+  async rotateAvatar() {
+    if (this.avatarRotating() || !this.displayAvatar) return;
+    this.avatarRotating.set(true);
+    try {
+      let source: Blob | null = this.avatarFile();
+      if (!source) {
+        source = await firstValueFrom(this.http.get(this.displayAvatar, {responseType: 'blob'}));
+      }
+      const rotated = await this.imageCompression.rotate90(source, this.avatarFile()?.name ?? 'avatar.jpg');
+      this.avatarFile.set(rotated);
+      this.removeAvatar.set(false);
+      const reader = new FileReader();
+      reader.onload = () => this.avatarPreview.set(reader.result as string);
+      reader.readAsDataURL(rotated);
+      this.resetAvatarPosition();
+    } catch (err) {
+      console.error('[UserForm] 頭像旋轉失敗', err);
+      this.toastr.error('頭像旋轉失敗，請重新選擇圖片。', '處理失敗');
+    } finally {
+      this.avatarRotating.set(false);
     }
   }
 

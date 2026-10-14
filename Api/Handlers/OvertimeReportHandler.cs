@@ -44,7 +44,7 @@ public sealed class OvertimeReportHandler(IOvertimeReportReadService reader, IPr
         // 無 reports-overtime:amount 者抹除加班費金額。ReadService / SQL 不動（Dapper 只管查、Handler 管授權）。
         // PagedResult<T> 是 record 且 Items 為 IEnumerable —— 必須連外層一起 with 重建，並即時求值。
         // CompensationType 刻意保留：它是流程資訊不含金額，且反推金額需要時薪快照 → 底薪，
-        // 而底薪已受 payroll:read 管制，反推鏈不成立。
+        // 而底薪已受 users:salary-read 管制，反推鏈不成立。
         if (!CanSeeAmount(req.HttpContext.User))
             result = result with
             {

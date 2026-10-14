@@ -54,6 +54,8 @@ public static class PermissionCodes
     public const string InsuranceBracketsWrite      = "insurance-brackets:write";
     public const string InsuranceBracketsDelete     = "insurance-brackets:delete";
     public const string PayrollRead                 = "payroll:read";
+    // 員工管理的薪資欄位級權限（取代原本借用 payroll:read）：進得了員工管理不等於看得到薪資
+    public const string UsersSalaryRead             = "users:salary-read";
     public const string PayrollWrite                = "payroll:write";
     public const string ReportsOvertimeRead           = "reports-overtime:read";
     // 加班報表的「加班費金額」欄為薪資性資訊（依核准當下底薪試算），

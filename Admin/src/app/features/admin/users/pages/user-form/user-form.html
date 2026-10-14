@@ -162,7 +162,7 @@
                   <label class="form-label fw-500">入職日</label>
                   <input type="date" class="form-control" formControlName="hireDate">
                 </div>
-                <!-- 薪資與勞健保：欄位級權限 payroll:read（@if 不產生 DOM 節點，row g-3 排版不受影響） -->
+                <!-- 薪資與勞健保：欄位級權限 users:salary-read（@if 不產生 DOM 節點，row g-3 排版不受影響） -->
                 @if (canSeeSalary) {
                   <div class="col-12 col-md-4">
                     <label class="form-label fw-500">底薪</label>
@@ -356,9 +356,16 @@
                       <span class="text-sm text-muted w-12 text-right">{{ avatarScale() | number: '1.2-2' }}x</span>
                     </div>
                     <p class="text-muted small mb-2">在預覽框中按住滑鼠或手指拖曳調整位置。</p>
-                    <button type="button" class="btn btn-sm btn-outline-secondary" (click)="resetAvatarPosition()">
-                      重設位置
-                    </button>
+                    <div class="flex flex-wrap gap-2">
+                      <button type="button" class="btn btn-sm btn-outline-secondary" (click)="resetAvatarPosition()">
+                        重設位置
+                      </button>
+                      <button type="button" class="btn btn-sm btn-outline-secondary inline-flex items-center gap-1"
+                              [disabled]="avatarRotating()" (click)="rotateAvatar()">
+                        <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#rotate-cw"></use></svg>
+                        旋轉 90°
+                      </button>
+                    </div>
                   </div>
                 </div>
                 <div class="flex gap-2">
@@ -1251,7 +1258,7 @@
                     新增獎懲
                   </button>
 
-                  <!-- 薪資調整歷史（欄位級權限：payroll:read） -->
+                  <!-- 薪資調整歷史（欄位級權限：users:salary-read） -->
                   @if (canSeeSalary) {
                     <div class="fw-600 mb-2 text-[--text-secondary]">薪資調整歷史</div>
                     <div class="alert alert-info py-2 small mb-3">

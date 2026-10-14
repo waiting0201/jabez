@@ -45,7 +45,7 @@ public sealed class UserHandler(AppDbContext db, IUserReadService reader, IEmail
     }
 
     // GET /api/users — Dapper 讀取（含 JOIN）
-    // 欄位級權限：無 payroll:read 者的薪資欄位一律抹為 null（SQL 不動，抹除在 Handler）
+    // 欄位級權限：無 users:salary-read 者的薪資欄位一律抹為 null（SQL 不動，抹除在 Handler）
     // 篩選：?search= 姓名模糊比對、?departmentId= 部門、?status= 在職狀態、?hasLaborPension= 勞退自提（皆與分頁參數正交）
     public async Task<IActionResult> GetAllAsync(HttpRequest req)
     {
@@ -61,9 +61,9 @@ public sealed class UserHandler(AppDbContext db, IUserReadService reader, IEmail
         // 勞退自提：僅接受 true / false，其餘忽略
         bool? hasLaborPension = bool.TryParse(req.Query["hasLaborPension"], out var hp) ? hp : null;
 
-        // 勞退自提率為 payroll:read 欄位級權限保護欄，能以此篩選＝能反推他人自提率
+        // 勞退自提率為 users:salary-read 欄位級權限保護欄，能以此篩選＝能反推他人自提率
         if (hasLaborPension.HasValue && !canSeeSalary)
-            throw AppException.Forbidden("勞退自提篩選需要薪資檢視權限（payroll:read）。");
+            throw AppException.Forbidden("勞退自提篩選需要薪資檢視權限（users:salary-read）。");
 
         // 有分頁參數 → 回傳 PagedResult；無分頁參數 → 回傳平面陣列（供下拉選單用）
         if (req.Query.ContainsKey("page") || req.Query.ContainsKey("pageSize"))
@@ -373,7 +373,7 @@ public sealed class UserHandler(AppDbContext db, IUserReadService reader, IEmail
         };
 
         // 薪資欄位級權限：讀寫同一道 gate —— 看不到就不該寫得進去。
-        // 無 payroll:read 者的前端不會送這些 key，這裡把值一律清掉（不回 403，其他欄位照常建立）。
+        // 無 users:salary-read 者的前端不會送這些 key，這裡把值一律清掉（不回 403，其他欄位照常建立）。
         if (!PayrollFieldAccess.CanSeeSalary(req.HttpContext.User))
         {
             user.BaseSalary                       = null;
@@ -540,7 +540,7 @@ public sealed class UserHandler(AppDbContext db, IUserReadService reader, IEmail
             user.IsLowIncome = form["isLowIncome"] == "true";
         if (form.ContainsKey("isDisabled"))
             user.IsDisabled = form["isDisabled"] == "true";
-        // 薪資欄位級權限：11 個薪資 / 勞健保欄位集中在此，無 payroll:read 者整段不受理。
+        // 薪資欄位級權限：11 個薪資 / 勞健保欄位集中在此，無 users:salary-read 者整段不受理。
         // 讀寫同一道 gate —— 看不到就不該改得動。不回 403：其他欄位（部門、離職日…）必須照常存檔。
         if (PayrollFieldAccess.CanSeeSalary(req.HttpContext.User))
         {

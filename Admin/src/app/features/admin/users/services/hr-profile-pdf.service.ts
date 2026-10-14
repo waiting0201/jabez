@@ -39,7 +39,7 @@ export class HrProfilePdfService {
   /**
    * 產生人事資料卡 PDF（A4 直式）並開啟列印視窗。
    *
-   * @param canSeeSalary 是否可看薪資（payroll:read）。false 時整個 PAGE 3（薪資調整歷史）
+   * @param canSeeSalary 是否可看薪資（users:salary-read）。false 時整個 PAGE 3（薪資調整歷史）
    *   連同 addPage() 一起跳過，輸出 2 頁；若只藏表格會留下一張只有頁首的空白頁。
    */
   async generate(profile: EmployeeProfileDetail, user: User, canSeeSalary = true): Promise<void> {
@@ -300,7 +300,7 @@ export class HrProfilePdfService {
     }
 
     // ════════════════════════════════════════════════
-    // PAGE 3（薪資調整歷史；無 payroll:read 時整頁不產生）
+    // PAGE 3（薪資調整歷史；無 users:salary-read 時整頁不產生）
     // ════════════════════════════════════════════════
     if (canSeeSalary) {
       doc.addPage();

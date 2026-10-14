@@ -307,6 +307,9 @@ public sealed class WriteOffRequestHandler(
             }).ToList();
         }
 
+        // 同仁繳回預支餘額（新單沒有舊憑證可刪）
+        await ApplyReturnedCashAsync(wo, form);
+
         db.WriteOffRecords.Add(wo);
         await db.SaveChangesAsync();
 
@@ -401,6 +404,9 @@ public sealed class WriteOffRequestHandler(
             removedAttachmentBlobs = oldAttUrls.Except(newAttUrls).ToList();
         }
 
+        // 同仁繳回的舊憑證 blob（主交易存檔後才清理）
+        string? replacedReturnedProofUrl = null;
+
         // 更新沖銷明細（提供時才更新）
         if (!string.IsNullOrWhiteSpace(itemsJson))
         {
@@ -469,6 +475,9 @@ public sealed class WriteOffRequestHandler(
             wo.CheckTotal = items.Sum(i => i.CheckAmount);
             wo.GrandTotal = newGrandTotal;
 
+            // 繳回金額上限依「本次核銷」計算，須在 GrandTotal 更新之後才驗
+            replacedReturnedProofUrl = await ApplyReturnedCashAsync(wo, form);
+
             await db.SaveChangesAsync();
 
             // 刪除不再使用的舊 blob
@@ -482,7 +491,16 @@ public sealed class WriteOffRequestHandler(
         }
         else
         {
+            replacedReturnedProofUrl = await ApplyReturnedCashAsync(wo, form);
             await db.SaveChangesAsync();
+        }
+
+        // 刪除被換掉 / 移除的繳回憑證 blob
+        if (!string.IsNullOrEmpty(replacedReturnedProofUrl))
+        {
+            var proofBlob = blob.ExtractBlobName(replacedReturnedProofUrl, ContainerName);
+            if (proofBlob is not null)
+                await blob.DeleteAsync(ContainerName, proofBlob);
         }
 
         // 刪除不再使用的附件 blob（主交易存檔後才清理，避免孤兒資料）
@@ -527,6 +545,8 @@ public sealed class WriteOffRequestHandler(
             .Select(a => blob.ExtractBlobName(a.FileUrl, AttachmentProcessor.ContainerName))
             .Where(n => n is not null)
             .ToList();
+        // 同仁繳回憑證（write-off-invoices 容器）
+        var returnedProofBlob = blob.ExtractBlobName(wo.ReturnedProofUrl, ContainerName);
 
         // 一併清除此申請單的審核流程足跡（多型關聯無 FK，須手動刪除，否則殘留列會擋住使用者刪除）
         db.ApprovalRecords.RemoveRange(
@@ -544,6 +564,8 @@ public sealed class WriteOffRequestHandler(
             await blob.DeleteAsync(ContainerName, name!);
         foreach (var name in attachmentBlobNames)
             await blob.DeleteAsync(AttachmentProcessor.ContainerName, name!);
+        if (returnedProofBlob is not null)
+            await blob.DeleteAsync(ContainerName, returnedProofBlob);
 
         return new OkObjectResult(ApiResponse.Ok($"Write-off request '{id}' deleted."));
     }
@@ -834,6 +856,89 @@ public sealed class WriteOffRequestHandler(
     }
 
     /// <summary>從 JWT Bearer Token 取出 sub claim 作為使用者 GUID</summary>
+    /// <summary>
+    /// 套用「同仁繳回預支餘額」multipart 欄位（returnedAmount / returnedAt / returnedProofFile / removeReturnedProof）。
+    /// 只在表單帶有 returnedAmount key 時才動作（Update 不帶＝不變更）；空字串或 0 視為「無繳回」並清空四欄。
+    /// 繳回金額不計入 GrandTotal（RefundDue、專案水位不受影響），只用於摘要的「尚未結清金額」。
+    /// 上限 ＝ 預支總額 − 他單已核准核銷 − 本單核銷 − 他單已核准繳回。
+    /// 回傳被換掉 / 移除的舊憑證 URL，由呼叫端在主交易存檔後刪 blob；無須清理則回 null。
+    /// 驗證全部通過後才上傳新檔，避免驗證失敗留下孤兒 blob。
+    /// </summary>
+    private async Task<string?> ApplyReturnedCashAsync(WriteOffRecord wo, IFormCollection form)
+    {
+        if (!form.ContainsKey("returnedAmount")) return null;
+
+        var oldProofUrl = wo.ReturnedProofUrl;
+        var amountStr   = form["returnedAmount"].ToString().Trim();
+
+        decimal? amount = null;
+        if (amountStr.Length > 0)
+        {
+            if (!decimal.TryParse(amountStr, System.Globalization.NumberStyles.Number,
+                    System.Globalization.CultureInfo.InvariantCulture, out var parsed))
+                throw AppException.BadRequest("繳回金額格式不正確。");
+            if (parsed < 0)
+                throw AppException.BadRequest("繳回金額不可為負數。");
+            if (parsed > 0) amount = parsed;
+        }
+
+        // 無繳回：四欄一併清空
+        if (amount is null)
+        {
+            wo.ReturnedAmount = null;
+            wo.ReturnedAt = null;
+            wo.ReturnedProofFileName = null;
+            wo.ReturnedProofUrl = null;
+            return oldProofUrl;
+        }
+
+        // 繳回日期
+        var returnedAtStr = form["returnedAt"].ToString().Trim();
+        if (returnedAtStr.Length == 0)
+            throw AppException.BadRequest("請填寫繳回日期。");
+        if (!DateTime.TryParseExact(returnedAtStr, "yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture,
+                System.Globalization.DateTimeStyles.None, out var returnedAt))
+            throw AppException.BadRequest("繳回日期格式不正確（須為 yyyy-MM-dd）。");
+        RequestDateGuard.Ensure(returnedAt, "繳回日期");
+
+        // 憑證：新檔案，或保留既有（未被要求移除）
+        var proofFile = form.Files.GetFile("returnedProofFile");
+        var removeProof = string.Equals(form["removeReturnedProof"].ToString(), "true", StringComparison.OrdinalIgnoreCase);
+        var keepsExisting = proofFile is null && !removeProof && !string.IsNullOrEmpty(oldProofUrl);
+        if (proofFile is null && !keepsExisting)
+            throw AppException.BadRequest("請上傳繳回憑證（匯款單或收據照片）。");
+
+        // 上限：同一預支單其他已核准沖銷的核銷與繳回
+        var advanceGrandTotal = await db.AdvanceRequests.AsNoTracking()
+            .Where(a => a.Id == wo.AdvanceRequestId)
+            .Select(a => a.GrandTotal)
+            .FirstOrDefaultAsync();
+        var others = await db.WriteOffRecords.AsNoTracking()
+            .Where(w => w.AdvanceRequestId == wo.AdvanceRequestId && w.ApprovalStatus == "approved" && w.Id != wo.Id)
+            .Select(w => new { w.GrandTotal, w.ReturnedAmount })
+            .ToListAsync();
+        var otherWrittenOff = others.Sum(o => o.GrandTotal);
+        var otherReturned   = others.Sum(o => o.ReturnedAmount ?? 0m);
+        var max = Math.Max(0m, advanceGrandTotal - otherWrittenOff - wo.GrandTotal - otherReturned);
+        if (amount > max)
+            throw AppException.BadRequest(
+                $"繳回金額不可超過尚未結清金額 {max:N0} 元（預支總額 − 已核准核銷 − 本次核銷 − 已核准繳回）。");
+
+        wo.ReturnedAmount = amount;
+        wo.ReturnedAt     = returnedAt;
+
+        if (proofFile is not null)
+        {
+            var newUrl = await AttachmentProcessor.UploadItemFileAsync(proofFile, blob, ContainerName);
+            var name = Path.GetFileName(proofFile.FileName ?? "");
+            wo.ReturnedProofFileName = name.Length > 255 ? name[..255] : (name.Length == 0 ? null : name);
+            wo.ReturnedProofUrl = newUrl;
+            return oldProofUrl;   // 換檔：舊憑證存檔後刪除
+        }
+
+        return null;              // 保留既有憑證
+    }
+
     private async Task<Guid> GetUserIdAsync(HttpRequest req)
     {
         var principal = await jwtService.ValidateRequestAsync(req);

@@ -197,6 +197,18 @@ RefundDue = max(0, 前次已沖銷 + 本次沖銷 − 預支總額)
 - **可見性**：Superadmin，或**預支單申請人**，或該預支單底下**任一沖銷單**的申請人 / 審核者 / 指定審核者；皆不符合回 404（與單筆 `GET /write-off-requests/{id}` 同一套判定，只是範圍擴大到整個群組）
 - **頁面內容**：預支資訊（含各批次日期 / 金額）→ 金額摘要（預支總額 / 已沖銷加總 / 待沖銷餘額 / 應撥差額加總，**已拒絕的沖銷單不計入加總**）→ 沖銷單一覽表 → 預支費用明細 → 預支撥款明細 → 逐張沖銷單的完整卡片（明細 / 附件 / 該次差額撥款）
 
+### 同仁繳回預支餘額與「尚未結清金額」（2026-10 新增）
+
+系統過去只有「公司補撥給員工」（`AdvanceRequest.RefundAmount / RefundedAmount`，方向相反），**從未記錄同仁把用不完的預支款繳回公司**，客戶因此無法在沖銷單上對平帳。2026-10 於 `WriteOffRecord` 新增 4 欄（`ReturnedAmount` / `ReturnedAt` / `ReturnedProofFileName` / `ReturnedProofUrl`，migration `AddWriteOffReturnedCash`）。
+
+- **不計入 `GrandTotal`**：繳回是「錢回到公司」，不是費用核銷，所以 `RefundDue`（超支增額）、專案水位、撥款分期、款項統計**完全不受影響**
+- **尚未結清金額 ＝ 預支總額 − 已核准核銷 − 已核准繳回**（「已」一律只計 `approved`，與「已沖銷金額」同基準）。**僅作顯示警示**（≠ 0 時以警示色提醒），**不擋結案、不擋送簽、不擋核准**
+- **填寫（沖銷申請單）**：multipart 欄位 `returnedAmount` / `returnedAt` / `returnedProofFile`（Update 另有 `removeReturnedProof`），憑證經 `AttachmentProcessor.UploadItemFileAsync`（magic-byte＋10MB）存入既有的 `write-off-invoices` 容器，預覽沿用 `/files/write-off-invoices/{*path}`
+- **驗證（400）**：金額不可為負；金額為 0 或空＝無繳回（四欄一併清空，並刪舊憑證 blob）；金額 > 0 時**繳回日期與憑證皆必填**（日期過 `RequestDateGuard`）；金額不得超過「預支總額 − 他單已核准核銷 − 本單核銷 − 他單已核准繳回」，訊息會列出上限。修改明細金額後上限即時重算，故驗證排在 `GrandTotal` 更新之後
+- **讀取**：`WriteOffRequestDto` / `WriteOffTaskDetailDto` 帶出四欄與 `AdvanceReturnedTotal`（同預支單**他單**已核准繳回合計，不含本單，前端據此算本單的尚未結清）；`writeOffHistory[]` 與 `by-advance` 彙總檢視同步帶出各次繳回
+- **歷史補登**：已核准單前台不可編輯，由客戶提供「預支單號＋繳回金額＋繳回日期」後以 [`Api/Data/Scripts/18-backfill-write-off-returned-cash.sql`](../../Api/Data/Scripts/18-backfill-write-off-returned-cash.sql) 補登（`@Commit` 空跑開關、以 `RequestNo` 定位、寫在該預支單最後一張已核准沖銷單、不含憑證照片、冪等；閘門：單號不存在 / 無已核准沖銷 / 金額超過尚未結清 / 已有不同繳回資料 → 中止）
+- **出差預支沖銷不在本次範圍**（該表無附件結構，需另案）
+
 ### 撥款明細編輯 UI 限制（[approval-task-review](../../Admin/src/app/features/admin/approval-tasks/pages/approval-task-review/)）
 
 簽核作業頁同時在 2 個區塊提供撥款明細編輯（待審核 = 計劃用、已核准 = 實際維護）。前端規則：

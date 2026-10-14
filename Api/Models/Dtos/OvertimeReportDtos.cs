@@ -12,4 +12,6 @@ public sealed record OvertimeReportDto(
     string    CompensationType  = "compensatory",
     decimal?  OvertimePayAmount = null,
     // 結算時數（給付基準，2026-10 防灌工時）；null ＝ 舊單（給付沿用 EstimatedHours）
-    decimal?  SettledHours      = null);
+    decimal?  SettledHours      = null,
+    // 補加班：加班日早於送簽日（見 OvertimeBackfill），報表「申請類別」欄用
+    bool      IsBackfill        = false);

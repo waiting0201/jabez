@@ -97,6 +97,8 @@ JWT 本身無狀態，停用帳號或撤銷權限後舊 token 仍簽章有效。
 - 攔截器**只在 401 觸發 refresh，403 不會**。所以「權限不足」的請求會一路失敗到 token 自然過期，最長一小時，不會自動修復。
 - 立即生效的唯一方式是**請該使用者重新登入**。
 
+> 範例（2026-10）：員工管理薪資欄位級權限由 `payroll:read` 改為獨立碼 `users:salary-read`，migration 為既有持有 `payroll:read` 的角色回填新碼；欄位級權限在 Handler 內讀 JWT `permissions` claim，故舊 token 在重新登入前不含新碼，員工管理的薪資欄會暫時消失（隱藏而非報錯），請通知相關人員重新登入。
+
 因此**新增權限碼並在 Router 啟用檢查，屬於高風險部署**：舊 token 缺新碼會被擋。建議兩階段 —— 先只上「新增權限 + 回填角色」的 migration，跨過一個 token 週期後再上 Router 的檢查。
 
 ## Superadmin（隱藏帳號）

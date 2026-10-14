@@ -49,6 +49,9 @@
             </div>
           </div>
         </div>
+        @if (editModeAdvanceReturnedTotal > 0) {
+          <div class="text-muted small mt-2">另有其他沖銷單已繳回 {{ editModeAdvanceReturnedTotal | number:'1.0-0' }} 元（不計入「已沖銷」）。</div>
+        }
       } @else {
         <!-- 新增模式：下拉選擇已撥款預支單 -->
         <label class="form-label fw-500">選擇預支單 <span class="text-danger">*</span></label>
@@ -388,6 +391,62 @@
             }
           </table>
         </div>
+      </div>
+    </div>
+
+    <!-- 同仁匯回預支餘額（現金／匯款繳回；不計入沖銷金額） -->
+    <div class="card border-0 shadow-sm mt-6">
+      <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600">
+        <svg class="sa-icon text-primary" style="stroke: currentColor">
+          <use href="/assets/icons/sprite.svg#credit-card"></use>
+        </svg>
+        同仁匯回預支餘額
+      </div>
+      <div class="card-body">
+        <div class="row g-3">
+          <div class="col-12 col-md-4">
+            <label class="form-label fw-500">繳回金額</label>
+            <input type="number" class="form-control" min="0" step="1" placeholder="未繳回請留空"
+                   [ngModel]="returnedAmount()" (ngModelChange)="returnedAmount.set($event === '' ? null : $event)"
+                   [ngModelOptions]="{standalone: true}">
+          </div>
+          <div class="col-12 col-md-4">
+            <label class="form-label fw-500">匯款／繳回日期</label>
+            <input type="date" class="form-control" [min]="minDate" [max]="maxDate"
+                   [ngModel]="returnedAt()" (ngModelChange)="returnedAt.set($event)"
+                   [ngModelOptions]="{standalone: true}">
+          </div>
+          <div class="col-12 col-md-4">
+            <label class="form-label fw-500">匯款證明</label>
+            @if (returnedProofBusy()) {
+              <div class="text-muted small py-2">處理中…</div>
+            } @else if (hasReturnedProof) {
+              <div class="flex items-center gap-2">
+                @if (returnedProofIsImage) {
+                  <img [src]="returnedProofPreview()" alt="匯款證明" class="rounded border"
+                       style="width:48px;height:48px;object-fit:cover;cursor:pointer"
+                       (click)="openPreview(returnedProofName, returnedProofPreview())">
+                }
+                <button type="button" class="btn btn-sm btn-outline-secondary inline-flex items-center gap-1 min-w-0"
+                        (click)="openPreview(returnedProofName, returnedProofFile() ? returnedProofPreview() : returnedProofExisting()!.url)">
+                  <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#file-text"></use></svg>
+                  <span class="truncate" style="max-width:140px">{{ returnedProofName }}</span>
+                </button>
+                <button type="button" class="btn btn-sm btn-ghost-danger inline-flex items-center" title="移除" (click)="removeReturnedProof()">
+                  <svg class="sa-icon"><use href="/assets/icons/sprite.svg#x"></use></svg>
+                </button>
+              </div>
+            } @else {
+              <label class="btn btn-outline-secondary inline-flex items-center gap-1 mb-0">
+                <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#upload"></use></svg>
+                上傳圖片或 PDF
+                <input type="file" class="hidden" accept="image/*,.heic,.heif,application/pdf"
+                       (change)="onReturnedProofSelected($event)">
+              </label>
+            }
+          </div>
+        </div>
+        <div class="form-text mt-2">繳回金額不計入沖銷金額；金額大於 0 時需附匯款證明與日期。</div>
       </div>
     </div>
 

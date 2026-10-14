@@ -27,6 +27,12 @@ public sealed class WriteOffRequestReadService(IDbConnection db, IInstallmentRea
                            OR w2.ReviewedAt IS NULL
                            OR w2.ReviewedAt < wo.ReviewedAt
                            OR (w2.ReviewedAt = wo.ReviewedAt AND w2.Id < wo.Id))), 0) AS AdvanceWrittenOffTotal,
+               -- 他單已核准的繳回合計（不含本單）；與 AdvanceWrittenOffTotal 不同，繳回不分前後序，全部他單皆計
+               ISNULL((SELECT SUM(w3.ReturnedAmount) FROM WriteOffRecords w3
+                       WHERE w3.AdvanceRequestId = wo.AdvanceRequestId
+                         AND w3.ApprovalStatus = 'approved'
+                         AND w3.Id <> wo.Id), 0) AS AdvanceReturnedTotal,
+               wo.ReturnedAmount, wo.ReturnedAt, wo.ReturnedProofFileName, wo.ReturnedProofUrl,
                CAST(ISNULL(ar.IsClosed, 0) AS BIT) AS AdvanceIsClosed,
                ar.ClosedAt AS AdvanceClosedAt,
                ar.EstimatedRefundDate, ar.RefundedAt,
@@ -234,7 +240,7 @@ public sealed class WriteOffRequestReadService(IDbConnection db, IInstallmentRea
     private async Task<WriteOffRoundDto[]> GetWriteOffHistoryAsync(int advanceRequestId, int currentId)
     {
         const string sql = """
-            SELECT Id, WriteOffNo, RequestNo, GrandTotal, ApprovalStatus, CreatedAt
+            SELECT Id, WriteOffNo, RequestNo, GrandTotal, ApprovalStatus, CreatedAt, ReturnedAmount
             FROM WriteOffRecords
             WHERE AdvanceRequestId = @AdvanceRequestId AND ApprovalStatus <> 'rejected'
             ORDER BY WriteOffNo, Id
@@ -247,7 +253,8 @@ public sealed class WriteOffRequestReadService(IDbConnection db, IInstallmentRea
             (decimal)r.GrandTotal,
             (string)r.ApprovalStatus,
             (DateTime)r.CreatedAt,
-            (int)r.Id == currentId))];
+            (int)r.Id == currentId,
+            (decimal?)r.ReturnedAmount))];
     }
 
     // ── Grouping helpers ─────────────────────────────────────────────────────
@@ -311,6 +318,11 @@ public sealed class WriteOffRequestReadService(IDbConnection db, IInstallmentRea
             (DateTime?)x.wo.RefundedAt,
             (decimal?)x.wo.AdvanceRefundAmount,
             (decimal?)x.wo.AdvanceRefundedAmount,
-            AdvanceClosedAt: (DateTime?)x.wo.AdvanceClosedAt));
+            AdvanceClosedAt: (DateTime?)x.wo.AdvanceClosedAt,
+            ReturnedAmount:        (decimal?)x.wo.ReturnedAmount,
+            ReturnedAt:            (DateTime?)x.wo.ReturnedAt,
+            ReturnedProofFileName: (string?)x.wo.ReturnedProofFileName,
+            ReturnedProofUrl:      (string?)x.wo.ReturnedProofUrl,
+            AdvanceReturnedTotal:  (decimal)x.wo.AdvanceReturnedTotal));
     }
 }

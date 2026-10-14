@@ -23,11 +23,12 @@ export class ProjectService {
     return this.http.get<Project[]>(`${environment.apiUrl}/projects/active`, {params: {all: 'true'}});
   }
 
-  getPaged(page: number, pageSize: number, search?: string, year?: number, status?: string): Observable<PagedResult<Project>> {
+  getPaged(page: number, pageSize: number, search?: string, year?: number, status?: string, departmentId?: number): Observable<PagedResult<Project>> {
     const params: Record<string, string | number> = {page, pageSize};
     if (search) params['search'] = search;
     if (year) params['year'] = year;
     if (status) params['status'] = status;
+    if (departmentId) params['departmentId'] = departmentId;
     return this.http.get<PagedResult<Project>>(`${environment.apiUrl}/projects`, {params});
   }
 

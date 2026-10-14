@@ -144,7 +144,12 @@ public class PermissionConfiguration : IEntityTypeConfiguration<Permission>
             // 預審申請
             new Permission { Id = "75", Code = "pre-review-requests:read",   Name = "瀏覽",   Module = "預審申請", Description = "預審申請" },
             new Permission { Id = "76", Code = "pre-review-requests:write",  Name = "新增/修改", Module = "預審申請", Description = "預審申請" },
-            new Permission { Id = "77", Code = "pre-review-requests:delete", Name = "刪除",   Module = "預審申請", Description = "預審申請" }
+            new Permission { Id = "77", Code = "pre-review-requests:delete", Name = "刪除",   Module = "預審申請", Description = "預審申請" },
+            // 員工管理－薪資欄位檢視（2026-10）：原借用 payroll:read（人事薪資模組同一把鑰匙），
+            // 現獨立成自己的碼，避免「開員工薪資欄」＝「同時開人事薪資頁」。
+            // Id 2~77 已全滿；實際落地的 Id 由 migration 的 raw SQL 決定（78 若已被 UI 建立的權限占用則取 max+1），
+            // 一律以 Code 解析，不依賴 Id。
+            new Permission { Id = "78", Code = "users:salary-read", Name = "薪資欄位檢視", Module = "員工管理", Description = "員工管理薪資欄位檢視" }
         );
     }
 }

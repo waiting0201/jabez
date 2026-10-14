@@ -23,11 +23,11 @@
 
 | Method | Path | 說明 |
 |--------|------|------|
-| GET | `/users?page=1&pageSize=20&search=關鍵字&departmentId=9&status=active&hasLaborPension=true` | 取得使用者列表。`search` 選填，模糊比對**姓名** `Name`；`departmentId` 選填，篩選部門；`status` 選填，在職狀態（白名單 `active` / `inactive`，非法值忽略）；`hasLaborPension` 選填，勞退自提（`true`＝自提率 > 0、`false`＝自提率為 0 或 null，非布林值忽略，**無 `payroll:read` 者送此參數回 403**，因可反推他人自提率）（四者可併用，與分頁參數正交，非數字的 `departmentId` 一律忽略）；**帶 `page` / `pageSize` 回 `PagedResult`，不帶則回平面陣列**（`pageSize` clamp 1~100，預設 20）。**欄位級權限**：無 `payroll:read` 者的 8 個薪資欄（底薪 / 伙食費 / 加班費 / 2 種加給 / 勞健保覆寫 / 勞退自提率）回 `null` |
+| GET | `/users?page=1&pageSize=20&search=關鍵字&departmentId=9&status=active&hasLaborPension=true` | 取得使用者列表。`search` 選填，模糊比對**姓名** `Name`；`departmentId` 選填，篩選部門；`status` 選填，在職狀態（白名單 `active` / `inactive`，非法值忽略）；`hasLaborPension` 選填，勞退自提（`true`＝自提率 > 0、`false`＝自提率為 0 或 null，非布林值忽略，**無 `users:salary-read` 者送此參數回 403**，因可反推他人自提率）（四者可併用，與分頁參數正交，非數字的 `departmentId` 一律忽略）；**帶 `page` / `pageSize` 回 `PagedResult`，不帶則回平面陣列**（`pageSize` clamp 1~100，預設 20）。**欄位級權限**：無 `users:salary-read` 者的 8 個薪資欄（底薪 / 伙食費 / 加班費 / 2 種加給 / 勞健保覆寫 / 勞退自提率）回 `null` |
 | GET | `/users/lookup` | **輕量端點**：免 `users:read`，回 `{id, name, jobTitleId, status, departmentId, jobTitleLevel}`，供指定審核者下拉與「部門最高層級」判定（`jobTitleLevel` 數字越小越高） |
-| POST | `/users` | 新增使用者。**欄位級權限**：無 `payroll:read` 者送的薪資欄一律忽略（存為 null），回應 DTO 亦抹除。**自訂上下班時段**（2026-09-30，新增 / 更新共用）：`hasCustomWorkHours=true` 時 `customWorkStartTime` / `customWorkEndTime`（HH:mm）必填，上班 07:30–09:30、下班 16:30–18:30 且晚於上班，否則 400；未勾選寫 null |
-| GET | `/users/{id}` | 取得單一使用者。**欄位級權限**：同 `GET /users`，無 `payroll:read` 者薪資欄回 `null` |
-| PUT/PATCH | `/users/{id}` | 更新使用者。**欄位級權限**：無 `payroll:read` 者的薪資欄寫入一律忽略（既有值不變，不回 403），回應 DTO 亦抹除 |
+| POST | `/users` | 新增使用者。**欄位級權限**：無 `users:salary-read` 者送的薪資欄一律忽略（存為 null），回應 DTO 亦抹除。**自訂上下班時段**（2026-09-30，新增 / 更新共用）：`hasCustomWorkHours=true` 時 `customWorkStartTime` / `customWorkEndTime`（HH:mm）必填，上班 07:30–09:30、下班 16:30–18:30 且晚於上班，否則 400；未勾選寫 null |
+| GET | `/users/{id}` | 取得單一使用者。**欄位級權限**：同 `GET /users`，無 `users:salary-read` 者薪資欄回 `null` |
+| PUT/PATCH | `/users/{id}` | 更新使用者。**欄位級權限**：無 `users:salary-read` 者的薪資欄寫入一律忽略（既有值不變，不回 403），回應 DTO 亦抹除 |
 | DELETE | `/users/{id}` | 刪除使用者 |
 | POST | `/users/{id}/send-credentials` | 寄送帳號通知信並設置 `MustChangePassword = true`（預設密碼為生日 yyyyMMdd） |
 
@@ -96,7 +96,7 @@
 
 | Method | Path | 說明 |
 |--------|------|------|
-| GET/POST | `/projects` | 專案列表 / 新增 |
+| GET/POST | `/projects` | 專案列表 / 新增。GET 帶 `page` / `pageSize` 回 `PagedResult`（另支援 `search` / `year` / `status` / **`departmentId`**（2026-10 新增，int，`p.DepartmentId = @DepartmentId`，與部門可見範圍並存＝取交集；非數字忽略）），不帶回平面陣列。**排序（2026-10）**：專案代號自然排序 —— 英文前綴升冪 → 前綴後第一段連續數字（數值）升冪 → Code（`C005`＝5、`J11203-T`＝11203、`P2024-001`＝2024）；`/projects/active` 同 |
 | GET | `/projects/active` | 未結案專案下拉（輕量端點，免 `projects:read`；回 **`ProjectLookupDto`** `{id, code, name, status, departmentId, departmentName}`，不含合約 / 業務 / 已收 / 剩餘金額與雲端硬碟連結）；預設依部門可見範圍過濾，帶 `?all=true` 不過濾（加班申請跨部門支援用） |
 | GET/PUT/PATCH/DELETE | `/projects/{id}` | 專案 CRUD |
 
@@ -142,7 +142,7 @@
 | PATCH | `/holiday-travel-requests/{id}/submit` | 送出假日執行活動申請（draft → pending） |
 | PATCH | `/holiday-travel-requests/{id}/installments` | upsert 分期撥款（同 PaymentRequest 行為） |
 | GET | `/holiday-travel-requests/count-holidays?startDate=...&endDate=...` | 計算指定區間內的假日天數（用於計算假日津貼）；回傳含 `holidayDates[]`（yyyy-MM-dd 假日清單，供參與日期 chips 標示） |
-| GET/POST | `/overtime-requests` | 加班申請列表 / 新增（預設 draft）。payload 須帶 **`projects[]`（`projectId` + `estimatedHours`），必填至少 1 筆**、`compensationType`（`compensatory` 補休 / `pay` 加班費，未知值一律正規化為 `compensatory`）；驗證：每列時數 > 0、同單不可重複專案、專案須存在。回應 `projects[]` 含 `projectCode` / `projectName` / `estimatedHours`，`estimatedHours` 為各列合計（後端計算，不接受客戶端傳入）。**2026-10**：加班日期最早為今天往前 7 天、同人同日只能一張（非拒絕）、當日全天有薪假不可申請、當月申請時數合計不得超過 `SystemSetting.MonthlyOvertimeLimit`（送簽與核准時再檢）；回應新增 `settledHours`（＝min(申請時數, 實際加班打卡)，舊單為 null 沿用申請時數）；request 的 `approvalItemId` 一律忽略（請假 / 出差 / 出差請款同） |
+| GET/POST | `/overtime-requests` | 加班申請列表 / 新增（預設 draft）。payload 須帶 **`projects[]`（`projectId` + `estimatedHours`），必填至少 1 筆**、`compensationType`（`compensatory` 補休 / `pay` 加班費，未知值一律正規化為 `compensatory`）；驗證：每列時數 > 0、同單不可重複專案、專案須存在。回應 `projects[]` 含 `projectCode` / `projectName` / `estimatedHours`，`estimatedHours` 為各列合計（後端計算，不接受客戶端傳入）。**補加班標記（2026-10）**：回應新增 `isBackfill`（推導值，不入庫）＝加班日早於申請日（已送簽比送簽日、草稿比今天〔`Clock.Today`〕），定義收斂於 `Api/Common/OvertimeBackfill.cs`；`/reports/overtime` 與簽核詳情 `overtimeDetail` 同步帶出。**2026-10**：加班日期最早為今天往前 7 天、同人同日只能一張（非拒絕）、當日全天有薪假不可申請、當月申請時數合計不得超過 `SystemSetting.MonthlyOvertimeLimit`（送簽與核准時再檢）；回應新增 `settledHours`（＝min(申請時數, 實際加班打卡)，舊單為 null 沿用申請時數）；request 的 `approvalItemId` 一律忽略（請假 / 出差 / 出差請款同） |
 | GET/PUT/PATCH/DELETE | `/overtime-requests/{id}` | 加班申請 CRUD。更新時 `projects[]` **整批替換且必填**（不支援省略），一併重算父表合計；`compensationType` 為 `null` 時不變更。**任何更新一律清空加班費快照**（日期 / 時數 / 補償方式可能已變動），重新送簽時再算 |
 | PATCH | `/overtime-requests/{id}/submit` | 送出加班申請（draft → pending）。送出時依 `compensationType` 寫入加班費快照（`pay` 才算；補休型清空） |
 | GET | `/overtime-requests/estimate?date=&hours=` | **加班時數即時試算**（表單用，權限沿用 `overtime-requests:read`；2026-09-28 起**兩種補償方式都查詢**，不再限「加班費」模式）。對象一律取 JWT `sub`，**刻意不接受 `employeeId`**（回傳含時薪可反推底薪）。回傳 `hourlyRate` / `requestedHours` / `payableHours` / `excessHours` / `capHours` / `amount` / `dayType`（`WorkDayTypes` 四值，2026-09 由 `isHoliday` 布林改）/ `segments[]`（分段明細）/ `hasBaseSalary` / `hasHolidayTravelConflict` / **`exceedsCap`**（超出上限，2026-09-28 新增）/ **`blockMessage`**（非 null＝不可送出：超出加班上限，2026-09-28 新增） |
@@ -161,8 +161,8 @@
 |--------|------|------|
 | GET | `/write-off-requests/available-advances` | 可沖銷的預支申請清單（`AvailableAdvanceDto[]`：已核准且未結案；含 `rounds` 各預支批次與 `items` 全批次費用明細，供新增表單唯讀對照，免 `advance-requests:read`；`writtenOffTotal` **只計已核准**、草稿／簽核中另計於 `pendingWriteOffTotal`；Superadmin 可見全部，`POST /write-off-requests` 的可建範圍與此一致） |
 | GET | `/write-off-requests/by-advance/{advanceRequestId}` | 依預支單彙總檢視（`AdvanceWriteOffOverviewDto`：預支單完整資訊 `advance` + 該單底下全部沖銷單完整資訊 `writeOffs[]`，含明細 / 指定審核者 / 附件 / 差額撥款分期 / `refundDue`）；權限同 `write-off-requests:read`，可見性＝Superadmin、預支單申請人、或該單任一沖銷單的申請人 / 審核者 / 指定審核者 |
-| GET/POST | `/write-off-requests` | 預支沖銷申請列表 / 新增（預設 draft） |
-| GET/PUT/PATCH/DELETE | `/write-off-requests/{id}` | 預支沖銷申請 CRUD |
+| GET/POST | `/write-off-requests` | 預支沖銷申請列表 / 新增（預設 draft）。POST 為 multipart，除既有 `advanceRequestId` / `items` / `files` / `attachments` 等外，**2026-10 新增「同仁繳回預支餘額」欄位**：`returnedAmount`（數字字串，空字串或 0＝無繳回）、`returnedAt`（`yyyy-MM-dd`）、`returnedProofFile`（單一檔案，magic-byte＋10MB，存 `write-off-invoices` 容器）；金額 > 0 時日期與憑證必填，且不得超過「預支總額 − 他單已核准核銷 − 本單核銷 − 他單已核准繳回」，否則 400 並於訊息列出上限 |
+| GET/PUT/PATCH/DELETE | `/write-off-requests/{id}` | 預支沖銷申請 CRUD。PUT multipart 帶 `returnedAmount` key 時才更新繳回資料（不帶＝不變更；空字串／0＝清空四欄並刪憑證 blob）；`removeReturnedProof=true` 移除既有憑證（金額 > 0 時須同時重傳）；未傳新檔且未要求移除則保留既有憑證。回應 `WriteOffRequestDto` 新增 `returnedAmount` / `returnedAt` / `returnedProofFileName` / `returnedProofUrl` / `advanceReturnedTotal`（同預支單「他單」已核准繳回合計，不含本單）；`writeOffHistory[]` 與 `GET /approval-tasks` 的 `writeOffDetail` 同步帶繳回欄位。憑證預覽沿用 `GET /files/write-off-invoices/{*path}` |
 | PATCH | `/write-off-requests/{id}/submit` | 送出預支沖銷申請（draft → pending） |
 | PATCH | `/write-off-requests/{id}/installments` | 沖銷差額撥款分期 upsert（**僅 approved**、限財務體系 / Superadmin；`SUM(Amount)` 須等於 `RefundDue`＝本次沖銷造成的超支增額；`RefundDue = 0` 時回 400） |
 | PATCH | `/write-off-requests/{id}/check-payments` | 沖銷明細「支票金額已支付」註記（限財務體系 / Superadmin；pending 或 approved 皆可；`CheckAmount = 0` 的明細不可勾） |
@@ -387,8 +387,8 @@
 
 | Method | Path | 說明 |
 |--------|------|------|
-| GET | `/users/{id}/profile` | 取得員工人事資料卡（EmployeeProfile + 9 張子表）。Profile 不存在時回傳預設空殼。**欄位級權限**：無 `payroll:read` 者 `salaryAdjustmentRecords` 回 `[]`，其餘 8 張子表照常 |
-| PUT | `/users/{id}/profile` | 整批更新員工人事資料卡（multipart：`payload` JSON + `idCardFront` / `idCardBack` / `highestEducationProof` / `bankBookImage` / `bankBookImage2` 檔案 + `removeIdCardFront` / `removeIdCardBack` / `removeHighestEducationProof` / `removeBankBook` / `removeBankBook2` 旗標；兩張存摺封面對應第一 / 第二銀行帳戶，blob 命名 `{userId}_passbook{ext}` / `{userId}_passbook2{ext}`）。9 張子表整批替換；薪資調整紀錄會自動同步「最新生效底薪」回 `User.BaseSalary`。**欄位級權限**：`salaryAdjustmentRecords` 為**條件式**整批替換 —— 缺 `payroll:read` 或 payload 省略該 key（`null`）時整段跳過（既有薪資歷史不刪不改、也不做 User 同步）；送 `[]` 才是清空 |
+| GET | `/users/{id}/profile` | 取得員工人事資料卡（EmployeeProfile + 9 張子表）。Profile 不存在時回傳預設空殼。**欄位級權限**：無 `users:salary-read` 者 `salaryAdjustmentRecords` 回 `[]`，其餘 8 張子表照常 |
+| PUT | `/users/{id}/profile` | 整批更新員工人事資料卡（multipart：`payload` JSON + `idCardFront` / `idCardBack` / `highestEducationProof` / `bankBookImage` / `bankBookImage2` 檔案 + `removeIdCardFront` / `removeIdCardBack` / `removeHighestEducationProof` / `removeBankBook` / `removeBankBook2` 旗標；兩張存摺封面對應第一 / 第二銀行帳戶，blob 命名 `{userId}_passbook{ext}` / `{userId}_passbook2{ext}`）。9 張子表整批替換；薪資調整紀錄會自動同步「最新生效底薪」回 `User.BaseSalary`。**欄位級權限**：`salaryAdjustmentRecords` 為**條件式**整批替換 —— 缺 `users:salary-read` 或 payload 省略該 key（`null`）時整段跳過（既有薪資歷史不刪不改、也不做 User 同步）；送 `[]` 才是清空 |
 
 > 員工要查看**自己**的人事資料卡（唯讀，免 `users:read`）改走 [`/me/profile` + `/me/user` + `/me/files`](#當前使用者聚合資訊me)（避免管理權限強加到一般員工）。
 

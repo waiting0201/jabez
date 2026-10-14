@@ -10,6 +10,7 @@ import {
 } from '../../models/write-off-request.model';
 import {AdvanceRequest, roundLabel} from '../../../advance-requests/models/advance-request.model';
 import {AttachmentsList} from '../../../../../shared/components/attachments-list';
+import {WriteOffReturnedInfo} from '../../../../../shared/components/write-off-returned-info';
 import {InstallmentsTable} from '../../../../../shared/components/installments-table';
 import {HasPermissionDirective} from '@shared/directives/has-permission.directive';
 
@@ -21,7 +22,7 @@ import {HasPermissionDirective} from '@shared/directives/has-permission.directiv
 @Component({
   selector: 'app-write-off-overview',
   templateUrl: './write-off-overview.html',
-  imports: [RouterLink, DecimalPipe, DatePipe, FilePreviewModal, AttachmentsList, InstallmentsTable, HasPermissionDirective],
+  imports: [WriteOffReturnedInfo, RouterLink, DecimalPipe, DatePipe, FilePreviewModal, AttachmentsList, InstallmentsTable, HasPermissionDirective],
 })
 export class WriteOffOverview implements OnInit {
   private service   = inject(WriteOffRequestService);

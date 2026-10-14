@@ -90,7 +90,15 @@
           [advanceRounds]="r.advanceRounds"
           [writeOffHistory]="r.writeOffHistory"
           [currentGrandTotal]="r.grandTotal"
-          [refundDue]="r.refundDue ?? 0" />
+          [refundDue]="r.refundDue ?? 0"
+          [advanceReturnedTotal]="r.advanceReturnedTotal ?? 0"
+          [currentReturnedAmount]="r.returnedAmount" />
+
+        <!-- 本單同仁匯回預支餘額（金額 / 日期 / 匯款證明） -->
+        <app-write-off-returned-info
+          [amount]="r.returnedAmount" [returnedAt]="r.returnedAt"
+          [proofName]="r.returnedProofFileName" [proofUrl]="r.returnedProofUrl"
+          (preview)="openPreview($event.name, $event.url)" />
 
         @if (r.note) {
           <div class="text-muted small mt-4 mb-0">備註：{{ r.note }}</div>

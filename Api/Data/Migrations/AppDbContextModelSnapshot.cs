@@ -4118,6 +4118,14 @@ namespace Jabez.Api.Data.Migrations
                             Description = "預審申請",
                             Module = "預審申請",
                             Name = "刪除"
+                        },
+                        new
+                        {
+                            Id = "78",
+                            Code = "users:salary-read",
+                            Description = "員工管理薪資欄位檢視",
+                            Module = "員工管理",
+                            Name = "薪資欄位檢視"
                         });
                 });
 
@@ -7722,6 +7730,20 @@ namespace Jabez.Api.Data.Migrations
                     b.Property<string>("RequestNo")
                         .HasMaxLength(30)
                         .HasColumnType("nvarchar(30)");
+
+                    b.Property<decimal?>("ReturnedAmount")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<DateTime?>("ReturnedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("ReturnedProofFileName")
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
+
+                    b.Property<string>("ReturnedProofUrl")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
 
                     b.Property<string>("ReviewNote")
                         .HasMaxLength(1000)

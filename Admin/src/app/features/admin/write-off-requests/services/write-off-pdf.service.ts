@@ -129,7 +129,9 @@ export class WriteOffPdfService {
       // 預支金額與沖銷結餘摘要
       const totalWrittenOff = r.advanceWrittenOffTotal + r.grandTotal;
       const refundedAmount = r.advanceRefundedAmount ?? 0;
-      const balance = r.advanceGrandTotal - totalWrittenOff + refundedAmount;
+      // 同仁匯回預支餘額（他單已核准 + 本單）；不計入沖銷金額，但要從結餘扣除
+      const returnedTotal = (r.advanceReturnedTotal ?? 0) + (r.returnedAmount ?? 0);
+      const balance = r.advanceGrandTotal - totalWrittenOff - returnedTotal + refundedAmount;
       bodyRows.push([
         { content: '預支金額', colSpan: 6, styles: { halign: 'right', fontStyle: 'bold' } },
         { content: fmt(r.advanceGrandTotal), colSpan: 2, styles: { fontStyle: 'bold', halign: 'right' } },
@@ -140,6 +142,14 @@ export class WriteOffPdfService {
         bodyRows.push([
           { content: '前次已沖銷', colSpan: 6, styles: { halign: 'right' } },
           { content: fmt(r.advanceWrittenOffTotal), colSpan: 2, styles: { halign: 'right' } },
+          '',
+          '',
+        ]);
+      }
+      if (returnedTotal > 0) {
+        bodyRows.push([
+          { content: '現金/匯款繳回', colSpan: 6, styles: { halign: 'right' } },
+          { content: fmt(returnedTotal), colSpan: 2, styles: { halign: 'right' } },
           '',
           '',
         ]);

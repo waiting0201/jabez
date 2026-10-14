@@ -7,6 +7,7 @@ import {HttpErrorResponse} from '@angular/common/http';
 import {firstValueFrom} from 'rxjs';
 import {ToastrService} from 'ngx-toastr';
 import {convertHeicIfNeeded, heicFailedMessage} from '@shared/utils/heic';
+import {ImageCompressionService} from '../../../../../shared/services/image-compression.service';
 import {NgbModal} from '@ng-bootstrap/ng-bootstrap';
 import {FilePreviewModal, PreviewFileData} from '../../../../../shared/components/file-preview-modal';
 import {AttachmentsUpload} from '../../../../../shared/components/attachments-upload';
@@ -53,6 +54,7 @@ export class WriteOffRequestForm implements OnInit {
   private modal          = inject(NgbModal);
   attachmentsUpload = viewChild(AttachmentsUpload);
   private sanitizer      = inject(DomSanitizer);
+  private imageCompression = inject(ImageCompressionService);
 
   /** 編輯模式回填的既有附件 */
   loadedAttachments: AttachmentItem[] = [];
@@ -96,6 +98,71 @@ export class WriteOffRequestForm implements OnInit {
   editModeActivityName = '';
   editModeAdvanceGrandTotal = 0;
   editModeAdvanceWrittenOffTotal = 0;
+  /** 同預支單其他已核准沖銷單的繳回加總（編輯模式提示用） */
+  editModeAdvanceReturnedTotal = 0;
+
+  // ── 同仁匯回預支餘額（現金／匯款繳回，不計入沖銷金額）──
+  returnedAmount  = signal<number | null>(null);
+  returnedAt      = signal('');
+  /** 新選的匯款證明（尚未上傳） */
+  returnedProofFile = signal<File | null>(null);
+  /** 新選檔案的 blob 預覽網址 */
+  returnedProofPreview = signal('');
+  /** 後端既有的匯款證明（編輯模式回填） */
+  returnedProofExisting = signal<{name: string; url: string} | null>(null);
+  private _removeReturnedProof = false;
+  returnedProofBusy = signal(false);
+
+  get hasReturnedProof(): boolean { return !!this.returnedProofFile() || !!this.returnedProofExisting(); }
+  get returnedProofName(): string { return this.returnedProofFile()?.name ?? this.returnedProofExisting()?.name ?? ''; }
+  get returnedProofIsImage(): boolean { return !!this.returnedProofFile() && this.returnedProofFile()!.type.startsWith('image/'); }
+
+  async onReturnedProofSelected(event: Event) {
+    const input = event.target as HTMLInputElement;
+    const raw = input.files?.[0];
+    input.value = '';
+    if (!raw) return;
+    this.returnedProofBusy.set(true);
+    try {
+      // HEIC → JPEG、圖檔壓縮；PDF 原檔通過。轉不了即拒收（見 shared/utils/heic）
+      const file = await this.imageCompression.compress(raw, {maxSize: 1600});
+      this._revokeReturnedPreview();
+      this.returnedProofFile.set(file);
+      this.returnedProofPreview.set(URL.createObjectURL(file));
+    } catch {
+      this.toastr.error(heicFailedMessage(raw.name), '無法處理檔案');
+    } finally {
+      this.returnedProofBusy.set(false);
+      this.cdr.markForCheck();
+    }
+  }
+
+  removeReturnedProof() {
+    this._revokeReturnedPreview();
+    this.returnedProofFile.set(null);
+    this.returnedProofPreview.set('');
+    if (this.returnedProofExisting()) this._removeReturnedProof = true;
+    this.returnedProofExisting.set(null);
+  }
+
+  private _revokeReturnedPreview() {
+    const u = this.returnedProofPreview();
+    if (u.startsWith('blob:')) URL.revokeObjectURL(u);
+  }
+
+  /** 繳回金額 > 0 時須附日期與匯款證明；通過回 true，否則設錯誤訊息 */
+  private _validateReturned(): boolean {
+    const amt = this.returnedAmount();
+    if (amt != null && amt < 0) {
+      this.errorMsg.set('繳回金額不可為負數。');
+      return false;
+    }
+    if (amt != null && amt > 0 && (!this.returnedAt() || !this.hasReturnedProof)) {
+      this.errorMsg.set('繳回金額大於 0 時，需填寫匯款／繳回日期並附上匯款證明。');
+      return false;
+    }
+    return true;
+  }
 
   errorMsg = signal('');
   categories = ITEM_CATEGORIES;
@@ -230,6 +297,12 @@ export class WriteOffRequestForm implements OnInit {
         this.selectedAdvanceId    = r.advanceRequestId;
         this.editModeAdvanceGrandTotal      = r.advanceGrandTotal;
         this.editModeAdvanceWrittenOffTotal  = r.advanceWrittenOffTotal;
+        this.editModeAdvanceReturnedTotal    = r.advanceReturnedTotal ?? 0;
+        this.returnedAmount.set(r.returnedAmount ?? null);
+        this.returnedAt.set(r.returnedAt?.toString().slice(0, 10) ?? '');
+        if (r.returnedProofUrl) {
+          this.returnedProofExisting.set({name: r.returnedProofFileName ?? '匯款證明', url: r.returnedProofUrl});
+        }
         this.form.patchValue({note: r.note ?? ''});
         this.loadedAttachments = r.attachments ?? [];
         // 回填指定審核者：唯讀模式與編輯模式皆由 pickerInitial 傳給 picker
@@ -451,6 +524,7 @@ export class WriteOffRequestForm implements OnInit {
       this.errorMsg.set('請選擇預支單。');
       return;
     }
+    if (!this._validateReturned()) return;
     const fd = this._buildFormData();
     this.errorMsg.set('');
     this.saving.set(true);
@@ -485,6 +559,7 @@ export class WriteOffRequestForm implements OnInit {
         }
       }
     }
+    if (!this._validateReturned()) return;
     const fd = this._buildFormData();
     this.errorMsg.set('');
     this.saving.set(true);
@@ -569,6 +644,19 @@ export class WriteOffRequestForm implements OnInit {
     }
 
     fd.append('items', JSON.stringify(itemsMeta));
+
+    // 同仁匯回預支餘額：update 一律帶 returnedAmount key（'' ＝ 無），後端據此判斷是否清除
+    const amt = this.returnedAmount();
+    fd.append('returnedAmount', amt != null && amt > 0 ? String(amt) : '');
+    if (amt != null && amt > 0) {
+      fd.append('returnedAt', this.returnedAt());
+      const proof = this.returnedProofFile();
+      if (proof) fd.append('returnedProofFile', proof, proof.name);
+    }
+    // 清除既有證明：使用者按移除（且沒換新檔），或金額已清空
+    if ((this._removeReturnedProof && !this.returnedProofFile()) || (!(amt != null && amt > 0) && this.returnedProofExisting())) {
+      fd.append('removeReturnedProof', 'true');
+    }
 
     // 整單批次附件
     const att = this.attachmentsUpload();

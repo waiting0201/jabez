@@ -828,6 +828,11 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
                            WHERE w2.AdvanceRequestId = wo.AdvanceRequestId
                              AND w2.ApprovalStatus = 'approved'
                              AND w2.Id < wo.Id), 0) AS OtherWrittenOffTotal,
+                   ISNULL((SELECT SUM(w3.ReturnedAmount) FROM WriteOffRecords w3
+                           WHERE w3.AdvanceRequestId = wo.AdvanceRequestId
+                             AND w3.ApprovalStatus = 'approved'
+                             AND w3.Id <> wo.Id), 0) AS AdvanceReturnedTotal,
+                   wo.ReturnedAmount, wo.ReturnedAt, wo.ReturnedProofFileName, wo.ReturnedProofUrl,
                    worefundby.SignatureUrl AS RefundedBySignatureUrl,
                    arx.IsClosed AS AdvanceIsClosed,
                    arx.ClosedAt AS AdvanceClosedAt,
@@ -1128,7 +1133,7 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
     private async Task<Dictionary<int, List<WriteOffRoundDto>>> LoadWriteOffHistoryAsync()
     {
         const string sql = """
-            SELECT Id, AdvanceRequestId, WriteOffNo, RequestNo, GrandTotal, ApprovalStatus, CreatedAt
+            SELECT Id, AdvanceRequestId, WriteOffNo, RequestNo, GrandTotal, ApprovalStatus, CreatedAt, ReturnedAmount
             FROM WriteOffRecords
             WHERE ApprovalStatus <> 'rejected'
             ORDER BY AdvanceRequestId, WriteOffNo, Id
@@ -1141,7 +1146,7 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
             if (!dict.ContainsKey(advId)) dict[advId] = [];
             dict[advId].Add(new WriteOffRoundDto(
                 (int)r.Id, (int)r.WriteOffNo, (string?)r.RequestNo, (decimal)r.GrandTotal,
-                (string)r.ApprovalStatus, (DateTime)r.CreatedAt, false));
+                (string)r.ApprovalStatus, (DateTime)r.CreatedAt, false, (decimal?)r.ReturnedAmount));
         }
         return dict;
     }
@@ -1694,7 +1699,8 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
                     RequestNo:         (string?)row.RequestNo,
                     HourTiers:         otHourTiers,
                     ExcessHours:       (decimal?)row.ExcessHours,
-                    SettledHours:      (decimal?)row.SettledHours),
+                    SettledHours:      (decimal?)row.SettledHours,
+                    IsBackfill:        OvertimeBackfill.IsBackfill((DateTime)row.OvertimeDate, (DateTime?)row.SubmittedAt)),
                 null, null, null,
                 GetRecords("overtime", (int)row.Id),
                 GetDesignatedReviewers("overtime", (int)row.Id),
@@ -1805,7 +1811,12 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
                 instDicts.Advance.TryGetValue((int)row.AdvanceRequestId, out var woAdvInst) ? [.. woAdvInst] : null,
                 installments.ComputeStatus(instDicts.Advance.GetValueOrDefault((int)row.AdvanceRequestId, [])),
                 (DateTime?)row.AdvanceClosedAt,
-                (bool)row.PendingClose),
+                (bool)row.PendingClose,
+                (decimal?)row.ReturnedAmount,
+                (DateTime?)row.ReturnedAt,
+                (string?)row.ReturnedProofFileName,
+                (string?)row.ReturnedProofUrl,
+                (decimal)row.AdvanceReturnedTotal),
             null,
             GetRecords("write_off", (int)row.Id),
             GetDesignatedReviewers("write_off", (int)row.Id),

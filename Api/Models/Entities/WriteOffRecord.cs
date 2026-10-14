@@ -30,6 +30,13 @@ public class WriteOffRecord
     /// </summary>
     public bool      PendingClose      { get; set; }
 
+    // 同仁繳回預支餘額（現金 / 匯款，2026-10）：不計入 GrandTotal（RefundDue、專案水位不受影響），
+    // 只用於摘要的「尚未結清金額 ＝ 預支 − 已核准核銷 − 已核准繳回」。四欄同進同出，全 null ＝ 無繳回。
+    public decimal?  ReturnedAmount        { get; set; }
+    public DateTime? ReturnedAt            { get; set; }
+    public string?   ReturnedProofFileName { get; set; }
+    public string?   ReturnedProofUrl      { get; set; }   // blob 在 write-off-invoices 容器，格式同 WriteOffItem.FileUrl
+
     // Navigation
     public AdvanceRequest             AdvanceRequest { get; set; } = null!;
     public User?                      SubmittedBy    { get; set; }

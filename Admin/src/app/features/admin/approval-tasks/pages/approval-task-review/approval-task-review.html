@@ -728,6 +728,7 @@
                     <div class="col-6 col-md-4">
                       <div class="text-muted small mb-1">加班單號</div>
                       <span class="fw-500 font-monospace">{{ d.requestNo || '—' }}</span>
+                      @if (d.isBackfill) { <span class="badge bg-warning-subtle text-warning-emphasis ms-1">補加班</span> }
                     </div>
                     <div class="col-6 col-md-4">
                       <div class="text-muted small mb-1">加班日期</div>
@@ -984,7 +985,15 @@
                     [advanceRounds]="d.advanceRounds"
                     [writeOffHistory]="d.writeOffHistory"
                     [currentGrandTotal]="d.grandTotal"
-                    [refundDue]="d.refundDue ?? 0" />
+                    [refundDue]="d.refundDue ?? 0"
+                    [advanceReturnedTotal]="d.advanceReturnedTotal ?? 0"
+                    [currentReturnedAmount]="d.returnedAmount" />
+
+                  <!-- 本單同仁匯回預支餘額（金額 / 日期 / 匯款證明） -->
+                  <app-write-off-returned-info
+                    [amount]="d.returnedAmount" [returnedAt]="d.returnedAt"
+                    [proofName]="d.returnedProofFileName" [proofUrl]="d.returnedProofUrl"
+                    (preview)="openPreview($event.name, $event.url)" />
 
                   @if (d.note) {
                     <div class="text-muted small mt-4 mb-0">備註：{{ d.note }}</div>

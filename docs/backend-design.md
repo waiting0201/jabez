@@ -202,17 +202,19 @@ write_off / travel_write_off）與 `approval-tasks` 詳情共用這一份判準�
 | `GET /reports/project-water-level` | `reports-project-water-level:read` | `reports-project-water-level:total` | 缺後者時 `TotalPercentage` / `PreImportUsedAmount` / `RemainingAmount` 回 `null` / `0`；頁面照進、業務執行水位照看 |
 | `GET /reports/overtime` | `reports-overtime:read` | `reports-overtime:amount` | 缺後者時 `OvertimePayAmount` 回 `null`；頁面照進、時數與 `CompensationType` 照看。本端點是唯一能以「全公司逐筆」形式看到他人加班費的地方 |
 | `GET /reports/compensatory` | `reports-overtime:read` | `reports-overtime:amount` | 加班補休時數總表（2026-10）沿用加班紀錄的兩個碼；缺後者時 `Amount` 回 `null`（金額 ÷ 時數可反推底薪，同一顧慮） |
-| `GET /users`、`GET /users/{id}`（含 `POST` / `PATCH` 的回應 DTO） | `users:read` / `users:write` | `payroll:read` | 缺後者時 [`PayrollFieldAccess.Mask`](../Api/Common/PayrollFieldAccess.cs) 把 8 個薪資欄回 `null`（底薪 / 伙食費 / 加班費 / 2 種加給 / 勞健保覆寫 / 勞退自提率）；`SendPaySlip`、`CompensatoryOpeningHours` 不含金額故保留 |
-| `GET /users/{id}/profile` | `users:read` | `payroll:read` | 缺後者時 `SalaryAdjustmentRecords` 回 `[]`；其餘 8 張子表照常 |
-| `PATCH /users/{id}`、`POST /users`、`PUT /users/{id}/profile` | `users:write` | `payroll:read` | 缺後者時薪資欄位的寫入一律忽略（不回 403，其他欄位照常存檔）；見規則 6 |
+| `GET /users`、`GET /users/{id}`（含 `POST` / `PATCH` 的回應 DTO） | `users:read` / `users:write` | `users:salary-read` | 缺後者時 [`PayrollFieldAccess.Mask`](../Api/Common/PayrollFieldAccess.cs) 把 8 個薪資欄回 `null`（底薪 / 伙食費 / 加班費 / 2 種加給 / 勞健保覆寫 / 勞退自提率）；`SendPaySlip`、`CompensatoryOpeningHours` 不含金額故保留 |
+| `GET /users/{id}/profile` | `users:read` | `users:salary-read` | 缺後者時 `SalaryAdjustmentRecords` 回 `[]`；其餘 8 張子表照常 |
+| `PATCH /users/{id}`、`POST /users`、`PUT /users/{id}/profile` | `users:write` | `users:salary-read` | 缺後者時薪資欄位的寫入一律忽略（不回 403，其他欄位照常存檔）；見規則 6 |
 
-⚠️ 員工自助端點 `GET /me/user`、`GET /me/profile`、`GET /me/payroll` **刻意不套**此權限 —— 員工看自己的薪資是既有需求，`payroll:read` 只管「看別人的」。三支 Handler 方法內皆有註解防止後人「補齊一致性」時誤加。
+> **2026-10 權限碼獨立**：員工管理的薪資欄位級權限原本借用「人事薪資」模組的 `payroll:read`，導致「要讓某角色看員工薪資欄」＝同時開啟人事薪資頁。現改用獨立碼 `users:salary-read`（Module「員工管理」、Name「薪資欄位檢視」，`PermissionCodes.UsersSalaryRead`），判定單一真相仍是 [`PayrollFieldAccess.CanSeeSalary`](../Api/Common/PayrollFieldAccess.cs)。`payroll:read` 回到只控「人事薪資」模組本身（`GET /payroll*`）。Migration `AddUsersSalaryReadPermission` 為既有持有 `payroll:read` 的角色回填新碼（上線前後行為不變，之後由 Superadmin 於角色管理頁視需要取消勾選）；既有 token 需重新登入才帶得到新碼。2~77 的 Id 已全滿，Id 由 migration 的 raw SQL 決定（優先 78，已被占用則 max+1），一律以 Code 解析。
+
+⚠️ 員工自助端點 `GET /me/user`、`GET /me/profile`、`GET /me/payroll` **刻意不套**此權限 —— 員工看自己的薪資是既有需求，`users:salary-read` 只管「看別人的」。三支 Handler 方法內皆有註解防止後人「補齊一致性」時誤加。
 
 規則：
 
 1. **回 null 而非 403** —— 少一欄不該讓整頁掛掉，前端據此隱藏該欄即可。
 2. **連同「能反推出該欄的原料欄」一起抹**。上例只藏 `TotalPercentage` 沒有用，`PreImportUsedAmount` / `RemainingAmount` 是它的分子來源，留著等同把數字送出去讓前端自己算。
-   但「能反推」要**具體論證反推鏈是否真的成立**，不是一律從嚴：加班報表只抹 `OvertimePayAmount`、保留 `CompensationType` 與時數 —— 反推金額需要時薪快照，而時薪來自底薪、底薪已受 `payroll:read` 管制，鏈子斷在那裡。過度抹除的代價是 non-nullable 欄位得抹成哨兵值（`""`），前後端型別一起變髒。
+   但「能反推」要**具體論證反推鏈是否真的成立**，不是一律從嚴：加班報表只抹 `OvertimePayAmount`、保留 `CompensationType` 與時數 —— 反推金額需要時薪快照，而時薪來自底薪、底薪已受 `users:salary-read` 管制，鏈子斷在那裡。過度抹除的代價是 non-nullable 欄位得抹成哨兵值（`""`），前後端型別一起變髒。
 3. **判定方式比照 `ApprovalTaskHandler`**：`is_superadmin == "true"` 直接放行，否則 `principal.FindAll("permissions").Any(c => c.Value == PermissionCodes.Xxx)`。principal 由 [`AppRouter`](../Api/Routing/AppRouter.cs) 寫入 `req.HttpContext.User`。
 4. **ReadService 與 SQL 不動**，抹除一律在 Handler 用 record `with` 做，維持「Dapper 只管查、Handler 管授權」的分工。
    回傳型別是 [`PagedResult<T>`](../Api/Common/PagedResult.cs) 時要連**外層** record 一起重建：`result = result with { Items = result.Items.Select(r => r with { Xxx = null }).ToList() }` —— record 不可變，只改 `Items` 的元素沒有用；`.ToList()` 讓抹除即時求值，不要把延遲求值帶出 Handler 作用域。
@@ -519,7 +521,7 @@ RequestDateGuard.EnsurePastWithin(body.ChildBirthDate, "子女出生日期",
 | 撥款明細 | `InstallmentValidator` + 5 支 installments / 結案 / check-payments 端點 | 逐列金額須 > 0 且不超過總額（不只驗加總）；申請人不可操作自己單據的撥款明細（Superadmin 例外） |
 | 已撥款鎖定 | 各申請 Handler 的 Update / Delete | 任一期 `PaidAt` 非空的單據即使被退回也不可修改 / 刪除（Superadmin 亦同），請洽財務 |
 | 輕量端點最小揭露 | `ProjectLookupDto`（`/projects/active`）、`VendorReadService`（`/vendors/lookup`）、AppRouter 權限表（`/files/vendor-passbooks`） | `/projects/active` 只回 Id / Code / Name / Status / DepartmentId / DepartmentName，**不含任何金額與 Drive 連結**；`/vendors/lookup` 的個人 `IdNumber` 遮罩（前 1 後 3）；`/files/vendor-passbooks/*` 須 `vendors:read`（檔名 `{vendorId}{ext}` 可列舉） |
-| 寫入回應薪資遮罩 | `EmployeeProfileHandler`（`PUT /users/{id}/profile`） | 寫入回應與 GET 走同一道 `PayrollFieldAccess.Mask`，無 `payroll:read` 者存檔後不可拿到薪資調整歷史 |
+| 寫入回應薪資遮罩 | `EmployeeProfileHandler`（`PUT /users/{id}/profile`） | 寫入回應與 GET 走同一道 `PayrollFieldAccess.Mask`，無 `users:salary-read` 者存檔後不可拿到薪資調整歷史 |
 | 活動日預定人力 | `ActivityDayHandler.EnsureAssigneesValidAsync` | 非 Superadmin：人員部門須在 `ProjectAccessScope` 內、不得把自己列為預定人力；更新時只驗「新增」的人力（既有名單不重驗） |
 | 前端 URL / Token 防線 | `Admin/src/app/shared/utils/safe-url.ts`、`auth.interceptor.ts`、`Admin/public/staticwebapp.config.json` | 預覽 iframe 的 URL 只認白名單（`safe-url.ts`）；`Authorization: Bearer` 只附加給自家 API；SWA 設定加 CSP 與 `X-Content-Type-Options: nosniff` |
 

@@ -26,8 +26,8 @@ export class UserList {
   private deptService = inject(DepartmentService);
   private authService = inject(AuthService);
 
-  /** 勞退自提率屬 payroll:read 欄位級權限，無權者不顯示勞退篩選（後端亦回 403） */
-  readonly canSeeSalary = this.authService.hasPermission('payroll:read');
+  /** 勞退自提率屬 users:salary-read 欄位級權限，無權者不顯示勞退篩選（後端亦回 403） */
+  readonly canSeeSalary = this.authService.hasPermission('users:salary-read');
 
   private roles = toSignal(
     this.roleService.getAll().pipe(catchError(() => of([] as Role[]))),

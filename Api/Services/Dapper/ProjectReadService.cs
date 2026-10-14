@@ -21,6 +21,18 @@ public sealed class ProjectReadService(IDbConnection db) : IProjectReadService
         """;
 
     /// <summary>
+    /// 專案代號自然排序：英文前綴升冪 → 前綴後第一段連續數字（數值）升冪 → Code。
+    /// J11203-T → 前綴 J、數字 11203；P2024-001 → P / 2024；C005 → C / 5；無數字者數值為 0。
+    /// 以 Code + '0' / rest + 'x' 當哨兵，確保 PATINDEX 一律有命中，不會產生 LEFT 負長度錯誤；
+    /// TRY_CAST 防超長數字串溢位。
+    /// </summary>
+    private const string NaturalCodeOrder =
+        "LEFT(p.Code, PATINDEX('%[0-9]%', p.Code + '0') - 1), " +
+        "TRY_CAST(LEFT(SUBSTRING(p.Code, PATINDEX('%[0-9]%', p.Code + '0'), 450), " +
+        "PATINDEX('%[^0-9]%', SUBSTRING(p.Code, PATINDEX('%[0-9]%', p.Code + '0'), 450) + 'x') - 1) AS bigint), " +
+        "p.Code";
+
+    /// <summary>
     /// 依 scope 組合 WHERE 片段與 Dapper 參數：
     /// scope.SeeAll=true → 不加條件
     /// scope.SeeAll=false + AllowedIds 非空 → WHERE p.DepartmentId IN @AllowedIds
@@ -41,7 +53,7 @@ public sealed class ProjectReadService(IDbConnection db) : IProjectReadService
     {
         var (scopeClause, param) = BuildScopeFilter(scope);
         var where = string.IsNullOrEmpty(scopeClause) ? "" : " WHERE " + scopeClause;
-        var sql = SelectSql + where + " ORDER BY p.CreatedAt DESC";
+        var sql = SelectSql + where + " ORDER BY " + NaturalCodeOrder;
         var rows = await db.QueryAsync<dynamic>(sql, param);
         return rows.Select(r => (ProjectDto)ToDto(r, null));
     }
@@ -60,11 +72,11 @@ public sealed class ProjectReadService(IDbConnection db) : IProjectReadService
             SELECT p.Id, p.Code, p.Name, p.Status, p.DepartmentId, d.Name AS DepartmentName
             FROM Projects p
             LEFT JOIN Departments d ON p.DepartmentId = d.Id
-            """ + where + " ORDER BY p.CreatedAt DESC";
+            """ + where + " ORDER BY " + NaturalCodeOrder;
         return await db.QueryAsync<ProjectLookupDto>(sql, param);
     }
 
-    public async Task<PagedResult<ProjectDto>> GetPagedAsync(ProjectAccessScope scope, int page, int pageSize, string? search = null, int? year = null, string? status = null)
+    public async Task<PagedResult<ProjectDto>> GetPagedAsync(ProjectAccessScope scope, int page, int pageSize, string? search = null, int? year = null, string? status = null, int? departmentId = null)
     {
         var hasSearch = !string.IsNullOrWhiteSpace(search);
         var hasStatus = !string.IsNullOrWhiteSpace(status);
@@ -72,6 +84,7 @@ public sealed class ProjectReadService(IDbConnection db) : IProjectReadService
         if (hasSearch) conditions.Add("(p.Code LIKE @Search OR p.Name LIKE @Search)");
         if (year.HasValue) conditions.Add("YEAR(p.StartDate) = @Year");
         if (hasStatus) conditions.Add("p.Status = @Status");
+        if (departmentId.HasValue) conditions.Add("p.DepartmentId = @DepartmentId");
 
         var (scopeClause, scopeParam) = BuildScopeFilter(scope);
         if (!string.IsNullOrEmpty(scopeClause)) conditions.Add(scopeClause);
@@ -81,11 +94,12 @@ public sealed class ProjectReadService(IDbConnection db) : IProjectReadService
 
         var countSql = "SELECT COUNT(*) FROM Projects p" + where;
         var sql = SelectSql + where +
-            " ORDER BY p.CreatedAt DESC OFFSET @Skip ROWS FETCH NEXT @Take ROWS ONLY";
+            " ORDER BY " + NaturalCodeOrder + " OFFSET @Skip ROWS FETCH NEXT @Take ROWS ONLY";
 
         scopeParam.Add("Search", searchParam);
         scopeParam.Add("Year",   year);
         scopeParam.Add("Status", status);
+        scopeParam.Add("DepartmentId", departmentId);
         scopeParam.Add("Skip",   (page - 1) * pageSize);
         scopeParam.Add("Take",   pageSize);
 

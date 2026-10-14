@@ -283,6 +283,11 @@
             </div>
           </div>
 
+          <app-write-off-returned-info class="block mb-4"
+            [amount]="w.returnedAmount" [returnedAt]="w.returnedAt"
+            [proofName]="w.returnedProofFileName" [proofUrl]="w.returnedProofUrl"
+            (preview)="openPreview($event.name, $event.url)" />
+
           @if (w.note) {
             <div class="text-muted small mb-4">備註：{{ w.note }}</div>
           }
