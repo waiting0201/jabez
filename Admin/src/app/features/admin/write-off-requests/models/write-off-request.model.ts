@@ -1,5 +1,5 @@
 import {AdvanceRequest, AdvanceRequestItem, AdvanceRound} from '../../advance-requests/models/advance-request.model';
-import {InstallmentDto, PaymentInstallmentStatus, WriteOffRound} from '../../approval-tasks/models/approval-task.model';
+import {InstallmentDto, PaymentInstallmentStatus, WriteOffReturnedCash, WriteOffRound} from '../../approval-tasks/models/approval-task.model';
 
 export type {WriteOffRound};
 
@@ -67,7 +67,7 @@ export interface DesignatedReviewer {
   comment?: string;
 }
 
-export interface WriteOffRequest {
+export interface WriteOffRequest extends WriteOffReturnedCash {
   id: number;
   /** 送簽時才取號，草稿為 null */
   requestNo: string | null;

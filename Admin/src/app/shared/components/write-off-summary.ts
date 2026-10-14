@@ -57,6 +57,9 @@ import {WriteOffRound} from '../../features/admin/approval-tasks/models/approval
                   <td class="text-right fw-500"
                       [class.text-muted]="wo.approvalStatus !== 'approved' && !wo.isCurrent">
                     {{ wo.grandTotal | number:'1.0-0' }}
+                    @if (wo.returnedAmount) {
+                      <div class="text-muted small fw-normal">繳回 {{ wo.returnedAmount | number:'1.0-0' }}</div>
+                    }
                   </td>
                 </tr>
               } @empty {
@@ -94,6 +97,38 @@ import {WriteOffRound} from '../../features/admin/approval-tasks/models/approval
         </div>
       }
     </div>
+
+    <!-- 結清對帳：預支 − 費用核銷 − 同仁匯回 = 尚未結清 -->
+    <div class="border rounded mt-4 overflow-x-auto">
+      <table class="table table-sm mb-0 small">
+        <tbody>
+          <tr>
+            <td class="fw-500">原始預支金額</td>
+            <td class="text-right">{{ advanceTotal() | number:'1.0-0' }}</td>
+          </tr>
+          <tr>
+            <td class="fw-500">實際費用核銷</td>
+            <td class="text-right">{{ writtenOffTotal() | number:'1.0-0' }}</td>
+          </tr>
+          <tr>
+            <td class="fw-500">現金・匯款繳回</td>
+            <td class="text-right">{{ returnedTotal() | number:'1.0-0' }}</td>
+          </tr>
+        </tbody>
+        <tfoot class="bg-[--bg-base]">
+          <tr>
+            <td class="fw-600">尚未結清金額</td>
+            <td class="text-right fw-600"
+                [class.text-warning]="unsettled() !== 0" [class.text-green]="unsettled() === 0">
+              {{ unsettled() | number:'1.0-0' }}
+              @if (unsettled() !== 0) {
+                <span class="badge bg-warning-subtle text-warning-emphasis ml-1">未結清</span>
+              }
+            </td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
   `,
 })
 export class WriteOffSummaryComponent {
@@ -104,6 +139,11 @@ export class WriteOffSummaryComponent {
   /** 本次應撥差額（後端 refundDue）*/
   refundDue         = input(0);
 
+  /** 同預支單「其他」已核准沖銷單的繳回加總（不含本單，後端 advanceReturnedTotal） */
+  advanceReturnedTotal = input(0);
+  /** 本單的繳回金額（編輯中 / 唯讀皆帶入；無則 0） */
+  currentReturnedAmount = input<number | null | undefined>(0);
+
   readonly roundLabel = roundLabel;
 
   advanceTotal = computed(() =>
@@ -113,4 +153,9 @@ export class WriteOffSummaryComponent {
     (this.writeOffHistory() ?? []).reduce((acc, w) => acc + w.grandTotal, 0));
 
   balance = computed(() => this.advanceTotal() - this.writtenOffTotal());
+
+  returnedTotal = computed(() => this.advanceReturnedTotal() + (this.currentReturnedAmount() ?? 0));
+
+  /** 尚未結清 = 預支 − 費用核銷 − 繳回；≠ 0 以警示色標示（只警示不擋結案） */
+  unsettled = computed(() => this.advanceTotal() - this.writtenOffTotal() - this.returnedTotal());
 }

@@ -243,6 +243,8 @@ export interface OvertimeTaskDetail {
   overtimeRequestId: number;
   requestNo?: string | null;   // OT-yyyyMMdd-NNN
   overtimeDate: Date;
+  /** 補加班（加班日期早於送簽日），後端推導 */
+  isBackfill?: boolean;
   /** 預估總時數（= projects 各列加總） */
   estimatedHours: number;
   reason: string;
@@ -353,9 +355,21 @@ export interface WriteOffRound {
   createdAt: string;
   /** 是否為目前檢視中的這張沖銷單 */
   isCurrent: boolean;
+  /** 該次沖銷附帶的同仁匯回預支餘額（無則 null） */
+  returnedAmount?: number | null;
 }
 
-export interface WriteOffTaskDetail {
+/** 同仁匯回預支餘額（現金／匯款繳回）— 不計入沖銷金額；金額 > 0 時須附日期與匯款證明 */
+export interface WriteOffReturnedCash {
+  returnedAmount?: number | null;
+  returnedAt?: string | null;
+  returnedProofFileName?: string | null;
+  returnedProofUrl?: string | null;
+  /** 同預支單「其他」已核准沖銷單的繳回加總（不含本單） */
+  advanceReturnedTotal?: number;
+}
+
+export interface WriteOffTaskDetail extends WriteOffReturnedCash {
   writeOffRequestId: number;
   advanceRequestId: number;
   requestNo: string;

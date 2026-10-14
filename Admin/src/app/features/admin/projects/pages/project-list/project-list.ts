@@ -7,6 +7,7 @@ import {switchMap} from 'rxjs/operators';
 import {ProjectService} from '../../services/project.service';
 import {Project, PROJECT_STATUS_LABELS, PROJECT_STATUS_CLASSES} from '../../models/project.model';
 import {PagedResult} from '../../../../../shared/models/paged-result.model';
+import {DepartmentService} from '../../../departments/services/department.service';
 import {AuthService} from '../../../../../core/auth/services/auth.service';
 
 @Component({
@@ -17,6 +18,7 @@ import {AuthService} from '../../../../../core/auth/services/auth.service';
 export class ProjectList {
   private projectService = inject(ProjectService);
   private auth = inject(AuthService);
+  private departmentService = inject(DepartmentService);
 
   /** 是否擁有 projects:write 權限（決定「新增/編輯」按鈕顯示） */
   canWrite  = computed(() => this.auth.hasPermission('projects:write'));
@@ -28,6 +30,9 @@ export class ProjectList {
   searchInput = '';
   selectedYearInput: number | undefined;
   selectedStatusInput: string | undefined;
+  /** 部門篩選：改值即重查並回第 1 頁（比照員工管理） */
+  departmentId = signal<number | undefined>(undefined);
+  departments = toSignal(this.departmentService.getLookup(), {initialValue: []});
   private searchTerm = signal('');
   private filterYear = signal<number | undefined>(undefined);
   private filterStatus = signal<string | undefined>(undefined);
@@ -36,8 +41,8 @@ export class ProjectList {
   private refresh = signal(0);
 
   private result = toSignal(
-    toObservable(computed(() => ({ page: this.page(), search: this.searchTerm(), year: this.filterYear(), status: this.filterStatus(), refresh: this.refresh() }))).pipe(
-      switchMap(({ page, search, year, status }) => this.projectService.getPaged(page, this.PAGE_SIZE, search || undefined, year, status))
+    toObservable(computed(() => ({ page: this.page(), search: this.searchTerm(), year: this.filterYear(), status: this.filterStatus(), departmentId: this.departmentId(), refresh: this.refresh() }))).pipe(
+      switchMap(({ page, search, year, status, departmentId }) => this.projectService.getPaged(page, this.PAGE_SIZE, search || undefined, year, status, departmentId))
     ),
     {initialValue: {items: [], totalCount: 0, page: 1, pageSize: 20, totalPages: 1} as PagedResult<Project>}
   );
@@ -54,6 +59,10 @@ export class ProjectList {
     this.searchTerm.set(this.searchInput);
     this.filterYear.set(this.selectedYearInput);
     this.filterStatus.set(this.selectedStatusInput);
+    this.page.set(1);
+  }
+  onDepartmentChange(v: string | number | null) {
+    this.departmentId.set(v ? Number(v) : undefined);
     this.page.set(1);
   }
   goTo(p: number) { this.page.set(p); }

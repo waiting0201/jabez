@@ -84,7 +84,8 @@ public sealed class OvertimeRequestReadService(IDbConnection db) : IOvertimeRequ
             OvertimeDayType:    OvertimePayCalculator.SnapshotDayType(
                                     (string?)row.OvertimeDayType, (bool?)row.IsHolidayOvertime),
             RequestNo:          (string?)row.RequestNo,
-            SettledHours:       (decimal?)row.SettledHours);
+            SettledHours:       (decimal?)row.SettledHours,
+            IsBackfill:         OvertimeBackfill.IsBackfill((DateTime)row.OvertimeDate, (DateTime?)row.SubmittedAt));
     }
 
     public async Task<IEnumerable<OvertimeRequestDto>> GetAllAsync()

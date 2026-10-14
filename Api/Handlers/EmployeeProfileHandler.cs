@@ -67,7 +67,7 @@ public sealed class EmployeeProfileHandler(
 
         var dto = await reader.GetByUserIdAsync(userId);
 
-        // 欄位級權限：無 payroll:read 者不回傳薪資調整歷史（整張表皆為薪資原料）
+        // 欄位級權限：無 users:salary-read 者不回傳薪資調整歷史（整張表皆為薪資原料）
         if (dto is not null && !PayrollFieldAccess.CanSeeSalary(req.HttpContext.User))
             dto = PayrollFieldAccess.Mask(dto);
 
@@ -105,7 +105,7 @@ public sealed class EmployeeProfileHandler(
             return new BadRequestObjectResult(ApiResponse.Fail("請求內容格式不正確。", ex.Message));
         }
 
-        // 薪資欄位級權限：只有「看得到（payroll:read）」且「有送」才動薪資子表。
+        // 薪資欄位級權限：只有「看得到（users:salary-read）」且「有送」才動薪資子表。
         // 整批替換模式下送 [] 等於清空全部薪資調整歷史，而該歷史是 User 7 個薪資欄的唯一真實來源，
         // 清掉不可還原 —— 無權者的前端不送此 key，這裡一律當作「不變更」。
         var touchSalary = PayrollFieldAccess.CanSeeSalary(req.HttpContext.User)
@@ -386,7 +386,7 @@ public sealed class EmployeeProfileHandler(
         });
 
         var dto = await reader.GetByUserIdAsync(userId);
-        // 寫入回應也要走同一道遮蔽（同 GET），否則無 payroll:read 者存檔後即可拿到薪資調整歷史
+        // 寫入回應也要走同一道遮蔽（同 GET），否則無 users:salary-read 者存檔後即可拿到薪資調整歷史
         if (dto is not null && !PayrollFieldAccess.CanSeeSalary(req.HttpContext.User))
             dto = PayrollFieldAccess.Mask(dto);
         return new OkObjectResult(ApiResponse.Ok(dto, "人事資料卡已更新。"));

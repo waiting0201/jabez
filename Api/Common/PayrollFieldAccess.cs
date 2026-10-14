@@ -7,7 +7,7 @@ namespace Jabez.Api.Common;
 /// 員工管理的「薪資欄位級權限」單一真相。
 ///
 /// 進得了員工管理（users:read）不等於看得到薪資：底薪 / 2 種加給 / 勞健保覆寫 / 勞退自提率，
-/// 以及人事資料卡的薪資調整歷史，另需 payroll:read（＝「人事薪資」模組同一把鑰匙）。
+/// 以及人事資料卡的薪資調整歷史，另需 users:salary-read（2026-10 起獨立權限碼，不再借用「人事薪資」模組的 payroll:read）。
 /// 規範見 docs/backend-design.md「欄位級權限（Handler 內判定的例外）」。
 ///
 /// ⚠ 日後在 User 新增任何薪資欄位，必須同時加進 <see cref="Mask"/>，
@@ -15,12 +15,12 @@ namespace Jabez.Api.Common;
 /// </summary>
 public static class PayrollFieldAccess
 {
-    /// <summary>是否可看薪資欄位：Superadmin 全通過，否則需持有 payroll:read。</summary>
+    /// <summary>是否可看薪資欄位：Superadmin 全通過，否則需持有 users:salary-read。</summary>
     public static bool CanSeeSalary(ClaimsPrincipal user)
     {
         if (string.Equals(user.FindFirst("is_superadmin")?.Value, "true", StringComparison.OrdinalIgnoreCase))
             return true;
-        return user.FindAll("permissions").Any(c => c.Value == PermissionCodes.PayrollRead);
+        return user.FindAll("permissions").Any(c => c.Value == PermissionCodes.UsersSalaryRead);
     }
 
     /// <summary>

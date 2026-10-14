@@ -24,7 +24,8 @@ public sealed class ProjectHandler(AppDbContext db, IProjectReadService reader, 
             string? search = req.Query["search"];
             int? year = int.TryParse(req.Query["year"], out var y) ? y : null;
             string? status = req.Query["status"];
-            var result = await reader.GetPagedAsync(scope, page, pageSize, search, year, status);
+            int? departmentId = int.TryParse(req.Query["departmentId"], out var d) ? d : null;
+            var result = await reader.GetPagedAsync(scope, page, pageSize, search, year, status, departmentId);
             return new OkObjectResult(ApiResponse.Ok(result));
         }
 

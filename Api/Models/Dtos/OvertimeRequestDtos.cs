@@ -76,7 +76,9 @@ public sealed record OvertimeRequestDto(
     string?   RequestNo            = null,   // OT-yyyyMMdd-NNN；送簽時取號，草稿為 null
     // 結算時數（給付基準，2026-10 防灌工時）＝ min(核准申請時數, 實際加班打卡時數)。
     // null ＝ 舊單（給付沿用 EstimatedHours）。前端以「申請時數」與「結算時數」分開呈現。
-    decimal?  SettledHours         = null);
+    decimal?  SettledHours         = null,
+    // 補加班：加班日早於申請日（已送簽比送簽日、草稿比今天）；推導值，見 OvertimeBackfill
+    bool      IsBackfill           = false);
 
 public sealed record CreateOvertimeRequestRequest(
     Guid?    EmployeeId,

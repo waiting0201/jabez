@@ -252,7 +252,9 @@ public sealed record OvertimeTaskDetailDto(
     decimal? ExcessHours      = null,
     // 結算時數（給付基準，2026-10 防灌工時）；null ＝ 舊單。審核者看到的 EstimatedHours 是「申請時數」，
     // 實際給付以打卡結算為準，兩者需分開呈現。
-    decimal? SettledHours     = null);
+    decimal? SettledHours     = null,
+    // 補加班：加班日早於送簽日（見 OvertimeBackfill）
+    bool     IsBackfill       = false);
 
 /// <summary>出差請款申請審核任務詳情 DTO</summary>
 public sealed record TravelPaymentTaskDetailDto(

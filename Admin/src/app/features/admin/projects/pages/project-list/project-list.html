@@ -17,6 +17,13 @@
   <div class="card border-0 shadow-sm">
     <div class="px-4 py-3 border-b">
       <div class="flex flex-wrap items-center gap-2">
+        <select class="form-select w-full sm:w-auto" style="min-width: 180px"
+                [ngModel]="departmentId() ?? ''" (ngModelChange)="onDepartmentChange($event)">
+          <option value="">全部部門</option>
+          @for (d of departments(); track d.id) {
+            <option [value]="d.id">{{ d.name }}</option>
+          }
+        </select>
         <select class="form-select" style="width: auto; min-width: 120px"
                 [(ngModel)]="selectedYearInput">
           <option [ngValue]="undefined">全部年度</option>

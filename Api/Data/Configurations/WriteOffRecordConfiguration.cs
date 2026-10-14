@@ -35,6 +35,16 @@ public class WriteOffRecordConfiguration : IEntityTypeConfiguration<WriteOffReco
         builder.Property(w => w.Note)
                .HasMaxLength(1000);
 
+        // 同仁繳回預支餘額（精度同 GrandTotal；URL 長度同 WriteOffItem.FileUrl）
+        builder.Property(w => w.ReturnedAmount)
+               .HasColumnType("decimal(18,2)");
+
+        builder.Property(w => w.ReturnedProofFileName)
+               .HasMaxLength(255);
+
+        builder.Property(w => w.ReturnedProofUrl)
+               .HasMaxLength(500);
+
         // 簽核流程欄位
         builder.Property(w => w.ApprovalStatus)
                .IsRequired()

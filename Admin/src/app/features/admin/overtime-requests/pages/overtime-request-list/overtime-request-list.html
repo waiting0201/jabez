@@ -33,7 +33,8 @@
           <tbody>
             @for (r of pagedRequests(); track r.id) {
               <tr>
-                <td class="font-monospace small">{{ r.requestNo || '—' }}</td>
+                <td class="font-monospace small">{{ r.requestNo || '—' }}
+                  @if (r.isBackfill) { <span class="badge bg-warning-subtle text-warning-emphasis ms-1">補加班</span> }</td>
                 <td class="fw-500">{{ r.overtimeDate | date:'yyyy-MM-dd' }}</td>
                 <td>
                   @if (r.projects.length) {

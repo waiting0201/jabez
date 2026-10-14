@@ -54,7 +54,15 @@ export class OvertimeRequestForm implements OnInit {
   isReturned = false;
   isDraft    = true;
   approvalStatus: ApprovalStatus = 'draft';
+  isBackfill = false;   // 載入的單是否為補加班（後端推導）
   requestNo = '';   // OT-yyyyMMdd-NNN；草稿尚未取號故為空
+  /** 目前選的加班日期是否早於今天（台北時區字串比較）→ 即時提示補加班 */
+  get isBackfillByDate(): boolean {
+    const d = this.form?.get('overtimeDate')?.value as string | null;
+    if (!d || d.length < 10) return false;
+    const today = new Intl.DateTimeFormat('en-CA', {timeZone: 'Asia/Taipei'}).format(new Date());
+    return d.slice(0, 10) < today;
+  }
   errorMsg = signal('');
   /** 儲存 / 送出進行中：鎖按鈕 + spinner，避免連按建出多張單（見 docs/frontend-design.md §8.4.1） */
   saving = signal(false);
@@ -274,6 +282,7 @@ export class OvertimeRequestForm implements OnInit {
         if (!r) return;
         this.approvalStatus = r.approvalStatus;
         this.requestNo      = r.requestNo ?? '';
+        this.isBackfill     = !!r.isBackfill;
         this.isDraft    = r.approvalStatus === 'draft';
         this.isReturned = r.approvalStatus === 'returned';
         this.isReadOnly = r.approvalStatus !== 'draft' && r.approvalStatus !== 'returned';

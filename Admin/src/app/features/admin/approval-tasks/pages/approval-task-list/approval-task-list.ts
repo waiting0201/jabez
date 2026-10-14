@@ -499,9 +499,10 @@ export class ApprovalTaskList {
       const d = t.overtimeDetail;
       const dateStr = new Date(d.overtimeDate).toLocaleDateString('zh-TW');
       const projects = (d.projects ?? []).map(p => `${p.projectCode} ${p.estimatedHours}h`).join('、');
+      const prefix = d.isBackfill ? '補加班・' : '';
       return projects
-        ? `${dateStr}・${d.estimatedHours} 小時（${projects}）・${d.reason}`
-        : `${dateStr}・${d.estimatedHours} 小時・${d.reason}`;
+        ? `${prefix}${dateStr}・${d.estimatedHours} 小時（${projects}）・${d.reason}`
+        : `${prefix}${dateStr}・${d.estimatedHours} 小時・${d.reason}`;
     }
     // 預支：加註本次送簽的批次（第1次 / 第N次追加）；追加批次另列本次金額與總額
     if (t.advanceDetail) {

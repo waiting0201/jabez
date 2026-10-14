@@ -1230,7 +1230,13 @@ UI 行為規範（5 種申請類型一致）：
 | 右：**已沖銷** | 第 1/2/3… 次沖銷（`WriteOffRecord.WriteOffNo`）+ 單號 + 金額，本單標 `本單` badge 並套底色，footer 為「已沖銷加總」 |
 | 下：**餘額列** | 本次沖銷 / 待沖銷餘額（負數為 `text-red`）/ 本次應撥差額（`refundDue > 0` 才顯示） |
 
-Input：`advanceRounds` / `writeOffHistory` / `currentGrandTotal` / `refundDue`。加總一律由陣列 `reduce` 推導，不吃任何快取欄位。
+Input：`advanceRounds` / `writeOffHistory` / `currentGrandTotal` / `refundDue` / `advanceReturnedTotal`（他單已核准繳回，後端帶回）/ `currentReturnedAmount`（本單繳回）。加總一律由陣列 `reduce` 推導，不吃任何快取欄位。
+
+**2026-10 底部新增「結清對帳」四行表**：原始預支金額 / 實際費用核銷 / 現金・匯款繳回 / **尚未結清金額**（= 預支 − 核銷 − 繳回，`unsettled()`）。≠ 0 以 `text-warning` + 「未結清」badge 警示（**只警示、不擋結案**）。已沖銷歷史列若該次有繳回，金額下方以小字「繳回 N」呈現。
+
+**同仁匯回預支餘額（現金／匯款繳回）**：
+- 唯讀呈現統一用 [`<app-write-off-returned-info>`](../Admin/src/app/shared/components/write-off-returned-info.ts)（金額 / 日期 / 證明檔），詳情頁、彙總頁（每張沖銷單卡內）、簽核頁共用；`amount` 為空或 0 整塊不顯示，點證明檔 emit `(preview)` 由父層開 `file-preview-modal`。
+- 表單（write-off-form）在「附件」卡上方有獨立卡片「同仁匯回預支餘額」：金額（min 0）+ 匯款／繳回日期（`min`/`max` 取 `date-bounds`）+ **單張證明上傳**（見 §12.1b）。**繳回金額不計入沖銷金額**；金額 > 0 時前端先擋「需日期與證明」，後端再驗一次。
 
 ### 7.8 支票已支付欄（預支沖銷明細）
 
@@ -1958,6 +1964,15 @@ this.service.submit(r.id).subscribe(updated => {
 </div>
 ```
 
+### 12.1b 單張證明上傳卡（金額 + 日期 + 一張圖片／PDF）
+
+預支沖銷「同仁匯回預支餘額」使用；與 §12.5b 的整單批次附件不同（那是多檔清單），此處**只收一個檔**，語意上是某個欄位的佐證：
+
+- `<label class="btn btn-outline-secondary">` 包 upload icon + 隱藏 `<input type="file" accept="image/*,.heic,.heif,application/pdf">`；選檔後經 `ImageCompressionService.compress(raw, {maxSize: 1600})`（HEIC 轉 JPEG、圖檔壓縮、PDF 原檔通過），**轉不了即拒收**並 toastr，不得送原檔。
+- 狀態四個 signal：新選的 `File`、其 blob 預覽網址、後端既有 `{name,url}`、`removeXxx` 旗標。已有檔時換成「縮圖（圖片才有）+ 檔名按鈕（開 `file-preview-modal`）+ `btn-ghost-danger` `#x` 移除」。
+- multipart：`returnedAmount`（**update 一律帶 key**，`''`＝無）、`returnedAt`、`returnedProofFile`；清除既有檔送 `removeReturnedProof=true`（使用者按移除且沒換新檔、或金額已清空）。
+- 驗證：金額 > 0 ⇒ 日期與證明（新檔或既有檔）皆必填，於 `save()` / `submitForApproval()` 前置檢查。
+
 ### 12.2 檔案壓縮（必要）
 
 **所有圖檔上傳一律走** [image-compression.service.ts](../Admin/src/app/shared/services/image-compression.service.ts)：
@@ -2168,9 +2183,20 @@ onTaxIdBlur() {
 
 ---
 
+## 12.7a 頭像旋轉 90°
+
+員工管理頭像卡（user-form）在「重設位置」旁有 `btn-outline-secondary`「旋轉 90°」鈕（`#rotate-cw` icon）。邏輯為 `rotateAvatar()`：
+- 已有待上傳的新檔 → 直接旋轉該 `File`；
+- 只有後端既有頭像 → 以 `HttpClient` 對 `/files/avatars/...` 代理網址取 blob（帶 JWT，不可用裸 `fetch`），旋轉後**當成新上傳檔**，存檔時走既有上傳流程；
+- 旋轉實作在 `ImageCompressionService.rotate90()`（canvas 順時針 90° → JPEG `File`），完成後 `resetAvatarPosition()`（原拖曳座標在新方向上無意義）。
+
 ## 12.7 Excel 匯出（SheetJS 前端產檔）
 
 Excel 一律**在前端產生**：後端只回 JSON（不設 `Content-Disposition`、不引入 ClosedXML / EPPlus），前端 `import * as XLSX from 'xlsx'` 組表後 `XLSX.writeFile(wb, 檔名)`。已採用：出缺勤 / 加班 / 款項統計三張報表 + **人事薪資總表**。
+
+> **報表新增欄位三處同改（2026-10 加班報表「申請類別」為例）**：`OvertimeReportRow` 介面 + `fetchData()` 手動 map（漏 map 會靜默顯示預設值，`isBackfill` 為 undefined 時一律顯示「申請加班」）+ `exportExcel()` 的 `wsData`（Excel 文字「申請加班／補申請加班」）；空列 `colspan` 同步（`canSeeAmount ? 10 : 9`）。badge：補申請加班 `bg-warning-subtle text-warning-emphasis`、申請加班 `bg-secondary-subtle text-secondary`。
+>
+> **「補加班」badge（2026-10）**：後端 DTO `isBackfill` 為單一真相（加班日 < 送簽日；草稿以今天判定），表單標題單號旁、清單單號欄、簽核詳情單號旁皆掛 `badge bg-warning-subtle text-warning-emphasis`「補加班」，簽核清單摘要前綴「補加班・」。表單另在日期欄下以 `form-text` 即時提示（台北時區字串比較，`Intl.DateTimeFormat('en-CA', {timeZone:'Asia/Taipei'})`）。
 
 ### 12.7.1 資料來源二選一
 
@@ -2424,13 +2450,13 @@ readonly canSeeAmount = inject(AuthService).hasPermission('reports-overtime:amou
 
 ### 依權限隱藏表單區塊（Section-level Permission）
 
-當被管制的不是表格欄，而是**表單裡的一整段欄位**時（例：[員工管理](../Admin/src/app/features/admin/users/pages/user-form/) 的薪資與勞健保欄、薪資調整歷史，需 `payroll:read`），同樣在 component 存一個 boolean 當單一真相，但另有四件事必須一起處理：
+當被管制的不是表格欄，而是**表單裡的一整段欄位**時（例：[員工管理](../Admin/src/app/features/admin/users/pages/user-form/) 的薪資與勞健保欄、薪資調整歷史，需 `users:salary-read`（2026-10 起獨立於人事薪資的 `payroll:read`）），同樣在 component 存一個 boolean 當單一真相，但另有四件事必須一起處理：
 
 ```typescript
 /** 受管制的控制項名單；與後端的抹除清單一一對應，新增欄位時兩邊都要改 */
 const SALARY_CONTROLS = ['baseSalary', 'mealAllowance', /* … */] as const;
 
-readonly canSeeSalary = this.authService.hasPermission('payroll:read');
+readonly canSeeSalary = this.authService.hasPermission('users:salary-read');
 ```
 
 1. **模板用 `@if` 包整段**。`@if` 不產生 DOM 節點，被包住的 `col-*` 直接從 `row g-3` 的 grid flow 消失，排版不受影響 —— 不需要調整 colspan 之類的補償。

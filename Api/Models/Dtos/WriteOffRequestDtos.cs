@@ -41,7 +41,13 @@ public sealed record WriteOffRequestDto(
     string?                   PaymentStatus = null,
     InstallmentDto[]?         AdvanceInstallments = null, // 關聯預支單的撥款分期（唯讀對照）
     string?                   AdvancePaymentStatus = null,
-    DateTime?                 AdvanceClosedAt = null);     // 關聯預支單的結案時間（供沖銷頁「預支單結案資訊」卡）
+    DateTime?                 AdvanceClosedAt = null,      // 關聯預支單的結案時間（供沖銷頁「預支單結案資訊」卡）
+    // ── 同仁繳回預支餘額（2026-10）──
+    decimal?                  ReturnedAmount = null,
+    DateTime?                 ReturnedAt = null,
+    string?                   ReturnedProofFileName = null,
+    string?                   ReturnedProofUrl = null,
+    decimal                   AdvanceReturnedTotal = 0);   // 同預支單「他單」已核准繳回合計（不含本單）
 
 /// <summary>同一張預支單底下的各次沖銷（供沖銷資訊卡列出第 N 次沖銷金額）</summary>
 public sealed record WriteOffRoundDto(
@@ -51,7 +57,8 @@ public sealed record WriteOffRoundDto(
     decimal  GrandTotal,
     string   ApprovalStatus,
     DateTime CreatedAt,
-    bool     IsCurrent);
+    bool     IsCurrent,
+    decimal? ReturnedAmount = null);   // 該次沖銷的同仁繳回金額（歷程列顯示用）
 
 // ── 依預支單彙總檢視 DTO ─────────────────────────────────────────────────────
 
@@ -130,7 +137,13 @@ public sealed record WriteOffTaskDetailDto(
     InstallmentDto[]?   AdvanceInstallments = null,  // 關聯預支單的撥款分期（簽核頁可編輯，與預支單同步）
     string?             AdvancePaymentStatus = null,
     DateTime?           AdvanceClosedAt = null,       // 關聯預支單的結案時間（供簽核頁「預支單結案資訊」卡）
-    bool                PendingClose = false);        // 財務已登記結案，待整張沖銷單核准後生效
+    bool                PendingClose = false,         // 財務已登記結案，待整張沖銷單核准後生效
+    // ── 同仁繳回預支餘額（2026-10）──
+    decimal?            ReturnedAmount = null,
+    DateTime?           ReturnedAt = null,
+    string?             ReturnedProofFileName = null,
+    string?             ReturnedProofUrl = null,
+    decimal             AdvanceReturnedTotal = 0);    // 同預支單「他單」已核准繳回合計（不含本單）
 
 // ── 支票已支付註記 ────────────────────────────────────────────────────────────
 
