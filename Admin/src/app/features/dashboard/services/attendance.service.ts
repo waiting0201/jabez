@@ -2,7 +2,7 @@ import {Injectable, inject} from '@angular/core';
 import {HttpClient} from '@angular/common/http';
 import {BehaviorSubject, Observable} from 'rxjs';
 import {tap} from 'rxjs/operators';
-import {TodayAttendance, ClockActionRequest, ClockActionType, ClockChallenge} from '../models/attendance.model';
+import {TodayAttendance, ClockActionRequest, ClockActionType, ClockChallenge, ProjectAllocationInput} from '../models/attendance.model';
 import {environment} from '@/environments/environment';
 
 @Injectable({providedIn: 'root'})
@@ -29,6 +29,13 @@ export class AttendanceService {
 
   clockOut(body: ClockActionRequest): Observable<TodayAttendance> {
     return this.http.post<TodayAttendance>(`${environment.apiUrl}/attendances/clock-out`, body).pipe(
+      tap(record => this.today$.next(record)),
+    );
+  }
+
+  /** 修改今日專案工時佔比（僅限自己今天、已打下班卡的紀錄；整批替換） */
+  updateTodayAllocations(projectAllocations: ProjectAllocationInput[]): Observable<TodayAttendance> {
+    return this.http.put<TodayAttendance>(`${environment.apiUrl}/attendances/today/project-allocations`, {projectAllocations}).pipe(
       tap(record => this.today$.next(record)),
     );
   }

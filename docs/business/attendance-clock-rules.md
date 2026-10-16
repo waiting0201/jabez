@@ -53,7 +53,7 @@
 | 動作 | 端點 | 前置條件 |
 |---|---|---|
 | 上班打卡 | `POST /attendances/clock-in` | 今日尚未打上班卡；**當下不在已核准請假時段內** |
-| 下班打卡 | `POST /attendances/clock-out` | 已打上班卡、尚未打下班卡；**當下不在已核准請假時段內** |
+| 下班打卡 | `POST /attendances/clock-out` | 已打上班卡、尚未打下班卡；**當下不在已核准請假時段內**；**須同時帶專案工時佔比 `projectAllocations`**（2026-10，新舊制皆必填：至少 1 個專案、合計 100%，驗證失敗整筆下班卡不成立；當天可用 `PUT /attendances/today/project-allocations` 修改，隔天鎖定。規則見 [project-work-hours.md](project-work-hours.md)） |
 | 加班開始 | `POST /attendances/overtime-start` | 今日尚未打加班開始卡；須帶**屬於自己**且日期為今日的 `approved` 加班申請單；**一般上班日須先打下班卡，休假日免下班卡**（見下節）。不受請假時段阻擋 |
 | 加班結束 | `POST /attendances/overtime-end` | 已打加班開始卡、尚未打加班結束卡。不受請假時段阻擋。**跨日加班**：隔天 06:00 前、今天沒有未結束的加班時，改接**前一天**未結束的那筆（見〈加班給付依實際打卡結算〉） |
 

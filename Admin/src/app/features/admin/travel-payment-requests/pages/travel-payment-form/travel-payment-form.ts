@@ -31,12 +31,13 @@ import {JobTitleLookup} from '../../../job-titles/models/job-title.model';
 import {UserLookup} from '../../../users/models/user.model';
 
 import {ScrollIntoViewDirective} from '@shared/directives/scroll-into-view.directive';
+import {ProjectTypeahead} from '@shared/components/project-typeahead';
 import {MAX_REQUEST_DATE, MIN_REQUEST_DATE} from '@shared/utils/date-bounds';
 
 @Component({
   selector: 'app-travel-payment-form',
   templateUrl: './travel-payment-form.html',
-  imports: [ReactiveFormsModule, FormsModule, RouterLink, DecimalPipe, ApprovalTimeline, FilePreviewModal, InstallmentsTable, DesignatedReviewersPicker, ScrollIntoViewDirective],
+  imports: [ReactiveFormsModule, FormsModule, RouterLink, DecimalPipe, ApprovalTimeline, FilePreviewModal, InstallmentsTable, DesignatedReviewersPicker, ScrollIntoViewDirective, ProjectTypeahead],
 })
 export class TravelPaymentForm implements OnInit {
   private fb             = inject(FormBuilder);

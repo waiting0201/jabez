@@ -49,6 +49,23 @@ export interface TodayAttendance {
   normalClockOutUntil?: string | null;
   /** 今日遲到界線（公司 09:30、自訂上下班時段 S+2 分、請上午半天假者 13:05），晚於此打上班卡須填遲到原因；未切換為 null */
   lateAfter?: string | null;
+  /** 今日下班打卡時填的專案工時佔比（尚未下班或系統補卡為空陣列） */
+  projectAllocations?: ProjectAllocation[];
+}
+
+/** 專案工時佔比（讀取：含案號與名稱供顯示） */
+export interface ProjectAllocation {
+  projectId: number;
+  projectCode: string;
+  projectName: string;
+  /** 佔比 %（0.01 ~ 100，全部加總須為 100） */
+  percentage: number;
+}
+
+/** 專案工時佔比（送出） */
+export interface ProjectAllocationInput {
+  projectId: number;
+  percentage: number;
 }
 
 export type ShiftDayTypeValue = 'work' | 'rest_day' | 'statutory_off' | 'public_holiday';
@@ -76,6 +93,8 @@ export interface ClockActionRequest {
   challengeToken?: string;
   /** Cloudflare Turnstile token（防機器人打卡；是否必填依後端 Turnstile:Mode） */
   turnstileToken?: string;
+  /** 下班打卡必填：專案工時佔比，至少一筆、專案不重複、合計 100 */
+  projectAllocations?: ProjectAllocationInput[];
 }
 
 /** 打卡挑戰碼：簽發後須等 minWaitMs 才可使用、expiresInMs 內有效（後端 AttendancePunchGuard） */

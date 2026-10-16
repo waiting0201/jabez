@@ -119,12 +119,8 @@
                 @if (isReadOnly || isSupplement) {
                   <p class="form-control-plaintext fw-500 font-monospace mb-0">{{ projectCode ? projectCode + ' - ' + projectName : '—' }}</p>
                 } @else {
-                  <select class="form-select" formControlName="projectId">
-                    <option [ngValue]="null">{{ loadingProjects ? '載入中…' : '— 請選擇專案 —' }}</option>
-                    @for (p of projects; track p.id) {
-                      <option [ngValue]="p.id">{{ p.code }} - {{ p.name }}{{ p.departmentName ? '（' + p.departmentName + '）' : '' }}</option>
-                    }
-                  </select>
+                  <app-project-typeahead formControlName="projectId" [projects]="projects"
+               [placeholder]="loadingProjects ? '載入中…' : '輸入案號或專案名稱搜尋…'"/>
                   @if (!loadingProjects && projects.length === 0) {
                     <div class="text-muted small mt-1">您目前可申請的專案清單為空，請聯絡主管或確認部門設定。</div>
                   }

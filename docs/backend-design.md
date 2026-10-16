@@ -493,6 +493,7 @@ RequestDateGuard.EnsurePastWithin(body.ChildBirthDate, "子女出生日期",
 
 | 守門 | 位置 | 規則 |
 |---|---|---|
+| 下班專案工時佔比 | `Common/ProjectAllocationValidator`（`Validate` 純函式 + `EnsureProjectsActiveAsync`） | clock-out 與 `PUT /attendances/today/project-allocations` 共用：至少 1 筆、專案不重複、每筆 > 0 且 ≤ 100 且最多 2 位小數、合計精確 = 100、專案須存在且 active；與下班卡同一次 SaveChanges 寫入，當日修改走 execution strategy 交易（先刪後加）；刪專案由 `ProjectHandler.DeleteAsync` 阻擋（NO_ACTION FK）。工時總表（`reports-work-hours:read`）的 8 小時常數單一真相為 `WorkHoursReportHandler.HoursPerDay`，見 [project-work-hours.md](business/project-work-hours.md) |
 | 打卡 | `Services/AttendancePunchGuard` | 強制 GPS + Cloudflare Turnstile（`Services/TurnstileVerifier`，`Turnstile:Mode` off / log / enforce，Cloudflare 連不到 fail-open）+ 一次性挑戰碼（見 9.5）+ `AttendancePunchLogs` |
 | 簽核授權 | `ApprovalTaskHandler.AuthorizeStepAsync` | 所有審核入口（單筆 / 批次 / 指定 / 升級）的**共同授權點**：審核者＝申請人一律 403；ApprovalItemId 為 null 或查無目前關卡一律 403（**不得再加「查無就放行」的出口**） |
 | 指定審核者 | `DesignatedReviewerHelper.ValidateAndNormalizeAsync`（送簽時） | 不可指定本人、不可指定非在職者、職級須嚴格高於申請人（Level < 申請人，同級不放行；申請人為全公司最高職級時豁免）、先選部門的關卡須屬該部門 |
@@ -802,7 +803,7 @@ builder.HasIndex(e => new { e.UserId, e.Order });  // 子表常需依 UserId 撈
 
 | delete 行為 | 處理 | 範例 |
 |---|---|---|
-| `Cascade` | DB 自動連帶刪除 | EmployeeProfile + 子表 / AttendanceRecords / UserRoles |
+| `Cascade` | DB 自動連帶刪除 | EmployeeProfile + 子表 / AttendanceRecords（及其 `AttendanceProjectAllocations`）/ UserRoles |
 | `SetNull` | DB 自動設 NULL | 各申請單 `SubmittedById` / `EmployeeId` |
 | `NoAction` | **會擋住刪除，須在 Handler 手動清洗** | 審核 / 撥款 / 代理 / 提醒 log 等欄位 |
 

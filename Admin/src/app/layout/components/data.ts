@@ -121,6 +121,12 @@ export const menuItems: MenuItemType[] = [
     requiredPermission: 'reports-overtime:read',
   },
   {
+    icon: '/assets/icons/sprite.svg#clock',
+    label: '工時總表',
+    url: '/admin/reports/work-hours',
+    requiredPermission: 'reports-work-hours:read',
+  },
+  {
     icon: '/assets/icons/sprite.svg#credit-card',
     label: '款項統計',
     url: '/admin/reports/payment',

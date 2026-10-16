@@ -945,6 +945,10 @@
     &.dropdown-menu-end { right: 0; left: auto; }
   }
 
+  /* 專案 autocomplete（NgbTypeahead，container=body）：須高於 modal(1055)，且避免長文字撐出視窗 */
+  ngb-typeahead-window.dropdown-menu { z-index: 1070; max-width: min(90vw, 36rem); max-height: 20rem; overflow-y: auto; }
+  ngb-typeahead-window .dropdown-item { white-space: normal; }
+
   .dropdown-item {
     display: flex; align-items: center; gap: 0.5rem;
     width: 100%; padding: 0.5rem 1rem;

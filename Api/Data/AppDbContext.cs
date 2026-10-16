@@ -32,6 +32,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<OvertimeRequest>  OvertimeRequests  { get; set; }
     public DbSet<OvertimeRequestProject> OvertimeRequestProjects { get; set; }
     public DbSet<AttendanceRecord> AttendanceRecords { get; set; }
+    public DbSet<AttendanceProjectAllocation> AttendanceProjectAllocations { get; set; }
     public DbSet<AttendancePunchLog> AttendancePunchLogs { get; set; }
     public DbSet<LoginAttempt> LoginAttempts { get; set; }
     public DbSet<AttendanceAuditLog> AttendanceAuditLogs { get; set; }

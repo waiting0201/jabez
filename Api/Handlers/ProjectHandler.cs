@@ -210,6 +210,10 @@ public sealed class ProjectHandler(AppDbContext db, IProjectReadService reader, 
         if (await db.OvertimeRequestProjects.AnyAsync(x => x.ProjectId == intId))
             throw AppException.BadRequest("此專案已被加班申請關聯，無法刪除。");
 
+        // AttendanceProjectAllocations.ProjectId 同為 NO_ACTION：清洗會讓歷史工時總表憑空少一塊，故阻擋
+        if (await db.AttendanceProjectAllocations.AnyAsync(x => x.ProjectId == intId))
+            throw AppException.BadRequest("此專案已被出勤打卡的工時分配引用，無法刪除。");
+
         db.Projects.Remove(project);
         await db.SaveChangesAsync();
 

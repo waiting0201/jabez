@@ -109,6 +109,8 @@ public static class PermissionCodes
     public const string ShiftScheduleViewAll = "shift-schedule:view-all";
     /// <summary>進入〈出勤／排休總覽表〉報表頁。</summary>
     public const string ReportsShiftScheduleRead = "reports-shift-schedule:read";
+    /// <summary>進入〈工時總表〉報表頁（專案 × 員工的工時佔比彙總）。</summary>
+    public const string ReportsWorkHoursRead = "reports-work-hours:read";
 
     /// <summary>檢視活動日清單。</summary>
     public const string ActivityDaysRead = "activity-days:read";

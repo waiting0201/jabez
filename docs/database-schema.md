@@ -6,7 +6,7 @@
 
 本地開發連線字串於 [Api/local.settings.json](../Api/local.settings.json)；遠端 Azure SQL 連線字串記在 memory `reference_azure_sql.md`（敏感資訊不入版控）。
 
-## 59 個資料表實體
+## 60 個資料表實體
 
 | 實體 | 說明 |
 |------|------|
@@ -56,6 +56,7 @@
 | `TravelWriteOffItem` | 出差預支沖銷明細（含發票號碼、檔案上傳） |
 | `RequestDesignatedReviewer` | 申請人指定審核者清單（多人依序審核；**ApprovalStepOrder** 綁定所屬 designated 步驟，支援一條流程多個指定步驟；**SelectedDepartmentId** 記錄第二步選的部門；唯一索引 `(RequestType, RequestId, ApprovalStepOrder, ReviewerId)`） |
 | `AttendanceRecord` | 出勤打卡紀錄（每人每天一筆，含 GPS；**2026-10 新增 `IsManuallyAdjusted` / `LastAdjustedById`（無 FK）/ `LastAdjustedAt`**：管理者修改後標示，系統補卡標記不再被清除；`IsClockInAuto` / `IsClockOutAuto` 標記上 / 下班時間為登入時系統補卡（非本人打卡，補的時間已避開請假時段）；`IsBusinessTrip` 標記該日為出差、由本人打卡時勾選；`Remark` 為管理者於出缺勤編輯表單填寫的備註，上限 500 字；四週彈性工時：`IsLate` / `IsEarlyLeave` 旗標、`ClockOutReason`（早退／逾時原因）、**`LateReason`（遲到原因，2026-10-06）**，兩個原因欄皆為員工打卡當下自填、上限 500 字） |
+| `AttendanceProjectAllocation` | 下班打卡的**專案工時佔比**（2026-10，一列一專案）：`AttendanceRecordId`（FK **Cascade**）/ `ProjectId`（FK **NO_ACTION**，刪專案時由 `ProjectHandler.DeleteAsync` **阻擋**）/ `Percentage` decimal(5,2) / `SortOrder`；唯一索引 `(AttendanceRecordId, ProjectId)`、索引 `ProjectId`。同一筆打卡紀錄合計恆為 100%；系統自動補下班卡等「有下班時間但無分配」的紀錄在工時總表歸「未分配」。見 [project-work-hours.md](business/project-work-hours.md) |
 | `AttendanceAuditLog` | 出缺勤人工修改的異動紀錄（2026-10）：AttendanceRecordId（FK Cascade）/ OwnerUserId、ModifiedById（**皆無 FK**，避免 1785 multiple cascade paths）/ ModifiedByName 快照 / RecordDate / 上下班與加班起訖各自的 Before・After / RemarkBefore・After；索引 `(AttendanceRecordId, ModifiedAt)`、`(OwnerUserId, RecordDate)` |
 | `ShiftScheduleDay` | **個人排班的某人某日日別**（四週彈性工時）：`DayType` = `work` / `rest_day` / `statutory_off`，唯一索引 `(UserId, Date)`。**國定假日不入表**（唯讀、不佔配額，一律由 `CalendarDay` 解析）；**上班日亦不落地**（查無紀錄即上班日，與解析器的退回順序一致） |
 | `ShiftScheduleMonth` | 個人排班的**整月狀態**：`Status` = `draft` / `committed` / `auto`，唯一索引 `(UserId, Year, Month)`。供「次月是否已完成排班」（20 號提醒）、「是否為系統自動排班」（26 號批次）判定；`AutoAssignedAt` 非 null 即代表該月班表非本人所排 |

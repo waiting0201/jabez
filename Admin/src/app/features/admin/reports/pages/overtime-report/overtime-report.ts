@@ -2,6 +2,8 @@ import {Component, computed, inject, OnInit, signal} from '@angular/core';
 import {CommonModule} from '@angular/common';
 import {FormsModule} from '@angular/forms';
 import {HttpClient} from '@angular/common/http';
+import {ProjectService} from '@/app/features/admin/projects/services/project.service';
+import {ProjectTypeahead} from '@shared/components/project-typeahead';
 import * as XLSX from 'xlsx';
 import {environment} from '@/environments/environment';
 import {ToastrService} from 'ngx-toastr';
@@ -42,10 +44,11 @@ const EXPORT_MAX_ROWS = 5000;
 @Component({
   selector: 'app-overtime-report',
   templateUrl: './overtime-report.html',
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, ProjectTypeahead],
 })
 export class OvertimeReport implements OnInit {
   private http = inject(HttpClient);
+  private projectService = inject(ProjectService);
   private toastr = inject(ToastrService);
 
   /**
@@ -58,7 +61,7 @@ export class OvertimeReport implements OnInit {
 
   /** 篩選條件 */
   selectedEmployeeId = signal('');
-  selectedProjectId = signal('');
+  selectedProjectId = signal<number | null>(null);
 
   /** 時段模式：日 / 週 / 月（預設月） */
   filterMode = signal<FilterMode>('month');
@@ -72,7 +75,7 @@ export class OvertimeReport implements OnInit {
   employees = signal<{id: string; code: string; name: string}[]>([]);
 
   /** 專案清單 */
-  projects = signal<{id: number; code: string; name: string}[]>([]);
+  projects = signal<{id: number; code: string; name: string; departmentName?: string | null}[]>([]);
 
   /** 年份選項 */
   years = signal<number[]>([]);
@@ -157,11 +160,12 @@ export class OvertimeReport implements OnInit {
   }
 
   loadProjects() {
-    this.http.get<any>(`${environment.apiUrl}/projects`).subscribe({
+    // 沿用原本的資料範圍（GET /projects）；改走 ProjectService，不在元件內直接打 API
+    this.projectService.getAll().subscribe({
       next: (res) => {
-        const items = res?.data?.items ?? res?.items ?? res ?? [];
+        const items: any[] = Array.isArray(res) ? res : ((res as any)?.items ?? []);
         this.projects.set(
-          items.map((p: any) => ({id: p.id, code: p.code, name: p.name ?? ''}))
+          items.map((p: any) => ({id: p.id, code: p.code, name: p.name ?? '', departmentName: p.departmentName ?? null}))
         );
       },
     });
@@ -182,7 +186,7 @@ export class OvertimeReport implements OnInit {
 
     const params: any = {page: this.currentPage(), pageSize: this.pageSize};
     if (this.selectedEmployeeId()) params.employeeId = this.selectedEmployeeId();
-    if (this.selectedProjectId()) params.projectId = this.selectedProjectId();
+    if (this.selectedProjectId()) params.projectId = String(this.selectedProjectId());
     const range = this.computeDateRange();
     if (range) {
       params.dateFrom = range.dateFrom;
@@ -238,7 +242,7 @@ export class OvertimeReport implements OnInit {
     // 匯出永遠只有前 100 筆且毫無提示（2026-09 修正，上限見 OvertimeReportHandler.ExportMaxPageSize）。
     const params: any = {page: 1, pageSize: EXPORT_MAX_ROWS, export: 'true'};
     if (this.selectedEmployeeId()) params.employeeId = this.selectedEmployeeId();
-    if (this.selectedProjectId()) params.projectId = this.selectedProjectId();
+    if (this.selectedProjectId()) params.projectId = String(this.selectedProjectId());
     const range = this.computeDateRange();
     if (range) {
       params.dateFrom = range.dateFrom;

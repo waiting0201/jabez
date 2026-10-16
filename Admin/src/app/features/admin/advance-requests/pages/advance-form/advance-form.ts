@@ -28,6 +28,7 @@ import {ToastrService} from 'ngx-toastr';
 import {convertHeicIfNeeded, heicFailedMessage} from '@shared/utils/heic';
 
 import {ScrollIntoViewDirective} from '@shared/directives/scroll-into-view.directive';
+import {ProjectTypeahead} from '@shared/components/project-typeahead';
 import {MAX_REQUEST_DATE, MIN_REQUEST_DATE} from '@shared/utils/date-bounds';
 
 /** 明細列的三個連動金額欄（總價 = 現金(預支) + 支票(月結)） */
@@ -36,7 +37,7 @@ type AmountField = 'total' | 'cash' | 'check';
 @Component({
   selector: 'app-advance-form',
   templateUrl: './advance-form.html',
-  imports: [ReactiveFormsModule, FormsModule, RouterLink, DecimalPipe, DatePipe, ApprovalTimeline, FilePreviewModal, InstallmentsTable, DesignatedReviewersPicker, ScrollIntoViewDirective],
+  imports: [ReactiveFormsModule, FormsModule, RouterLink, DecimalPipe, DatePipe, ApprovalTimeline, FilePreviewModal, InstallmentsTable, DesignatedReviewersPicker, ScrollIntoViewDirective, ProjectTypeahead],
 })
 export class AdvanceForm implements OnInit {
   private fb             = inject(FormBuilder);

@@ -37,12 +37,13 @@ import {VendorQuickAddModal} from '../../../vendors/components/vendor-quick-add-
 import {NgbModal, NgbTypeahead, NgbTypeaheadSelectItemEvent} from '@ng-bootstrap/ng-bootstrap';
 
 import {ScrollIntoViewDirective} from '@shared/directives/scroll-into-view.directive';
+import {ProjectTypeahead} from '@shared/components/project-typeahead';
 import {MAX_REQUEST_DATE, MIN_REQUEST_DATE} from '@shared/utils/date-bounds';
 
 @Component({
   selector: 'app-payment-form',
   templateUrl: './payment-form.html',
-  imports: [ReactiveFormsModule, FormsModule, RouterLink, DecimalPipe, DatePipe, FilePreviewModal, ApprovalTimeline, NgbTypeahead, InstallmentsTable, AttachmentsUpload, DesignatedReviewersPicker, ScrollIntoViewDirective],
+  imports: [ReactiveFormsModule, FormsModule, RouterLink, DecimalPipe, DatePipe, FilePreviewModal, ApprovalTimeline, NgbTypeahead, InstallmentsTable, AttachmentsUpload, DesignatedReviewersPicker, ScrollIntoViewDirective, ProjectTypeahead],
 })
 export class PaymentForm implements OnInit {
   private fb           = inject(FormBuilder);

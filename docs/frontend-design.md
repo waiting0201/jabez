@@ -677,6 +677,8 @@ setDirectorStatus(s: DirectorStatus) {
 ```
 
 > ⚠ **選項數量不可控時一律改用 `form-select` 下拉，不可平鋪 radio**：radio 群組只適用於選項固定且少量（角色、是 / 否、類型切換）的情境。若選項來自資料庫且筆數會成長（如「全部未結案專案」可達數百筆），平鋪會撐爆版面 —— 改用下拉；需要多選時改為[明細列表（FormArray）](#7-明細列表formarray)，每列一個下拉。加班申請的關聯專案即由 radio 平鋪改為此形式。
+>
+> **選「專案」一律用 [`<app-project-typeahead>`](#61-專案-autocompleteapp-project-typeahead)，不要用原生 `<select>`**（專案可達數百筆，下拉無法搜尋）。其他筆數會成長的主檔（廠商等）同理用 `NgbTypeahead`，見 §6.1 與 §11.5.4。
 
 ### 條件式欄位
 
@@ -842,6 +844,43 @@ import {MAX_REQUEST_DATE, MIN_REQUEST_DATE} from '@shared/utils/date-bounds';
 實例：`leave-revocation-form.html`「選擇要取消的日期」卡片。
 
 ---
+
+### 6.1 專案 autocomplete（`<app-project-typeahead>`）
+
+> 共用元件：[shared/components/project-typeahead.ts](../Admin/src/app/shared/components/project-typeahead.ts)。**全站「選專案」一律用它，禁止再寫原生 `<select>`**（專案數百筆，下拉無法搜尋）。已套用：請款 / 預審 / 預支 / 出差預支 / 出差請款 / 假日執行活動 / 加班（FormArray 每列）七張申請表單、加班紀錄報表篩選、工時總表篩選、下班打卡視窗的佔比列。
+
+**行為**：`NgbTypeahead` 包裝成 `ControlValueAccessor`，值 ＝ `projectId: number | null`。`debounceTime(150)`、`code` / `name` 不分大小寫 `includes`、最多 10 筆、`[editable]="false"`（只能從清單選）、打字後與已選專案不符即清空值、blur 觸發 touched。顯示格式 `code - name（部門）`；彈出層 `container="body"`（不被 `table-responsive` 切掉，z-index 高於 modal，見 tailwind.css `ngb-typeahead-window`）。
+
+**Inputs**
+
+| Input | 型別 | 說明 |
+|---|---|---|
+| `projects` | `{id, code, name, departmentName?}[]` | 候選清單，**由呼叫端載入**（元件內不打 API）。可晚於 `writeValue` 抵達，元件會自動重新解析顯示文字 |
+| `excludeIds` | `number[]` | 排除的專案 id（加班多列互斥，見 §7.5.1） |
+| `placeholder` | `string` | 預設「輸入案號或專案名稱搜尋…」；載入中可傳「載入中…」 |
+| `size` | `'sm' \| 'md'` | `sm` 用於明細表格內（`form-control-sm`） |
+| `allowClear` | `boolean` | 顯示 × 清除鈕。**選填欄位（不關聯專案）與報表篩選（空 ＝ 全部專案）使用**；必填欄位不開 |
+| `invalid` | `boolean` | 套 `is-invalid` 紅框。傳 `!!(ctrl.invalid && ctrl.touched)` |
+
+支援 `setDisabledState`（`form.disable()` 時輸入框一併 disabled）。
+
+**用法**
+
+```html
+<!-- 必填 -->
+<app-project-typeahead formControlName="projectId" [projects]="projects"
+                       [invalid]="!!(form.get('projectId')?.invalid && form.get('projectId')?.touched)"
+                       [placeholder]="loadingProjects ? '載入中…' : '輸入案號或專案名稱搜尋…'"/>
+<!-- 選填：清空 ＝ null -->
+<app-project-typeahead formControlName="projectId" [projects]="projects" [allowClear]="true"/>
+<!-- 非 reactive form（報表篩選）：ngModel 同樣可用，值為 number | null -->
+<app-project-typeahead [projects]="projects()" [allowClear]="true"
+                       [ngModel]="projectId()" (ngModelChange)="projectId.set($event)"/>
+```
+
+**不變的部分**：唯讀顯示（`projectCode - projectName` 純文字）、空清單提示（「您目前可申請的專案清單為空…」）、必填驗證訊息（`text-danger small mt-1`）、後端驗證，皆沿用原表單寫法，不由元件負責。
+
+**何時不用**：選項固定且少於約 10 筆（角色、類型）仍用 `form-select` / radio；非專案的長清單（廠商）沿用 §11.5.4 的 `NgbTypeahead` 寫法，不為單一主檔再抽元件。
 
 ## 7. 明細列表（FormArray）
 
@@ -1095,32 +1134,26 @@ items.forEach(it => this.invoiceArray.push(
 ));
 ```
 
-### 7.5.1 下拉排除已選項目（互斥 select）
+### 7.5.1 下拉排除已選項目（互斥專案 autocomplete）
 
-明細每列都要從**同一份清單**挑一個不重複的項目時（如加班申請的關聯專案：一列一專案、同單不可重複），每列的下拉必須排除其他列已選過的值 —— 前端先擋掉，後端仍須保留重複驗證：
+明細每列都要從**同一份清單**挑一個不重複的項目時（如加班申請的關聯專案：一列一專案、同單不可重複），每列的選擇器必須排除其他列已選過的值 —— 前端先擋掉，後端仍須保留重複驗證。專案一律用 [`<app-project-typeahead>`](#61-專案-autocompleteapp-project-typeahead)，以 `excludeIds` 傳入「其他列已選的 id」：
 
 ```ts
-/** 第 index 列可選的專案：排除其他列已選過的（後端亦擋重複專案） */
-availableProjects(index: number): Project[] {
-  const taken = new Set<number>(
-    this.projectControls
-        .filter((_, i) => i !== index)
-        .map(g => g.get('projectId')!.value as number | null)
-        .filter((v): v is number => v != null));
-  return this.projects.filter(p => !taken.has(p.id));
+/** 第 index 列要排除的專案 id：其他列已選過的（後端亦擋重複專案） */
+excludedProjectIds(index: number): number[] {
+  return this.projectControls
+      .filter((_, i) => i !== index)
+      .map(g => g.get('projectId')!.value as number | null)
+      .filter((v): v is number => v != null);
 }
 ```
 
 ```html
-<select class="form-select form-select-sm" formControlName="projectId">
-  <option [ngValue]="null" disabled>請選擇專案</option>
-  @for (p of availableProjects(i); track p.id) {
-    <option [ngValue]="p.id">{{ p.code }} - {{ p.name }}</option>
-  }
-</select>
+<app-project-typeahead size="sm" formControlName="projectId"
+                       [projects]="projects" [excludeIds]="excludedProjectIds(i)"/>
 ```
 
-> 目前該列已選的值**不會**被自己排除（`filter((_, i) => i !== index)`），否則下拉會顯示空白。
+> 目前該列已選的值**不會**被自己排除（`filter((_, i) => i !== index)`）；元件顯示文字取自 `projects` 全清單，不受 `excludeIds` 影響，故已選值不會變空白。
 
 ### 7.5.2 明細合計顯示於表頭欄位
 
@@ -1859,11 +1892,21 @@ openQuickAddVendor() {
 
 ### 11.5.4 觸發按鈕樣式
 
-下拉選單與按鈕並排（`flex gap-2`）：
+輸入框（廠商為 `NgbTypeahead`，不是 `<select>`）與按鈕並排（`flex gap-2`），寫法照抄 [payment-form](../Admin/src/app/features/admin/payment-requests/pages/payment-form/payment-form.html)：
 
 ```html
 <div class="flex gap-2">
-  <select class="form-select" formControlName="vendorId">…</select>
+  <input type="text" class="form-control"
+         [ngbTypeahead]="vendorSearch"
+         [resultFormatter]="vendorFormatter"
+         [inputFormatter]="vendorInputFormatter"
+         [editable]="false"
+         [(ngModel)]="vendorTypeaheadModel"
+         [ngModelOptions]="{standalone: true}"
+         (selectItem)="onVendorSelect($event)"
+         (input)="onVendorInput($event)"
+         (blur)="onVendorBlur()"
+         placeholder="輸入廠商名稱或統編搜尋…">
   <button type="button"
           class="btn btn-outline-primary inline-flex items-center gap-1 whitespace-nowrap"
           (click)="openQuickAddVendor()">
@@ -1872,6 +1915,8 @@ openQuickAddVendor() {
   </button>
 </div>
 ```
+
+新增成功後除了 `setValue(newVendor.id)`，還要把 `vendorTypeaheadModel = newVendor`，輸入框才會回填名稱。
 
 ### 11.5.5 後端權限取捨
 
@@ -2279,6 +2324,10 @@ try {
   可用來取代既有的 `window.confirm`（逐步汰換，不必一次改完）。
 
 ---
+
+### 11.7.1 下班打卡視窗（`<app-clock-out-modal>`）
+
+下班打卡不再使用 `ConfirmModal`，改用 [dashboard/components/clock-out-modal](../Admin/src/app/features/dashboard/components/clock-out-modal/clock-out-modal.ts)（規格不允許跳兩個視窗）：上方沿用出勤時長說明與新制早退／逾時必填原因，下方為**專案工時佔比** FormArray（每列 `<app-project-typeahead>` ＋ 百分比 input ＋ 刪除鈕，「＋新增專案」；首列預設 100、新增列預填剩餘 %、同專案不可重複、合計須 ＝ 100% 否則紅字且鎖住確認鈕）。新舊制皆會跳窗。`initial` 帶入既有佔比即為編輯模式（打卡頁「今日專案工時」的「修改」鈕，無原因欄）。用法同 ConfirmModal：`componentInstance` 塞欄位、`await ref.result`（取消 reject）。
 
 ## 12.8 月曆格狀 UI（FullCalendar）
 

@@ -44,6 +44,7 @@ public sealed class AppRouter(
     PayrollHandler         payroll,
     OvertimeReportHandler  overtimeReport,
     CompensatoryReportHandler compensatoryReport,
+    WorkHoursReportHandler workHoursReport,
     PaymentReportHandler   paymentReport,
     ProjectWaterLevelHandler projectWaterLevel,
     InvoiceOcrHandler      invoiceOcr,
@@ -429,6 +430,8 @@ public sealed class AppRouter(
             ("POST",   ["attendances", "clock-out"])      => await attendances.ClockOutAsync(req),
             ("POST",   ["attendances", "overtime-start"]) => await attendances.OvertimeStartAsync(req),
             ("POST",   ["attendances", "overtime-end"])   => await attendances.OvertimeEndAsync(req),
+            // 具體路徑須排在 ["attendances", var id] 之前
+            ("PUT",    ["attendances", "today", "project-allocations"]) => await attendances.UpdateTodayProjectAllocationsAsync(req),
             ("PUT",    ["attendances", var id])           => await attendances.UpdateAsync(req, id),
             ("PATCH",  ["attendances", var id])           => await attendances.UpdateAsync(req, id),
 
@@ -466,6 +469,8 @@ public sealed class AppRouter(
             // ── Reports ─────────────────────────────────────────────────────────
             ("GET",    ["reports", "overtime"])                    => await overtimeReport.GetAllAsync(req),
             ("GET",    ["reports", "compensatory"])                => await compensatoryReport.GetAllAsync(req),
+            ("GET",    ["reports", "work-hours", "daily"])         => await workHoursReport.GetDailyAsync(req),
+            ("GET",    ["reports", "work-hours"])                  => await workHoursReport.GetAllAsync(req),
             // due / export 兩條三段式必須排在兩段式 ["reports","payment"] 之前
             ("GET",    ["reports", "payment", "due"])              => await paymentReport.GetDueAsync(req),
             ("GET",    ["reports", "payment", "export"])           => await paymentReport.GetExportAsync(req),
@@ -771,6 +776,7 @@ public sealed class AppRouter(
             ("POST",   ["attendances", "overtime-end"])   => PermissionCodes.AttendancesWrite,
             // 管理端出缺勤報表：列表沿用既有 reports-attendance:read，人工修改需 reports-attendance:write
             ("GET",    ["attendances"])                   => PermissionCodes.ReportsAttendanceRead,
+            ("PUT",    ["attendances", "today", "project-allocations"]) => PermissionCodes.AttendancesWrite,
             ("PUT" or "PATCH", ["attendances", _])        => PermissionCodes.ReportsAttendanceWrite,
             // 未列舉的 attendances 子路由一律套較嚴的預設（新增端點時務必回來明確對應）
             ("GET",    ["attendances", ..])               => PermissionCodes.ReportsAttendanceRead,
@@ -807,6 +813,8 @@ public sealed class AppRouter(
             ("GET",    ["reports", "overtime"])                    => PermissionCodes.ReportsOvertimeRead,
             // 加班補休時數總表：沿用加班紀錄的權限碼（金額欄另由 Handler 依 reports-overtime:amount 抹除）
             ("GET",    ["reports", "compensatory"])                => PermissionCodes.ReportsOvertimeRead,
+            ("GET",    ["reports", "work-hours", "daily"])         => PermissionCodes.ReportsWorkHoursRead,
+            ("GET",    ["reports", "work-hours"])                  => PermissionCodes.ReportsWorkHoursRead,
             ("GET",    ["reports", "payment", "due"])              => PermissionCodes.ReportsPaymentRead,
             ("GET",    ["reports", "payment", "export"])           => PermissionCodes.ReportsPaymentRead,
             ("GET",    ["reports", "payment"])                     => PermissionCodes.ReportsPaymentRead,

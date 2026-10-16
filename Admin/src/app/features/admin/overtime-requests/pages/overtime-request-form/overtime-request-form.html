@@ -154,12 +154,8 @@
                         <tr [formGroupName]="i">
                           <td>{{ i + 1 }}</td>
                           <td>
-                            <select class="form-select form-select-sm" formControlName="projectId">
-                              <option [ngValue]="null" disabled>請選擇專案</option>
-                              @for (p of availableProjects(i); track p.id) {
-                                <option [ngValue]="p.id">{{ p.code }} - {{ p.name }}{{ p.departmentName ? '（' + p.departmentName + '）' : '' }}</option>
-                              }
-                            </select>
+                            <app-project-typeahead size="sm" formControlName="projectId" [projects]="projects" [excludeIds]="excludedProjectIds(i)"
+                                     [invalid]="!!(ctrl.get('projectId')?.invalid && ctrl.get('projectId')?.touched)"/>
                           </td>
                           <td>
                             <input type="number" class="form-control form-control-sm text-right"

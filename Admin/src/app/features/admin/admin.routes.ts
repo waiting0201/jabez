@@ -182,6 +182,8 @@ export const ADMIN_ROUTES: Routes = [
    loadComponent: () => import('./reports/pages/shift-schedule-report/shift-schedule-report').then(m => m.ShiftScheduleReport)},
   {path: 'reports/overtime',    component: OvertimeReport,   canActivate: [permissionGuard], data: {title: '加班紀錄',   permission: 'reports-overtime:read'}},
   {path: 'reports/compensatory', component: CompensatoryReport, canActivate: [permissionGuard], data: {title: '加班補休時數總表', permission: 'reports-overtime:read'}},
+  {path: 'reports/work-hours',  canActivate: [permissionGuard], data: {title: '工時總表', permission: 'reports-work-hours:read'},
+   loadComponent: () => import('./reports/pages/work-hours-report/work-hours-report').then(m => m.WorkHoursReport)},
   {path: 'reports/payment',    component: PaymentReport,    canActivate: [permissionGuard], data: {title: '款項統計',   permission: 'reports-payment:read'}},
   {path: 'reports/project-water-level', component: ProjectWaterLevel, canActivate: [permissionGuard], data: {title: '專案水位表', permission: 'reports-project-water-level:read'}},
 
