@@ -44,19 +44,18 @@
           </div>
 
           <div class="table-responsive">
-            <table class="table table-hover table-sticky-first mb-0" style="min-width: 720px">
+            <table class="table table-hover table-sticky-first mb-0" style="min-width: 640px">
               <thead class="table-light">
                 <tr>
                   <th>專案</th>
                   <th>部門</th>
                   <th>員工</th>
-                  <th class="text-right">天數</th>
                   <th class="text-right">工時(小時)</th>
                 </tr>
               </thead>
               <tbody>
                 @if (loading()) {
-                  <tr><td colspan="5" class="text-center text-muted py-4">載入中…</td></tr>
+                  <tr><td colspan="4" class="text-center text-muted py-4">載入中…</td></tr>
                 } @else {
                   @for (g of groups(); track g.key) {
                     @for (r of g.rows; track r.employeeId) {
@@ -64,7 +63,6 @@
                         <td>{{ g.label }}</td>
                         <td>{{ r.departmentName || '—' }}</td>
                         <td>{{ r.employeeName }}</td>
-                        <td class="text-right">{{ r.days | number:'1.0-1' }}</td>
                         <td class="text-right">{{ r.hours | number:'1.0-2' }}</td>
                       </tr>
                     }
@@ -72,18 +70,16 @@
                       <td>小計</td>
                       <td></td>
                       <td></td>
-                      <td class="text-right">{{ g.days | number:'1.0-1' }}</td>
                       <td class="text-right">{{ g.hours | number:'1.0-2' }}</td>
                     </tr>
                   } @empty {
-                    <tr><td colspan="5" class="text-center text-muted py-4">此區間查無工時資料。</td></tr>
+                    <tr><td colspan="4" class="text-center text-muted py-4">此區間查無工時資料。</td></tr>
                   }
                   @if (groups().length > 0) {
                     <tr class="fw-600" style="background: var(--bg-elevated)">
                       <td>總計</td>
                       <td></td>
                       <td></td>
-                      <td class="text-right">{{ grandTotal().days | number:'1.0-1' }}</td>
                       <td class="text-right">{{ grandTotal().hours | number:'1.0-2' }}</td>
                     </tr>
                   }

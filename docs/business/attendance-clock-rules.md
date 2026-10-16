@@ -195,6 +195,8 @@ IP 取自 `X-Forwarded-For` 第一段，僅供稽核、**不可作為授權依�
 補卡邏輯的單一真相為 [AttendanceAutoClockService](../../Api/Services/AttendanceAutoClockService.cs)
 （static、不呼叫 SaveChanges，比照 `LeaveRevocationService`）。
 
+> 補上的下班卡沒有專案工時佔比；2026-10-16 起的補卡日會在同仁**進入系統時強制逐日補填**，見 [project-work-hours.md](project-work-hours.md)。
+
 | 情境 | 撈取條件 | 補上的時間 |
 |---|---|---|
 | 漏打上班卡 | `ClockInTime IS NULL AND (ClockOutTime IS NOT NULL OR OvertimeStartTime IS NOT NULL)` | **該日應出勤起**（見下方「避開請假時段」） |

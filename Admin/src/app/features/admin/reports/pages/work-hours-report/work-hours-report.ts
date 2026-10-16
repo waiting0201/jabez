@@ -15,7 +15,6 @@ interface ProjectGroup {
   projectId: number | null;
   label: string;
   rows: WorkHoursRow[];
-  days: number;
   hours: number;
 }
 
@@ -59,12 +58,11 @@ export class WorkHoursReport implements OnInit {
           key,
           projectId: r.projectId,
           label: r.projectId == null ? '未分配' : `${r.projectCode ?? ''} ${r.projectName ?? ''}`.trim(),
-          rows: [], days: 0, hours: 0,
+          rows: [], hours: 0,
         };
         map.set(key, g);
       }
       g.rows.push(r);
-      g.days += r.days;
       g.hours = round2(g.hours + r.hours);
     }
     return [...map.values()];
@@ -72,7 +70,7 @@ export class WorkHoursReport implements OnInit {
 
   grandTotal = computed(() => {
     const gs = this.groups();
-    return {days: gs.reduce((a, g) => a + g.days, 0), hours: round2(gs.reduce((a, g) => a + g.hours, 0))};
+    return {hours: round2(gs.reduce((a, g) => a + g.hours, 0))};
   });
 
   ngOnInit(): void {
@@ -126,15 +124,15 @@ export class WorkHoursReport implements OnInit {
       const daily = await firstValueFrom(this.reportService.getDaily(q));
 
       // 工作表 1：工時總表（含小計與總計）
-      const aoa: (string | number)[][] = [['專案', '部門', '員工', '天數', '工時(小時)']];
+      const aoa: (string | number)[][] = [['專案', '部門', '員工', '工時(小時)']];
       for (const g of this.groups()) {
-        for (const r of g.rows) aoa.push([g.label, r.departmentName ?? '', r.employeeName, r.days, r.hours]);
-        aoa.push([`${g.label} 小計`, '', '', g.days, g.hours]);
+        for (const r of g.rows) aoa.push([g.label, r.departmentName ?? '', r.employeeName, r.hours]);
+        aoa.push([`${g.label} 小計`, '', '', g.hours]);
       }
       const t = this.grandTotal();
-      aoa.push(['總計', '', '', t.days, t.hours]);
+      aoa.push(['總計', '', '', t.hours]);
       const ws1 = XLSX.utils.aoa_to_sheet(aoa);
-      ws1['!cols'] = [{wch: 36}, {wch: 16}, {wch: 14}, {wch: 8}, {wch: 12}];
+      ws1['!cols'] = [{wch: 36}, {wch: 16}, {wch: 14}, {wch: 12}];
 
       // 工作表 2：逐日明細
       const ws2 = XLSX.utils.json_to_sheet((daily ?? []).map(d => ({

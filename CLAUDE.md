@@ -209,7 +209,7 @@ Admin/src/app/
 │       └── customizer/
 └── features/
     ├── dashboard/              # 打卡系統（即時時鐘、上下班/加班打卡、GPS；**路由需 `attendances:read`**，選單同步；未持有者由根路由 `resolveLandingUrl()` 導向個人資訊；**打卡按鈕上方有「出差（在外辦公）」勾選框**（2026-08 新增）：整天一個旗標 `AttendanceRecord.IsBusinessTrip`，四個打卡動作皆帶出並覆寫，初始值由 `/attendances/today` 帶回故不會被第二次打卡誤清，出缺勤清單以「出差」badge 呈現）；**防機器人打卡（2026-10 hotfix）**：按下打卡時並行「取 GPS＋取一次性挑戰碼＋取 Turnstile token」、不足 3 秒自動補等，**GPS 選填**（2026-10-11 取消強制；取定位失敗會自動降級改用 Wi-Fi／基地台定位重試一次），見 [docs/business/attendance-clock-rules.md §防機器人打卡](docs/business/attendance-clock-rules.md)
-    │   # **下班打卡視窗 `components/clock-out-modal/`**（2026-10-16）：取代原 ConfirmModal，新舊制皆跳窗，填專案工時佔比（合計須 100%）＋新制早退／逾時原因；已下班後今日卡片可「修改」（`PUT /attendances/today/project-allocations`，僅限今天）
+    │   # **下班打卡視窗 `components/clock-out-modal/`**（2026-10-16）：取代原 ConfirmModal，新舊制皆跳窗，填專案工時佔比（合計須 100%）＋新制早退／逾時原因；已下班後今日卡片可「修改」（`PUT /attendances/today/project-allocations`，僅限今天）；**系統補下班卡日（2026-10-16 起）於進系統時強制逐日補填**（`services/missing-allocation-prompt.service.ts`，由 MainLayout 觸發，`GET/PUT /attendances/missing-project-allocations`，只能補一次）
     │   ├── models/attendance.model.ts
     │   ├── services/attendance.service.ts
     │   └── pages/dashboard/

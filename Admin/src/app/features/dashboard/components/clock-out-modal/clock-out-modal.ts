@@ -10,12 +10,16 @@ import {ProjectAllocation, ProjectAllocationInput} from '../../models/attendance
 export interface ClockOutModalResult {
   reason: string | null;
   allocations: ProjectAllocationInput[];
+  /** 補填模式：是否把同一份佔比套用到其餘待補日（只在 `applyToRestCount > 0` 時可能為 true） */
+  applyToRest: boolean;
 }
 
 /**
  * 下班打卡視窗：取代原本的 ConfirmModal（規格不允許跳兩個視窗）。
  * 上方沿用出勤時長說明與早退／逾時原因欄（新制才有），下方為專案工時佔比（新舊制皆必填、合計須 = 100%）。
- * `mode='edit'` 為當日修改佔比：沒有原因欄與時長說明，帶入既有佔比。
+ * 當日修改佔比：沒有原因欄與時長說明，以 `initial` 帶入既有佔比。
+ * 系統補卡日補填：`forced = true`（無關閉鈕，呼叫端另需 `keyboard: false`），`allocationLabel` 改標日期，
+ * `applyToRestCount > 0` 時多一個「其餘 N 天套用相同佔比」勾選框。
  *
  * 用法與 ConfirmModal 相同：以 `componentInstance` 塞欄位，`await ref.result`，取消時 reject。
  */
@@ -32,7 +36,9 @@ export interface ClockOutModalResult {
         }
         {{ title }}
       </h5>
-      <button type="button" class="btn-close" (click)="cancel()"></button>
+      @if (closable()) {
+        <button type="button" class="btn-close" (click)="cancel()"></button>
+      }
     </div>
 
     <div class="modal-body">
@@ -56,7 +62,7 @@ export interface ClockOutModalResult {
       }
 
       <div class="flex items-center justify-between mb-2">
-        <label class="form-label fw-500 mb-0">今日專案工時佔比 <span style="color: var(--red)">*</span></label>
+        <label class="form-label fw-500 mb-0">{{ allocationLabel }} <span style="color: var(--red)">*</span></label>
         <span class="small fw-600" [style.color]="totalOk() ? 'var(--green)' : 'var(--red)'">
           合計 {{ total() }}%
         </span>
@@ -96,6 +102,14 @@ export interface ClockOutModalResult {
           <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#plus"></use></svg>
           新增專案
         </button>
+        @if (applyToRestCount > 0) {
+          <div class="form-check mt-3">
+            <input class="form-check-input" type="checkbox" id="applyToRest"
+                   [ngModel]="applyToRest()" (ngModelChange)="applyToRest.set($event)"
+                   [ngModelOptions]="{standalone: true}">
+            <label class="form-check-label" for="applyToRest">其餘 {{ applyToRestCount }} 天套用相同佔比</label>
+          </div>
+        }
         @if (errorText()) {
           <div class="small mt-2" style="color: var(--red)">{{ errorText() }}</div>
         }
@@ -103,7 +117,9 @@ export interface ClockOutModalResult {
     </div>
 
     <div class="modal-footer">
-      <button type="button" class="btn btn-outline-secondary" (click)="cancel()">{{ cancelText }}</button>
+      @if (closable()) {
+        <button type="button" class="btn btn-outline-secondary" (click)="cancel()">{{ cancelText }}</button>
+      }
       <button type="button" class="btn btn-primary" [disabled]="loadingProjects() || !totalOk()" (click)="confirm()">{{ confirmText }}</button>
     </div>
   `,
@@ -125,8 +141,15 @@ export class ClockOutModal implements OnInit {
   reasonPlaceholder = '';
   /** 編輯模式的既有佔比（也可能含已結案專案，會併入候選清單） */
   initial: ProjectAllocation[] = [];
+  /** 佔比區塊標題（補填模式改標日期） */
+  allocationLabel = '今日專案工時佔比';
+  /** 強制填寫：隱藏關閉與取消鈕（呼叫端須搭配 `backdrop: 'static', keyboard: false`） */
+  forced = false;
+  /** 補填模式：其餘待補天數，> 0 時顯示套用勾選框 */
+  applyToRestCount = 0;
 
   reason = signal('');
+  applyToRest = signal(false);
   showReasonError = signal(false);
   submitted = signal(false);
   loadingProjects = signal(true);
@@ -138,6 +161,11 @@ export class ClockOutModal implements OnInit {
   get rows(): FormArray<FormGroup> { return this.form.get('rows') as FormArray<FormGroup>; }
 
   totalOk(): boolean { return this.total() === 100; }
+
+  /** 強制模式只在「根本填不了」（專案載入失敗或沒有可選專案）時才放行關閉，避免把人鎖死在視窗裡 */
+  closable(): boolean {
+    return !this.forced || (!this.loadingProjects() && this.projects().length === 0);
+  }
 
   ngOnInit(): void {
     if (this.initial.length) {
@@ -161,7 +189,7 @@ export class ClockOutModal implements OnInit {
       error: () => {
         this.projects.set(this.initial.map(a => ({id: a.projectId, code: a.projectCode, name: a.projectName})));
         this.loadingProjects.set(false);
-        this.errorText.set('專案清單載入失敗，請關閉視窗後重試。');
+        this.errorText.set(this.forced ? '專案清單載入失敗，請重新整理頁面後重試。' : '專案清單載入失敗，請關閉視窗後重試。');
       },
     });
   }
@@ -219,7 +247,11 @@ export class ClockOutModal implements OnInit {
       return;
     }
     this.errorText.set('');
-    const result: ClockOutModalResult = {reason: this.reason().trim() || null, allocations};
+    const result: ClockOutModalResult = {
+      reason: this.reason().trim() || null,
+      allocations,
+      applyToRest: this.applyToRestCount > 0 && this.applyToRest(),
+    };
     this.activeModal.close(result);
   }
 

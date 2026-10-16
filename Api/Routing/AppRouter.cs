@@ -432,6 +432,8 @@ public sealed class AppRouter(
             ("POST",   ["attendances", "overtime-end"])   => await attendances.OvertimeEndAsync(req),
             // 具體路徑須排在 ["attendances", var id] 之前
             ("PUT",    ["attendances", "today", "project-allocations"]) => await attendances.UpdateTodayProjectAllocationsAsync(req),
+            ("GET",    ["attendances", "missing-project-allocations"]) => await attendances.GetMissingProjectAllocationsAsync(req),
+            ("PUT",    ["attendances", "missing-project-allocations"]) => await attendances.FillMissingProjectAllocationsAsync(req),
             ("PUT",    ["attendances", var id])           => await attendances.UpdateAsync(req, id),
             ("PATCH",  ["attendances", var id])           => await attendances.UpdateAsync(req, id),
 
@@ -777,6 +779,9 @@ public sealed class AppRouter(
             // 管理端出缺勤報表：列表沿用既有 reports-attendance:read，人工修改需 reports-attendance:write
             ("GET",    ["attendances"])                   => PermissionCodes.ReportsAttendanceRead,
             ("PUT",    ["attendances", "today", "project-allocations"]) => PermissionCodes.AttendancesWrite,
+            // 系統補下班卡日的佔比補填：員工對自己（Handler 內限本人紀錄）
+            ("GET",    ["attendances", "missing-project-allocations"]) => PermissionCodes.AttendancesRead,
+            ("PUT",    ["attendances", "missing-project-allocations"]) => PermissionCodes.AttendancesWrite,
             ("PUT" or "PATCH", ["attendances", _])        => PermissionCodes.ReportsAttendanceWrite,
             // 未列舉的 attendances 子路由一律套較嚴的預設（新增端點時務必回來明確對應）
             ("GET",    ["attendances", ..])               => PermissionCodes.ReportsAttendanceRead,

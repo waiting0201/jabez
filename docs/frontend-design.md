@@ -2329,6 +2329,11 @@ try {
 
 下班打卡不再使用 `ConfirmModal`，改用 [dashboard/components/clock-out-modal](../Admin/src/app/features/dashboard/components/clock-out-modal/clock-out-modal.ts)（規格不允許跳兩個視窗）：上方沿用出勤時長說明與新制早退／逾時必填原因，下方為**專案工時佔比** FormArray（每列 `<app-project-typeahead>` ＋ 百分比 input ＋ 刪除鈕，「＋新增專案」；首列預設 100、新增列預填剩餘 %、同專案不可重複、合計須 ＝ 100% 否則紅字且鎖住確認鈕）。新舊制皆會跳窗。`initial` 帶入既有佔比即為編輯模式（打卡頁「今日專案工時」的「修改」鈕，無原因欄）。用法同 ConfirmModal：`componentInstance` 塞欄位、`await ref.result`（取消 reject）。
 
+**強制補填模式**（2026-10-16，系統補下班卡日，由 `dashboard/services/missing-allocation-prompt.service.ts` 於 `MainLayout.ngOnInit` 觸發）：`forced = true` 隱藏 X 與取消鈕，呼叫端須同時 `backdrop: 'static', keyboard: false`；`allocationLabel` 改標日期；`applyToRestCount > 0` 顯示「其餘 N 天套用相同佔比」，結果帶 `applyToRest`。強制視窗的三條守則：
+- **一定要留逃生口**：只在「根本填不了」時才可關（`closable()`：專案清單載入完成卻是空的，含載入失敗），否則主檔出問題就把整站鎖死。
+- **查詢失敗放行、送出失敗不放行**（比照 `WorkModeService` 的安全側）。
+- **`MainLayout.ngOnDestroy` 要 `NgbModal.dismissAll()`**：登出或 token 失效導回登入頁時，無關閉鈕的視窗會殘留在登入頁上。
+
 ## 12.8 月曆格狀 UI（FullCalendar）
 
 專案的月曆一律用 **FullCalendar `dayGridMonth`**（`@fullcalendar/angular`，peer 支援 Angular 12–21）。

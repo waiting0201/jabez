@@ -68,6 +68,15 @@ export interface ProjectAllocationInput {
   percentage: number;
 }
 
+/** 系統補下班卡、尚未填專案佔比的日子（GET /attendances/missing-project-allocations） */
+export interface MissingAllocationDay {
+  id: number;
+  /** yyyy-MM-dd */
+  recordDate: string;
+  clockInTime: string | null;
+  clockOutTime: string | null;
+}
+
 export type ShiftDayTypeValue = 'work' | 'rest_day' | 'statutory_off' | 'public_holiday';
 
 export const SHIFT_DAY_TYPE_LABELS: Record<ShiftDayTypeValue, string> = {

@@ -2,7 +2,7 @@ import {Injectable, inject} from '@angular/core';
 import {HttpClient} from '@angular/common/http';
 import {BehaviorSubject, Observable} from 'rxjs';
 import {tap} from 'rxjs/operators';
-import {TodayAttendance, ClockActionRequest, ClockActionType, ClockChallenge, ProjectAllocationInput} from '../models/attendance.model';
+import {TodayAttendance, ClockActionRequest, ClockActionType, ClockChallenge, MissingAllocationDay, ProjectAllocationInput} from '../models/attendance.model';
 import {environment} from '@/environments/environment';
 
 @Injectable({providedIn: 'root'})
@@ -38,6 +38,16 @@ export class AttendanceService {
     return this.http.put<TodayAttendance>(`${environment.apiUrl}/attendances/today/project-allocations`, {projectAllocations}).pipe(
       tap(record => this.today$.next(record)),
     );
+  }
+
+  /** 本人「系統補下班卡、尚未填專案佔比」的日子（上線日之後、今天以前） */
+  getMissingAllocations(): Observable<MissingAllocationDay[]> {
+    return this.http.get<MissingAllocationDay[]>(`${environment.apiUrl}/attendances/missing-project-allocations`);
+  }
+
+  /** 補填系統補卡日的專案佔比（同一份佔比可套多天，只能補一次）；回傳剩餘待補清單 */
+  fillMissingAllocations(attendanceIds: number[], projectAllocations: ProjectAllocationInput[]): Observable<MissingAllocationDay[]> {
+    return this.http.put<MissingAllocationDay[]>(`${environment.apiUrl}/attendances/missing-project-allocations`, {attendanceIds, projectAllocations});
   }
 
   overtimeStart(body: ClockActionRequest): Observable<TodayAttendance> {
