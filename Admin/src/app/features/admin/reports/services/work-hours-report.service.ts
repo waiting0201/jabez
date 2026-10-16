@@ -11,7 +11,6 @@ export interface WorkHoursRow {
   projectId: number | null;
   projectCode: string | null;
   projectName: string | null;
-  days: number;
   hours: number;
 }
 

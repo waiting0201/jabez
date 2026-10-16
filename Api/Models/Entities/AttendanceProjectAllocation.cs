@@ -4,7 +4,8 @@ namespace Jabez.Api.Models.Entities;
 /// 下班打卡時填寫的「當日工時專案佔比」（一列一專案）。
 /// 同一筆 AttendanceRecord 的佔比合計恆為 100；工時總表以每天 8 小時 × Percentage / 100 計算
 /// （見 WorkHoursReportHandler.HoursPerDay），不看實際上下班時間。
-/// 當日可由本人整批替換，隔天起鎖定（無編輯入口）。
+/// 當日可由本人整批替換，隔天起鎖定；唯一例外是系統補下班卡日由本人補填一次
+/// （PUT /attendances/missing-project-allocations）。
 /// </summary>
 public class AttendanceProjectAllocation
 {

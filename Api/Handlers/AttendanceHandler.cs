@@ -213,7 +213,7 @@ public sealed class AttendanceHandler(
 
     /// <summary>
     /// 修改今日的專案工時佔比（整批替換）。只能改**自己今天、已打下班卡**的那筆；
-    /// 隔天起鎖定（此端點只認 Clock.Now 當日，沒有任何入口可改歷史日）。
+    /// 隔天起鎖定（此端點只認 Clock.Now 當日；歷史日只有系統補卡日可經 FillMissingProjectAllocationsAsync 補填一次）。
     /// </summary>
     public async Task<IActionResult> UpdateTodayProjectAllocationsAsync(HttpRequest req)
     {
@@ -249,6 +249,74 @@ public sealed class AttendanceHandler(
 
         var dto = await BuildTodayDtoAsync(userId);
         return new OkObjectResult(ApiResponse.Ok(dto, "專案工時已更新。"));
+    }
+
+    /// <summary>
+    /// 本人待補填專案佔比的日子：登入時系統自動補下班卡（IsClockOutAuto）的紀錄沒經過下班打卡視窗，
+    /// 前端進系統時以此清單逐日跳出強制視窗。
+    /// </summary>
+    public async Task<IActionResult> GetMissingProjectAllocationsAsync(HttpRequest req)
+    {
+        var userId = await GetUserIdAsync(req);
+        return new OkObjectResult(ApiResponse.Ok(await ListMissingAllocationDaysAsync(userId)));
+    }
+
+    /// <summary>
+    /// 補填系統補卡日的專案佔比（同一份佔比可一次套用多天）。
+    /// 這是「隔天鎖定」的唯一例外：每個 id 都必須仍在 <see cref="MissingAllocationDays"/> 內
+    /// （本人、系統補下班卡、上線日之後、今天以前、尚無佔比），故只能補一次、不能藉此改歷史已填的佔比。
+    /// 回傳剩餘待補清單。
+    /// </summary>
+    public async Task<IActionResult> FillMissingProjectAllocationsAsync(HttpRequest req)
+    {
+        var userId = await GetUserIdAsync(req);
+        var body   = await req.ReadFromJsonAsync<FillMissingAllocationsRequest>()
+                     ?? throw AppException.BadRequest("請求內容不可為空。");
+
+        var ids = (body.AttendanceIds ?? []).Distinct().ToList();
+        if (ids.Count == 0)
+            throw AppException.BadRequest("請指定要補填的日期。");
+
+        ProjectAllocationValidator.Validate(body.ProjectAllocations);
+        await ProjectAllocationValidator.EnsureProjectsActiveAsync(db, body.ProjectAllocations!);
+
+        var eligible = await MissingAllocationDays(userId)
+            .Where(a => ids.Contains(a.Id))
+            .Select(a => a.Id)
+            .ToListAsync();
+        if (eligible.Count != ids.Count)
+            throw AppException.BadRequest("所選日期不需補填或已補填過，請重新整理後再試。");
+
+        foreach (var id in ids)
+            db.AttendanceProjectAllocations.AddRange(
+                ProjectAllocationValidator.ToEntities(id, body.ProjectAllocations!));
+        await db.SaveChangesAsync();
+
+        return new OkObjectResult(ApiResponse.Ok(await ListMissingAllocationDaysAsync(userId), "專案工時已補填。"));
+    }
+
+    /// <summary>待補填佔比的判準單一真相（GET 清單與 PUT 驗證共用）。</summary>
+    private IQueryable<AttendanceRecord> MissingAllocationDays(Guid userId)
+    {
+        var today = Clock.Now.Date;
+        return db.AttendanceRecords.Where(a =>
+            a.UserId == userId
+            && a.IsClockOutAuto
+            && a.ClockOutTime != null
+            && a.RecordDate >= ProjectAllocationValidator.StartDate
+            && a.RecordDate < today
+            && !db.AttendanceProjectAllocations.Any(x => x.AttendanceRecordId == a.Id));
+    }
+
+    private async Task<List<MissingAllocationDayDto>> ListMissingAllocationDaysAsync(Guid userId)
+    {
+        var rows = await MissingAllocationDays(userId)
+            .AsNoTracking()
+            .OrderBy(a => a.RecordDate)
+            .Select(a => new { a.Id, a.RecordDate, a.ClockInTime, a.ClockOutTime })
+            .ToListAsync();
+        return [.. rows.Select(r => new MissingAllocationDayDto(
+            r.Id, r.RecordDate.ToString("yyyy-MM-dd"), r.ClockInTime, r.ClockOutTime))];
     }
 
     /// <summary>

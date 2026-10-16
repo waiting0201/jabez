@@ -217,6 +217,20 @@ public sealed record ProjectAllocationInput(int ProjectId, decimal Percentage);
 /// <summary>PUT /attendances/today/project-allocations：當日整批替換</summary>
 public sealed record UpdateProjectAllocationsRequest(IReadOnlyList<ProjectAllocationInput>? ProjectAllocations);
 
+/// <summary>
+/// GET /attendances/missing-project-allocations：本人「系統補下班卡、尚未填佔比」的日子（上線日之後、今天以前）。
+/// </summary>
+public sealed record MissingAllocationDayDto(
+    int       Id,
+    string    RecordDate,     // yyyy-MM-dd
+    DateTime? ClockInTime,
+    DateTime? ClockOutTime);
+
+/// <summary>PUT /attendances/missing-project-allocations：同一份佔比一次補進多天（只能補一次）</summary>
+public sealed record FillMissingAllocationsRequest(
+    IReadOnlyList<int>?                    AttendanceIds,
+    IReadOnlyList<ProjectAllocationInput>? ProjectAllocations);
+
 /// <summary>專案工時佔比（回應，依 SortOrder）</summary>
 public sealed record ProjectAllocationDto(
     int     ProjectId,

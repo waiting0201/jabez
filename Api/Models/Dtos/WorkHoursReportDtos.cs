@@ -11,7 +11,6 @@ public sealed record WorkHoursRowDto(
     int?     ProjectId,
     string?  ProjectCode,
     string?  ProjectName,
-    int      Days,       // 貢獻的打卡紀錄天數
     decimal  Hours);     // Σ 8 × 佔比% ÷ 100
 
 /// <summary>逐日明細：一列 ＝ (日期, 員工, 專案分配)；未分配的日子一天一列、Percentage 為 null、Hours 為 8。</summary>

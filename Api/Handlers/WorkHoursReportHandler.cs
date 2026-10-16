@@ -42,7 +42,6 @@ public sealed class WorkHoursReportHandler(
                 return new WorkHoursRowDto(
                     first.DepartmentName, first.EmployeeId, first.EmployeeName,
                     first.ProjectId, first.ProjectCode, first.ProjectName,
-                    g.Count(),
                     g.Sum(HoursOf));
             })
             .OrderBy(r => r.ProjectId is null ? 1 : 0)                       // 未分配排最後
