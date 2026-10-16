@@ -51,6 +51,8 @@ export interface TodayAttendance {
   lateAfter?: string | null;
   /** 今日下班打卡時填的專案工時佔比（尚未下班或系統補卡為空陣列） */
   projectAllocations?: ProjectAllocation[];
+  /** 今天下班打卡是否須填專案佔比（已到專案工時上線日）；false 時維持上線前流程、不顯示今日專案工時卡片 */
+  projectAllocationRequired?: boolean;
 }
 
 /** 專案工時佔比（讀取：含案號與名稱供顯示） */

@@ -145,7 +145,7 @@ Bug 修復：
 - [payroll-formula.md](docs/business/payroll-formula.md) — 薪資 7 條公式 + 健保眷屬計算
 - [hr-profile.md](docs/business/hr-profile.md) — 員工人事資料卡（3 Tab + 9 子表 + 整批替換）
 - [notifications.md](docs/business/notifications.md) — 通知系統清單（9 種 Email + 9 種 LINE Flex Message + 系統開關 + 打卡提醒）
-- [project-work-hours.md](docs/business/project-work-hours.md) — **專案工時佔比與工時總表**（2026-10-16）：下班打卡必填專案佔比（≥1 專案、合計 100%），當日可改、隔日鎖定；工時總表一律以**每日 8 小時 × 佔比**計（不扣請假、不含加班），無分配的日子（系統補下班卡等）列「未分配」；權限 `reports-work-hours:read` 上線不回填角色
+- [project-work-hours.md](docs/business/project-work-hours.md) — **專案工時佔比與工時總表**（2026-10-16 開發；**上線日由 app setting `ProjectAllocation__StartDate` 控制：staging 10/16、正式站 10/21，未設＝不啟用**）：下班打卡必填專案佔比（≥1 專案、合計 100%），當日可改、隔日鎖定；工時總表一律以**每日 8 小時 × 佔比**計（不扣請假、不含加班），無分配的日子（系統補下班卡等）列「未分配」；權限 `reports-work-hours:read` 上線不回填角色
 - [flexible-work-hours.md](docs/business/flexible-work-hours.md) — **四週彈性工時（技術規格；八個階段程式已全部實作並部署 staging，但 `SystemSetting.FlexibleWorkStartDate` 為 null ＝ 制度尚未切換，全系統行為與現行一致）**：勞基法 §30-1 框架 / 09:00–18:00＋午休 12:30–13:30 / 個人排班排例休（**例假未排滿或觸及連續 12 天・14 天 2 例假即擋存**，休假未滿只警示；**2026-09-29：例假 ≥4、例＋休合計不變，多排的例假由休假轉入** —— 滾動 14 天規則一年須 52 天例假、每月 4 天只有 48 天，一年約 4 個月必排 5 例）/ 出勤排休總覽表（三色）/ 打卡與加班連動 / **〈改班申請〉逐部門五條簽核路線**（2026-09-17 改，取代原單一三關；「含底下部門」走既有 `ApprovalItem` 祖先部門繼承，不需新功能）/ **國定假日出勤加倍工資**（前 8 小時加發 1 日日薪 ＋ 第 9 小時起走**平日級距**，故 `OvertimePayCalculator` 不需新增級距表、只需改日別解析；**2026-09-17 改：主管的活動日旗標可壓在國定假日上**，被指定者當天解鎖上下班打卡、不需加班單，第 9 小時起才提加班申請 —— 連帶使加倍工資的取數變成「打卡紀錄 ∪ 已核准加班單」且**須依日期去重**，同仁側月曆仍唯讀、仍不佔配額）/ 補休 FIFO（**1–6 月用至 7 月底→8 月薪資結算；7–12 月用至隔年 1 月底→隔年 2 月結算**）/ 假日執行活動退場 / **與現行系統差異對照 + §10 決議（含 2026-09-16 客戶回覆 21 項、2026-09-17 回覆 2 項）**
 - [flexible-work-go-live.md](docs/business/flexible-work-go-live.md) — 四週彈性工時**正式站上線執行清單**（2026-10-11 建立）：程式已上正式站、權限未開、切換日 null；依日期列出 Script 14 / 2027 行事曆 / 打卡提醒 cron / 13a 活動日權限 / 13b 排班權限 / Script 12 期初補休 ＋ 設定切換日 2026-11-01 / 上線後檢查，含確認用 SQL；11 月份照現行規則 10/25 截止（2026-10-11 決議不延長，切換前不自動排班）
 - [flexible-work-hours-client.md](docs/business/flexible-work-hours-client.md) — 四週彈性工時**客戶確認版**（v1.4）：無技術內容與法條罰鍰，A–F 六區塊**逐項寫明實際做法**（v1.3 移除「確認」勾選欄與「修正意見」欄，改為把畫面行為／時點／擋存條件寫清楚；**v1.4 依客戶 2026-09-17 回覆 2 項**：改班申請逐部門流程、國定假日活動出勤；文末原有的「兩點請一併確認」區塊已於 2026-09-18 依客戶要求整段移除，客戶版全文已無待確認事項）。⚠️ **與上一份需人工同步**，改技術規格時要回頭確認客戶版是否受影響
@@ -209,7 +209,7 @@ Admin/src/app/
 │       └── customizer/
 └── features/
     ├── dashboard/              # 打卡系統（即時時鐘、上下班/加班打卡、GPS；**路由需 `attendances:read`**，選單同步；未持有者由根路由 `resolveLandingUrl()` 導向個人資訊；**打卡按鈕上方有「出差（在外辦公）」勾選框**（2026-08 新增）：整天一個旗標 `AttendanceRecord.IsBusinessTrip`，四個打卡動作皆帶出並覆寫，初始值由 `/attendances/today` 帶回故不會被第二次打卡誤清，出缺勤清單以「出差」badge 呈現）；**防機器人打卡（2026-10 hotfix）**：按下打卡時並行「取 GPS＋取一次性挑戰碼＋取 Turnstile token」、不足 3 秒自動補等，**GPS 選填**（2026-10-11 取消強制；取定位失敗會自動降級改用 Wi-Fi／基地台定位重試一次），見 [docs/business/attendance-clock-rules.md §防機器人打卡](docs/business/attendance-clock-rules.md)
-    │   # **下班打卡視窗 `components/clock-out-modal/`**（2026-10-16）：取代原 ConfirmModal，新舊制皆跳窗，填專案工時佔比（合計須 100%）＋新制早退／逾時原因；已下班後今日卡片可「修改」（`PUT /attendances/today/project-allocations`，僅限今天）；**系統補下班卡日（2026-10-16 起）於進系統時強制逐日補填**（`services/missing-allocation-prompt.service.ts`，由 MainLayout 觸發，`GET/PUT /attendances/missing-project-allocations`，只能補一次）
+    │   # **下班打卡視窗 `components/clock-out-modal/`**（2026-10-16）：取代原 ConfirmModal，新舊制皆跳窗，填專案工時佔比（合計須 100%）＋新制早退／逾時原因；已下班後今日卡片可「修改」（`PUT /attendances/today/project-allocations`，僅限今天）；**系統補下班卡日（上線日起）於進系統時強制逐日補填**（`services/missing-allocation-prompt.service.ts`，由 MainLayout 觸發，`GET/PUT /attendances/missing-project-allocations`，只能補一次）
     │   ├── models/attendance.model.ts
     │   ├── services/attendance.service.ts
     │   └── pages/dashboard/
@@ -554,6 +554,7 @@ Api/
 │   │                                    ⚠ **切換日必須訂在未來月初、不可回溯設定** —— 回溯會讓舊制建立的單被新制時段重新解讀，
 │   │                                    全日假憑空多出 17:00–18:00 的假性應出勤（已於 staging 實測，見 flexible-work-hours.md §10.5）。
 │   │                                    5 個 `const int` 原地保留（值等同 Legacy），故既有 18 處引用零改動
+│   ├── ProjectAllocationSchedule.cs   # 專案工時佔比上線日（singleton，讀 app setting `ProjectAllocation__StartDate`，未設＝不啟用）：下班打卡收不收佔比 / 當日修改 / 補填清單 / 工時總表 / `GET /work-mode` 的 `isProjectAllocationActive` 全部以它判斷
 │   ├── LoginAttemptTracker.cs         # 登入失敗鎖定（2026-10）：以 Email 為鍵、5 次 / 15 分鐘，回 429；每次嘗試寫 `LoginAttempts`（常數在 Common/AuthPolicy.cs）
 │   ├── RefreshTokenRevoker.cs         # 撤銷某人全部 refresh token 的單一入口（改密碼 / 管理員設密碼 / 寄帳號通知 / 停用 / 角色變更 / 重用偵測）；同時換新 `Users.SecurityStamp`（2026-10 第二輪）使舊 access token 立即 401；`BumpSecurityStampAsync` 只換戳記不撤 refresh（改部門 / 職稱用），見 [docs/authentication.md](docs/authentication.md)
 │   ├── UserRateLimiter.cs             # 每人速率限制（2026-10 第二輪）：記憶體滑動視窗、以 JWT sub 為鍵，AppRouter 對 OCR（`/invoice-ocr` `/quote-ocr`）與 GCIS 統編查詢套用，超限 429；每實例獨立，數值集中在 `Limits`

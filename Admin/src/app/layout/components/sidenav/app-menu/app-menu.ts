@@ -8,6 +8,7 @@ import { LayoutService } from '@core/layout/services/layout.service';
 import { scrollToElement } from '@shared/utils/layout-utils';
 import { HasPermissionDirective } from '@shared/directives/has-permission.directive';
 import { AuthService } from '@core/auth/services/auth.service';
+import { WorkModeService } from '@shared/services/work-mode.service';
 
 @Component({
   selector: 'app-menu',
@@ -20,6 +21,7 @@ export class AppMenuComponent implements OnInit {
   router = inject(Router)
   layout = inject(LayoutService)
   private authService = inject(AuthService)
+  private workMode = inject(WorkModeService)
   @Input({ required: true }) menuItems: MenuItemType[] = [];
 
   @ViewChild('MenuItemWithChildren', { static: true })
@@ -43,6 +45,7 @@ export class AppMenuComponent implements OnInit {
 
     this.expandActivePaths(this.menuItems);
     setTimeout(() => this.scrollToActiveLink(), 100);
+    void this.workMode.load();
   }
 
   hasSubMenu(item: MenuItemType): boolean {
@@ -104,6 +107,10 @@ export class AppMenuComponent implements OnInit {
   /** 判斷選單項目是否可見（遞迴檢查權限與子項目） */
   isItemVisible(item: MenuItemType): boolean {
     if (item.requiredPermission && !this.authService.hasPermission(item.requiredPermission)) {
+      return false;
+    }
+    // 專案工時上線前隱藏（mode 未載入前視為未上線）
+    if (item.requiresProjectAllocation && !this.workMode.mode()?.isProjectAllocationActive) {
       return false;
     }
     // 有子選單時，至少一個子項目可見才顯示母選單

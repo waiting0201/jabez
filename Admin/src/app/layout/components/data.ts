@@ -125,6 +125,7 @@ export const menuItems: MenuItemType[] = [
     label: '工時總表',
     url: '/admin/reports/work-hours',
     requiredPermission: 'reports-work-hours:read',
+    requiresProjectAllocation: true,
   },
   {
     icon: '/assets/icons/sprite.svg#credit-card',

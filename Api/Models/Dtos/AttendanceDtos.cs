@@ -148,7 +148,12 @@ public sealed record TodayAttendanceDto(
     /// 今日下班打卡填寫的專案工時佔比（依 SortOrder；無則為空陣列）。
     /// 不存在於 AttendanceRecords 欄位，由 AttendanceHandler.BuildTodayDtoAsync 以 with { } 補上。
     /// </summary>
-    IReadOnlyList<ProjectAllocationDto>? ProjectAllocations = null);
+    IReadOnlyList<ProjectAllocationDto>? ProjectAllocations = null,
+    /// <summary>
+    /// 今天下班打卡是否須填專案佔比（＝ 已到專案工時上線日，見 IProjectAllocationSchedule）。
+    /// false 時前端維持上線前的下班打卡流程、不顯示今日專案工時卡片。
+    /// </summary>
+    bool ProjectAllocationRequired = false);
 
 /// <summary>
 /// 出缺勤報表合併用的原料列：區間內已核准的假單（尚未逐日展開）。

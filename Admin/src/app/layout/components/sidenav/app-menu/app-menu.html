@@ -45,7 +45,7 @@
       <ul class="sub-menu flex">
         @for (child of item.children; track $index) {
           <!-- menu item without any child -->
-          @if (!hasSubMenu(child)) {
+          @if (!hasSubMenu(child) && isItemVisible(child)) {
             <ng-container *appHasPermission="child.requiredPermission">
               <ng-container *ngTemplateOutlet="MenuItem;context:{item:child}"/>
             </ng-container>

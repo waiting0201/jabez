@@ -1,6 +1,7 @@
 using Jabez.Api.Common;
 using Jabez.Api.Data;
 using Jabez.Api.Models.Dtos;
+using Jabez.Api.Services;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -10,7 +11,7 @@ namespace Jabez.Api.Handlers;
 /// <summary>
 /// 系統設定 CRUD（單行模式，Id = 1）。
 /// </summary>
-public sealed class SettingsHandler(AppDbContext db)
+public sealed class SettingsHandler(AppDbContext db, IProjectAllocationSchedule allocationSchedule)
 {
     private const int SettingsId = 1;
 
@@ -47,6 +48,9 @@ public sealed class SettingsHandler(AppDbContext db)
         {
             flexibleWorkStartDate = switchDate,
             isFlexibleActive      = WorkdayHours.IsFlexible(Clock.Now, switchDate),
+            // 專案工時佔比上線日（app setting，非 SystemSetting）；同樣只供 UI 開關（例如工時總表選單）
+            projectAllocationStartDate = allocationSchedule.StartDate?.ToString("yyyy-MM-dd"),
+            isProjectAllocationActive  = allocationSchedule.IsActiveToday,
         }));
     }
 

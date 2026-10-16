@@ -1381,6 +1381,12 @@ Line__LoginChannelId              ↔ IConfiguration["Line:LoginChannelId"]
 | `Turnstile__AllowedHostnames` | 逗號分隔，比對 siteverify 回應的 hostname；空白＝不檢查 |
 | `App__ShiftScheduleOpenAllFutureMonths=true` | 個人排班的**所有月份**（過往月份、當月、未來月份）一律開放編輯，不受「過往唯讀」「當月僅能改當天」「開放期（前三個月 10 日 ～ 前一個月 25 日）」任何限制（2026-09-28 由「只開未來月份」擴大，供教育訓練以不同月份示範；鍵名沿用舊名以免重設）。對應 `ShiftScheduleWindow.OpenAllFutureMonths`，於 `Program.cs` 啟動時讀入，**改值後須重啟 Function App** |
 
+**兩環境值不同的上線日**：
+
+| App Setting | 作用 |
+|---|---|
+| `ProjectAllocation__StartDate` | 專案工時佔比功能上線日（`yyyy-MM-dd`；staging `2026-10-16`、正式站 `2026-10-21`）。**未設定＝不啟用**。由 `IProjectAllocationSchedule`（singleton）讀取，當天起自動生效；改值須重啟 Function App。規則見 [project-work-hours.md §上線日](business/project-work-hours.md) |
+
 ### 16.4 一次性 Seeder 工具（Startup Hook 模式）
 
 需一次性灌資料時（如批次匯入既有員工人事卡），比照 `Program.cs` 既有 `HolidayBlobCleanup` 寫法：在 `host.MigrateAsync()` 後的 `using (scope)` 區塊內，以**環境旗標**保護呼叫一個 `static RunAsync(AppDbContext, IBlobStorageService, IConfiguration)` 工具（獨立 try/catch 不阻擋啟動），重用已注入的 DI（DbContext / Blob / BCrypt / Clock），免另開 console 專案。

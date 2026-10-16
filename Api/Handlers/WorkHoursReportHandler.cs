@@ -22,7 +22,8 @@ namespace Jabez.Api.Handlers;
 /// </summary>
 public sealed class WorkHoursReportHandler(
     IWorkHoursReportReadService reader,
-    IProjectAccessResolver access)
+    IProjectAccessResolver access,
+    IProjectAllocationSchedule allocationSchedule)
 {
     /// <summary>每個工作天計入的工時（小時）。專案工時 ＝ HoursPerDay × 佔比% ÷ 100。</summary>
     public const decimal HoursPerDay = 8m;
@@ -86,6 +87,12 @@ public sealed class WorkHoursReportHandler(
 
         int? departmentId = int.TryParse(req.Query["departmentId"], out var did) ? did : null;
         int? projectId    = int.TryParse(req.Query["projectId"],    out var pid) ? pid : null;
+
+        // 專案工時上線前無資料；上線後只算上線日（含）之後，之前的紀錄本來就沒有佔比、全列未分配沒有意義
+        if (allocationSchedule.StartDate is not { } start || start > today)
+            return [];
+        if (dateFrom < start) dateFrom = start;
+        if (dateTo < dateFrom) return [];
 
         var scope = await access.ResolveAsync(req.HttpContext.User);
         return await reader.GetRowsAsync(scope, dateFrom, dateTo, departmentId, projectId);

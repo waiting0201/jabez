@@ -155,6 +155,8 @@ var host = new HostBuilder()
         // 四週彈性工時：per-user 日別解析（取代 WorkCalendarHelper 的 bool ignoreHolidays）
         services.AddScoped<IShiftScheduleReadService, ShiftScheduleReadService>();
         services.AddScoped<IWorkdayScheduleProvider, WorkdayScheduleProvider>();
+        // 專案工時佔比上線日（app setting ProjectAllocation:StartDate；未設 ＝ 不啟用）
+        services.AddSingleton<IProjectAllocationSchedule, ProjectAllocationSchedule>();
         services.AddScoped<IEmployeeWorkdaysFactory, EmployeeWorkdaysFactory>();
         services.AddScoped<IShiftScheduleReminderService, ShiftScheduleReminderService>();
         services.AddScoped<IAutoShiftScheduleService, AutoShiftScheduleService>();
