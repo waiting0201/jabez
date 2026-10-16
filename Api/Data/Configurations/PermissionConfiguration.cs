@@ -149,7 +149,9 @@ public class PermissionConfiguration : IEntityTypeConfiguration<Permission>
             // 現獨立成自己的碼，避免「開員工薪資欄」＝「同時開人事薪資頁」。
             // Id 2~77 已全滿；實際落地的 Id 由 migration 的 raw SQL 決定（78 若已被 UI 建立的權限占用則取 max+1），
             // 一律以 Code 解析，不依賴 Id。
-            new Permission { Id = "78", Code = "users:salary-read", Name = "薪資欄位檢視", Module = "員工管理", Description = "員工管理薪資欄位檢視" }
+            new Permission { Id = "78", Code = "users:salary-read", Name = "薪資欄位檢視", Module = "員工管理", Description = "員工管理薪資欄位檢視" },
+            // 統計報表－工時總表（2026-10）：Id 79 於 migration 內以 raw SQL 冪等落地（79 被占用則取 max+1），一律以 Code 解析
+            new Permission { Id = "79", Code = "reports-work-hours:read", Name = "工時總表", Module = "Reports" }
         );
     }
 }

@@ -147,6 +147,7 @@ var host = new HostBuilder()
         services.AddScoped<ITravelWriteOffRequestReadService, TravelWriteOffRequestReadService>();
         services.AddScoped<IOvertimeReportReadService, OvertimeReportReadService>();
         services.AddScoped<ICompensatoryReportReadService, CompensatoryReportReadService>();
+        services.AddScoped<IWorkHoursReportReadService, WorkHoursReportReadService>();
         services.AddScoped<IPaymentReportReadService, PaymentReportReadService>();
         services.AddScoped<IProjectWaterLevelReadService, ProjectWaterLevelReadService>();
         services.AddScoped<ICalendarDayReadService, CalendarDayReadService>();
@@ -194,6 +195,7 @@ var host = new HostBuilder()
         services.AddScoped<PayrollHandler>();
         services.AddScoped<OvertimeReportHandler>();
         services.AddScoped<CompensatoryReportHandler>();
+        services.AddScoped<WorkHoursReportHandler>();
         services.AddScoped<PaymentReportHandler>();
         services.AddScoped<ProjectWaterLevelHandler>();
         services.AddScoped<InvoiceOcrHandler>();

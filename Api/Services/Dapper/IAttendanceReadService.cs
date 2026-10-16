@@ -30,6 +30,9 @@ public interface IAttendanceReadService
 
     Task<TodayAttendanceDto?>              GetTodayAsync(Guid userId);
 
+    /// <summary>某筆打卡紀錄的專案工時佔比（依 SortOrder）；無則空清單。</summary>
+    Task<IReadOnlyList<ProjectAllocationDto>> GetProjectAllocationsAsync(int attendanceRecordId);
+
     /// <summary>
     /// 指定日期「加班已開始、尚未結束」的打卡紀錄；無則回 null。
     /// 供跨日加班（過午夜）在隔天凌晨補打結束卡：紀錄的 RecordDate 是加班開始那天，

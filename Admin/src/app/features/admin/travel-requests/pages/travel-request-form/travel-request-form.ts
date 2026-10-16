@@ -24,12 +24,13 @@ import {JobTitleLookup} from '../../../job-titles/models/job-title.model';
 import {UserLookup} from '../../../users/models/user.model';
 
 import {ScrollIntoViewDirective} from '@shared/directives/scroll-into-view.directive';
+import {ProjectTypeahead} from '@shared/components/project-typeahead';
 import {MAX_REQUEST_DATE, MIN_REQUEST_DATE} from '@shared/utils/date-bounds';
 
 @Component({
   selector: 'app-travel-request-form',
   templateUrl: './travel-request-form.html',
-  imports: [ReactiveFormsModule, FormsModule, RouterLink, DecimalPipe, DatePipe, ApprovalTimeline, InstallmentsTable, DesignatedReviewersPicker, ScrollIntoViewDirective],
+  imports: [ReactiveFormsModule, FormsModule, RouterLink, DecimalPipe, DatePipe, ApprovalTimeline, InstallmentsTable, DesignatedReviewersPicker, ScrollIntoViewDirective, ProjectTypeahead],
 })
 export class TravelRequestForm implements OnInit {
   private fb          = inject(FormBuilder);

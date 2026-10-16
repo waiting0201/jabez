@@ -1,0 +1,98 @@
+<div class="container-fluid py-3">
+  <div class="flex flex-wrap items-center justify-between gap-2 mb-6">
+    <div class="flex items-center gap-2">
+      <svg class="sa-icon text-primary" style="stroke: currentColor">
+        <use href="/assets/icons/sprite.svg#bar-chart-2"></use>
+      </svg>
+      <h4 class="mb-0">工時總表</h4>
+    </div>
+    <button type="button" class="btn btn-sm btn-outline-secondary"
+            [disabled]="rows().length === 0 || exporting()" (click)="exportExcel()">
+      @if (exporting()) { 匯出中… } @else { 匯出 Excel }
+    </button>
+  </div>
+
+  <div class="row g-4">
+    <div class="col-12">
+      <div class="card border-0 shadow-sm mb-4">
+        <div class="card-body p-0">
+
+          <div class="px-4 py-3 border-b">
+            <div class="flex flex-wrap items-center gap-2">
+              <input type="date" class="form-control w-full sm:w-auto" style="min-width: 150px"
+                     aria-label="日期起日"
+                     [ngModel]="dateFrom()" (ngModelChange)="dateFrom.set($event)">
+              <span class="text-muted small">~</span>
+              <input type="date" class="form-control w-full sm:w-auto" style="min-width: 150px"
+                     aria-label="日期迄日"
+                     [ngModel]="dateTo()" (ngModelChange)="dateTo.set($event)">
+              <select class="form-select w-full sm:w-auto" style="min-width: 140px"
+                      [ngModel]="departmentId()" (ngModelChange)="departmentId.set($event ? +$event : null)">
+                <option [ngValue]="null">全部部門</option>
+                @for (d of departments(); track d.id) { <option [ngValue]="d.id">{{ d.name }}</option> }
+              </select>
+              <div class="w-full sm:w-auto" style="min-width: 260px">
+                <app-project-typeahead [projects]="projects()" [allowClear]="true"
+                                       placeholder="全部專案（輸入案號或名稱搜尋）"
+                                       [ngModel]="projectId()" (ngModelChange)="projectId.set($event)"/>
+              </div>
+              <button type="button" class="btn btn-primary" (click)="load()">篩選</button>
+            </div>
+            <div class="text-xs text-muted mt-2">
+              工時以每天 8 小時 × 專案佔比計算（不扣請假、不含加班）；未填佔比的日子（系統補卡等）列為「未分配」。
+            </div>
+          </div>
+
+          <div class="table-responsive">
+            <table class="table table-hover table-sticky-first mb-0" style="min-width: 720px">
+              <thead class="table-light">
+                <tr>
+                  <th>專案</th>
+                  <th>部門</th>
+                  <th>員工</th>
+                  <th class="text-right">天數</th>
+                  <th class="text-right">工時(小時)</th>
+                </tr>
+              </thead>
+              <tbody>
+                @if (loading()) {
+                  <tr><td colspan="5" class="text-center text-muted py-4">載入中…</td></tr>
+                } @else {
+                  @for (g of groups(); track g.key) {
+                    @for (r of g.rows; track r.employeeId) {
+                      <tr [class.text-muted]="g.projectId == null">
+                        <td>{{ g.label }}</td>
+                        <td>{{ r.departmentName || '—' }}</td>
+                        <td>{{ r.employeeName }}</td>
+                        <td class="text-right">{{ r.days | number:'1.0-1' }}</td>
+                        <td class="text-right">{{ r.hours | number:'1.0-2' }}</td>
+                      </tr>
+                    }
+                    <tr class="fw-600" style="background: var(--bg-elevated)" [class.text-muted]="g.projectId == null">
+                      <td>小計</td>
+                      <td></td>
+                      <td></td>
+                      <td class="text-right">{{ g.days | number:'1.0-1' }}</td>
+                      <td class="text-right">{{ g.hours | number:'1.0-2' }}</td>
+                    </tr>
+                  } @empty {
+                    <tr><td colspan="5" class="text-center text-muted py-4">此區間查無工時資料。</td></tr>
+                  }
+                  @if (groups().length > 0) {
+                    <tr class="fw-600" style="background: var(--bg-elevated)">
+                      <td>總計</td>
+                      <td></td>
+                      <td></td>
+                      <td class="text-right">{{ grandTotal().days | number:'1.0-1' }}</td>
+                      <td class="text-right">{{ grandTotal().hours | number:'1.0-2' }}</td>
+                    </tr>
+                  }
+                }
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

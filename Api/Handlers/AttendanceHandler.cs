@@ -16,7 +16,8 @@ namespace Jabez.Api.Handlers;
 /// GET  /attendances/today     → 取得當前使用者今日打卡紀錄
 /// POST /attendances/clock-challenge → 取得一次性打卡挑戰碼（防機器人打卡）
 /// POST /attendances/clock-in  → 上班打卡
-/// POST /attendances/clock-out → 下班打卡
+/// POST /attendances/clock-out → 下班打卡（須帶 projectAllocations 專案工時佔比）
+/// PUT  /attendances/today/project-allocations → 當日修改專案工時佔比
 /// POST /attendances/overtime-start → 加班開始
 /// POST /attendances/overtime-end   → 加班結束
 /// </summary>
@@ -189,6 +190,10 @@ public sealed class AttendanceHandler(
                     : $"下班時間已超過應下班時間 {ctx.Profile.GraceMinutes} 分鐘，請填寫逾時原因。");
         }
 
+        // 專案工時佔比（新舊制皆必填）：與打卡同一次 SaveChanges 寫入，驗證失敗則整筆下班卡不成立
+        ProjectAllocationValidator.Validate(body.ProjectAllocations);
+        await ProjectAllocationValidator.EnsureProjectsActiveAsync(db, body.ProjectAllocations!);
+
         record.ClockOutTime      = now;
         record.ClockOutLatitude   = body.Latitude;
         record.ClockOutLongitude  = body.Longitude;
@@ -197,10 +202,53 @@ public sealed class AttendanceHandler(
         RefreshExceptionFlags(record, ctx, kind);
         record.ClockOutReason     = TrimReason(body.Reason);
 
+        db.AttendanceProjectAllocations.AddRange(
+            ProjectAllocationValidator.ToEntities(record.Id, body.ProjectAllocations!));
+
         await db.SaveChangesAsync();
 
         var dto = await BuildTodayDtoAsync(userId);
         return new OkObjectResult(ApiResponse.Ok(dto, "下班打卡成功。"));
+    }
+
+    /// <summary>
+    /// 修改今日的專案工時佔比（整批替換）。只能改**自己今天、已打下班卡**的那筆；
+    /// 隔天起鎖定（此端點只認 Clock.Now 當日，沒有任何入口可改歷史日）。
+    /// </summary>
+    public async Task<IActionResult> UpdateTodayProjectAllocationsAsync(HttpRequest req)
+    {
+        var userId = await GetUserIdAsync(req);
+        var body   = await req.ReadFromJsonAsync<UpdateProjectAllocationsRequest>()
+                     ?? throw AppException.BadRequest("請求內容不可為空。");
+
+        var today  = Clock.Now.Date;
+        var record = await db.AttendanceRecords
+            .FirstOrDefaultAsync(a => a.UserId == userId && a.RecordDate == today);
+
+        if (record is null || !record.ClockOutTime.HasValue)
+            throw AppException.BadRequest("今日尚未打下班卡，無法修改專案工時。");
+
+        ProjectAllocationValidator.Validate(body.ProjectAllocations);
+        await ProjectAllocationValidator.EnsureProjectsActiveAsync(db, body.ProjectAllocations!);
+
+        // 刪除與新增須同一交易（DbContext 啟用 EnableRetryOnFailure，須走 execution strategy）；
+        // 先刪後加，避開 (AttendanceRecordId, ProjectId) 唯一索引的順序問題
+        var strategy = db.Database.CreateExecutionStrategy();
+        await strategy.ExecuteAsync(async () =>
+        {
+            await using var tx = await db.Database.BeginTransactionAsync();
+            await db.AttendanceProjectAllocations
+                .Where(x => x.AttendanceRecordId == record.Id)
+                .ExecuteDeleteAsync();
+            db.AttendanceProjectAllocations.AddRange(
+                ProjectAllocationValidator.ToEntities(record.Id, body.ProjectAllocations!));
+            await db.SaveChangesAsync();
+            await tx.CommitAsync();
+        });
+        db.ChangeTracker.Clear();
+
+        var dto = await BuildTodayDtoAsync(userId);
+        return new OkObjectResult(ApiResponse.Ok(dto, "專案工時已更新。"));
     }
 
     /// <summary>
@@ -691,6 +739,11 @@ public sealed class AttendanceHandler(
             overtimeNotBefore   = canStartOvertimeNow ? null : nb;
         }
 
+        // 專案工時佔比：只帶「今天」的紀錄（跨日加班借用的前一天紀錄不顯示、也不可改）
+        IReadOnlyList<ProjectAllocationDto> allocations = record is { Id: > 0 } rec && rec.RecordDate.Date == now.Date
+            ? await reader.GetProjectAllocationsAsync(rec.Id)
+            : [];
+
         var flexFields = (
             FlexibleEnabled:      ctx.Flexible,
             DayType:              ctx.Flexible ? ctx.DayType : null,
@@ -722,7 +775,8 @@ public sealed class AttendanceHandler(
                 ClockLockReason:      flexFields.ClockLockReason,
                 ExpectedClockOutTime: flexFields.ExpectedClockOutTime,
                 NormalClockOutUntil:  flexFields.NormalClockOutUntil,
-                LateAfter:            flexFields.LateAfter)
+                LateAfter:            flexFields.LateAfter,
+                ProjectAllocations:   allocations)
             : record with
             {
                 TodayLeaves = leaves,
@@ -737,6 +791,7 @@ public sealed class AttendanceHandler(
                 ExpectedClockOutTime = flexFields.ExpectedClockOutTime,
                 NormalClockOutUntil  = flexFields.NormalClockOutUntil,
                 LateAfter            = flexFields.LateAfter,
+                ProjectAllocations   = allocations,
             };
     }
 }

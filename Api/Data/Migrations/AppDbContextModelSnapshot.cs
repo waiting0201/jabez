@@ -1129,6 +1129,36 @@ namespace Jabez.Api.Data.Migrations
                     b.ToTable("AttendanceAuditLogs");
                 });
 
+            modelBuilder.Entity("Jabez.Api.Models.Entities.AttendanceProjectAllocation", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("AttendanceRecordId")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("Percentage")
+                        .HasColumnType("decimal(5,2)");
+
+                    b.Property<int>("ProjectId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ProjectId");
+
+                    b.HasIndex("AttendanceRecordId", "ProjectId")
+                        .IsUnique();
+
+                    b.ToTable("AttendanceProjectAllocations", (string)null);
+                });
+
             modelBuilder.Entity("Jabez.Api.Models.Entities.AttendancePunchLog", b =>
                 {
                     b.Property<long>("Id")
@@ -4126,6 +4156,13 @@ namespace Jabez.Api.Data.Migrations
                             Description = "員工管理薪資欄位檢視",
                             Module = "員工管理",
                             Name = "薪資欄位檢視"
+                        },
+                        new
+                        {
+                            Id = "79",
+                            Code = "reports-work-hours:read",
+                            Module = "Reports",
+                            Name = "工時總表"
                         });
                 });
 
@@ -8012,6 +8049,25 @@ namespace Jabez.Api.Data.Migrations
                     b.Navigation("AttendanceRecord");
                 });
 
+            modelBuilder.Entity("Jabez.Api.Models.Entities.AttendanceProjectAllocation", b =>
+                {
+                    b.HasOne("Jabez.Api.Models.Entities.AttendanceRecord", "AttendanceRecord")
+                        .WithMany("ProjectAllocations")
+                        .HasForeignKey("AttendanceRecordId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Jabez.Api.Models.Entities.Project", "Project")
+                        .WithMany()
+                        .HasForeignKey("ProjectId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.Navigation("AttendanceRecord");
+
+                    b.Navigation("Project");
+                });
+
             modelBuilder.Entity("Jabez.Api.Models.Entities.AttendancePunchLog", b =>
                 {
                     b.HasOne("Jabez.Api.Models.Entities.User", "User")
@@ -9041,6 +9097,11 @@ namespace Jabez.Api.Data.Migrations
                     b.Navigation("DesignatedJobTitles");
 
                     b.Navigation("Exceptions");
+                });
+
+            modelBuilder.Entity("Jabez.Api.Models.Entities.AttendanceRecord", b =>
+                {
+                    b.Navigation("ProjectAllocations");
                 });
 
             modelBuilder.Entity("Jabez.Api.Models.Entities.CompensatoryLot", b =>

@@ -143,7 +143,12 @@ public sealed record TodayAttendanceDto(
     /// 今日遲到界線（超過即為遲到、上班打卡須填遲到原因）：公司 09:30、自訂時段 S+2 分、
     /// 請上午半天假者 13:05（見 ClockRules.LateThreshold）。未切換時為 null。
     /// </summary>
-    DateTime? LateAfter = null);
+    DateTime? LateAfter = null,
+    /// <summary>
+    /// 今日下班打卡填寫的專案工時佔比（依 SortOrder；無則為空陣列）。
+    /// 不存在於 AttendanceRecords 欄位，由 AttendanceHandler.BuildTodayDtoAsync 以 with { } 補上。
+    /// </summary>
+    IReadOnlyList<ProjectAllocationDto>? ProjectAllocations = null);
 
 /// <summary>
 /// 出缺勤報表合併用的原料列：區間內已核准的假單（尚未逐日展開）。
@@ -199,7 +204,25 @@ public sealed record ClockActionRequest(
     /// <summary>POST /attendances/clock-challenge 取得的一次性挑戰碼（防機器人打卡，必填）</summary>
     string? ChallengeToken = null,
     /// <summary>Cloudflare Turnstile token（防機器人打卡；是否必填依設定 Turnstile:Mode）</summary>
-    string? TurnstileToken = null);
+    string? TurnstileToken = null,
+    /// <summary>
+    /// 下班打卡的專案工時佔比（clock-out 必填：至少 1 筆、專案不重複、合計 100%，見 ProjectAllocationValidator）。
+    /// 其他打卡動作忽略此欄。
+    /// </summary>
+    IReadOnlyList<ProjectAllocationInput>? ProjectAllocations = null);
+
+/// <summary>專案工時佔比輸入（一列一專案）</summary>
+public sealed record ProjectAllocationInput(int ProjectId, decimal Percentage);
+
+/// <summary>PUT /attendances/today/project-allocations：當日整批替換</summary>
+public sealed record UpdateProjectAllocationsRequest(IReadOnlyList<ProjectAllocationInput>? ProjectAllocations);
+
+/// <summary>專案工時佔比（回應，依 SortOrder）</summary>
+public sealed record ProjectAllocationDto(
+    int     ProjectId,
+    string  ProjectCode,
+    string  ProjectName,
+    decimal Percentage);
 
 /// <summary>取得打卡挑戰碼</summary>
 public sealed record ClockChallengeRequest(string? Action);

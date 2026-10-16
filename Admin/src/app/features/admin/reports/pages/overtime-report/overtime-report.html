@@ -26,13 +26,11 @@
               <option [value]="emp.id">{{ emp.code }} {{ emp.name }}</option>
             }
           </select>
-          <select class="form-select" style="width: auto; min-width: 160px"
-                  [ngModel]="selectedProjectId()" (ngModelChange)="selectedProjectId.set($event)">
-            <option value="">全部專案</option>
-            @for (proj of projects(); track proj.id) {
-              <option [value]="proj.id">{{ proj.code }} - {{ proj.name }}</option>
-            }
-          </select>
+          <div class="w-full sm:w-auto" style="min-width: 240px">
+            <app-project-typeahead [projects]="projects()" [allowClear]="true"
+                                   placeholder="全部專案（輸入案號或名稱搜尋）"
+                                   [ngModel]="selectedProjectId()" (ngModelChange)="selectedProjectId.set($event)"/>
+          </div>
           <div class="inline-flex border rounded-md overflow-hidden">
             <button type="button" class="px-3 py-1.5 text-sm"
                     [class.bg-primary]="filterMode()==='day'" [class.text-white]="filterMode()==='day'"

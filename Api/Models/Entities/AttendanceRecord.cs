@@ -63,4 +63,6 @@ public class AttendanceRecord
     // Navigation
     public User?            User            { get; set; }
     public OvertimeRequest? OvertimeRequest { get; set; }
+    /// <summary>下班打卡填寫的專案工時佔比（依 SortOrder）</summary>
+    public List<AttendanceProjectAllocation> ProjectAllocations { get; set; } = [];
 }

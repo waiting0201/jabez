@@ -35,12 +35,13 @@ import {NgbModal, NgbTypeahead, NgbTypeaheadSelectItemEvent} from '@ng-bootstrap
 import {DesignatedReviewersPicker, DesignatedReviewerPayload} from '../../../../../shared/components/designated-reviewers-picker/designated-reviewers-picker';
 
 import {ScrollIntoViewDirective} from '@shared/directives/scroll-into-view.directive';
+import {ProjectTypeahead} from '@shared/components/project-typeahead';
 import {MAX_REQUEST_DATE, MIN_REQUEST_DATE} from '@shared/utils/date-bounds';
 
 @Component({
   selector: 'app-pre-review-form',
   templateUrl: './pre-review-form.html',
-  imports: [ReactiveFormsModule, FormsModule, RouterLink, DecimalPipe, DatePipe, FilePreviewModal, ApprovalTimeline, NgbTypeahead, AttachmentsUpload, DesignatedReviewersPicker, ScrollIntoViewDirective],
+  imports: [ReactiveFormsModule, FormsModule, RouterLink, DecimalPipe, DatePipe, FilePreviewModal, ApprovalTimeline, NgbTypeahead, AttachmentsUpload, DesignatedReviewersPicker, ScrollIntoViewDirective, ProjectTypeahead],
 })
 export class PreReviewForm implements OnInit {
   private fb           = inject(FormBuilder);

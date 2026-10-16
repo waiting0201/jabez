@@ -1,6 +1,7 @@
 import {Component, computed, inject, signal, OnInit, OnDestroy, ChangeDetectionStrategy, ElementRef, viewChild} from '@angular/core';
 import {NgbModal} from '@ng-bootstrap/ng-bootstrap';
 import {ConfirmModal, ConfirmModalResult} from '@/app/shared/components/confirm-modal';
+import {ClockOutModal, ClockOutModalResult} from '../../components/clock-out-modal/clock-out-modal';
 import {DatePipe, DecimalPipe} from '@angular/common';
 import {firstValueFrom, Observable} from 'rxjs';
 import {AuthService} from '@core/auth/services/auth.service';
@@ -10,7 +11,7 @@ import {TurnstileService} from '@/app/shared/services/turnstile.service';
 import {LineQuota} from '../../models/line-quota.model';
 import {OvertimeRequestService} from '@features/admin/overtime-requests/services/overtime-request.service';
 import {OvertimeRequest} from '@features/admin/overtime-requests/models/overtime-request.model';
-import {TodayAttendance, ClockActionType, ActiveLeave, SHIFT_DAY_TYPE_LABELS} from '../../models/attendance.model';
+import {TodayAttendance, ClockActionType, ProjectAllocationInput, ActiveLeave, SHIFT_DAY_TYPE_LABELS} from '../../models/attendance.model';
 import {LEAVE_TYPE_LABELS} from '@features/admin/leave-requests/models/leave-request.model';
 
 const DAY_NAMES = ['日', '一', '二', '三', '四', '五', '六'];
@@ -280,60 +281,90 @@ export class Dashboard implements OnInit, OnDestroy {
   }
 
   /**
-   * 下班打卡一律先跳確認對話框（防誤觸），早退／逾時的必填原因**併入同一個視窗**
-   * （規格明訂不另開第二個視窗）。三種情況以應下班時間 T 為界，互斥且涵蓋全部：
+   * 下班打卡一律先跳對話框（防誤觸），專案工時佔比（新舊制皆必填、合計 100%）與
+   * 早退／逾時的必填原因**併入同一個視窗**（規格明訂不另開第二個視窗）。
+   * 新制三種情況以應下班時間 T 為界，互斥且涵蓋全部：
    * `< T` 早退必填原因、`[T, T+30分]` 正常只需確認、`> T+30分` 逾時必填原因
    * （自訂上下班時段者 T 為固定下班時刻、容許帶 5 分，界線皆由後端 `normalClockOutUntil` 帶回）。
    * 出差只是出缺勤紀錄上的標記，不影響原因必填。
    *
-   * 舊制（尚未切換）不跳對話框，行為與原本完全一致。
+   * 舊制（尚未切換）只顯示專案區塊，不顯示出勤時長與原因欄。
    */
   async confirmAndClockOut(): Promise<void> {
     const r = this.todayRecord();
-    if (!r?.flexibleEnabled || !r.clockInTime) {
-      this.performAction('clock-out');
-      return;
-    }
 
-    const now = new Date();
-    const clockIn = new Date(r.clockInTime);
-    const worked = Math.max(0, now.getTime() - clockIn.getTime());
-    const workedText = `${Math.floor(worked / 3600000)} 小時 ${Math.floor((worked % 3600000) / 60000)} 分`;
-
-    const expected = r.expectedClockOutTime ? new Date(r.expectedClockOutTime) : null;
-    const diffMin = expected ? Math.round((expected.getTime() - now.getTime()) / 60000) : 0;
-    const isEarly = !!expected && now < expected;
-    // 逾時界線由後端依個人打卡參數算好（公司預設 +30 分、自訂上下班時段 +5 分），不在前端寫死
-    const normalUntil = r.normalClockOutUntil ? new Date(r.normalClockOutUntil) : null;
-    const isOvertime = !!normalUntil && now > normalUntil;
-
-    const ref = this.modal.open(ConfirmModal, {centered: true});
-    const ci = ref.componentInstance as ConfirmModal;
+    const ref = this.modal.open(ClockOutModal, {centered: true, size: 'lg', backdrop: 'static'});
+    const ci = ref.componentInstance as ClockOutModal;
     ci.title = '確認下班打卡';
-    ci.message = `目前出勤 ${workedText}`;
     ci.confirmText = '確定打卡';
 
-    if (isEarly) {
-      ci.tone = 'warning';
-      ci.detail = `今日出勤未達應下班時間（${this.timeText(expected!)}），尚差 ${diffMin} 分鐘。`;
-      ci.reasonLabel = '早退原因';
-      ci.reasonRequired = true;
-    } else if (isOvertime) {
-      ci.tone = 'warning';
-      ci.detail = `已超過應下班時間（${this.timeText(expected!)}）${Math.abs(diffMin)} 分鐘。`;
-      ci.reasonLabel = '逾時原因';
-      ci.reasonRequired = true;
-    } else if (expected) {
-      ci.detail = `應下班時間 ${this.timeText(expected)}，屬正常下班。`;
+    if (r?.flexibleEnabled && r.clockInTime) {
+      const now = new Date();
+      const clockIn = new Date(r.clockInTime);
+      const worked = Math.max(0, now.getTime() - clockIn.getTime());
+      const workedText = `${Math.floor(worked / 3600000)} 小時 ${Math.floor((worked % 3600000) / 60000)} 分`;
+
+      const expected = r.expectedClockOutTime ? new Date(r.expectedClockOutTime) : null;
+      const diffMin = expected ? Math.round((expected.getTime() - now.getTime()) / 60000) : 0;
+      const isEarly = !!expected && now < expected;
+      // 逾時界線由後端依個人打卡參數算好（公司預設 +30 分、自訂上下班時段 +5 分），不在前端寫死
+      const normalUntil = r.normalClockOutUntil ? new Date(r.normalClockOutUntil) : null;
+      const isOvertime = !!normalUntil && now > normalUntil;
+
+      ci.message = `目前出勤 ${workedText}`;
+
+      if (isEarly) {
+        ci.tone = 'warning';
+        ci.detail = `今日出勤未達應下班時間（${this.timeText(expected!)}），尚差 ${diffMin} 分鐘。`;
+        ci.reasonLabel = '早退原因';
+        ci.reasonRequired = true;
+      } else if (isOvertime) {
+        ci.tone = 'warning';
+        ci.detail = `已超過應下班時間（${this.timeText(expected!)}）${Math.abs(diffMin)} 分鐘。`;
+        ci.reasonLabel = '逾時原因';
+        ci.reasonRequired = true;
+      } else if (expected) {
+        ci.detail = `應下班時間 ${this.timeText(expected)}，屬正常下班。`;
+      }
     }
 
-    let result: ConfirmModalResult;
+    let result: ClockOutModalResult;
     try {
       result = await ref.result;            // 按「取消」會 reject → 不產生任何紀錄
     } catch {
       return;
     }
-    this.performAction('clock-out', result.reason);
+    this.performAction('clock-out', result.reason, result.allocations);
+  }
+
+  /** 今日專案工時摘要（已下班後顯示，當天可修改；今日端點只回今天的紀錄，隔天自然不顯示） */
+  allocations = computed(() => this.todayRecord()?.projectAllocations ?? []);
+
+  /** 開啟同一個視窗的編輯模式：只改專案佔比，不重打卡 */
+  async editAllocations(): Promise<void> {
+    if (this.loading()) return;
+    const ref = this.modal.open(ClockOutModal, {centered: true, size: 'lg', backdrop: 'static'});
+    const ci = ref.componentInstance as ClockOutModal;
+    ci.title = '修改今日專案工時';
+    ci.confirmText = '儲存';
+    ci.initial = this.allocations();
+
+    let result: ClockOutModalResult;
+    try {
+      result = await ref.result;
+    } catch {
+      return;
+    }
+    this.loading.set(true);
+    try {
+      const record = await firstValueFrom(this.attendanceService.updateTodayAllocations(result.allocations));
+      this.applyTodayRecord(record);
+      this.showToast('今日專案工時已更新', 'success');
+    } catch (err: any) {
+      this.showToast(err?.error?.message ?? err?.message ?? '更新失敗，請稍後重試', 'error');
+    } finally {
+      this.loading.set(false);
+    }
   }
 
   private timeText(d: Date): string {
@@ -345,7 +376,7 @@ export class Dashboard implements OnInit, OnDestroy {
    * 防機器人打卡（後端 AttendancePunchGuard）：挑戰碼不合規一律擋下；GPS 為選填（2026-10-11），取不到仍照常打卡。
    * Turnstile token 取不到時送 null，放不放行由後端模式決定。
    */
-  async performAction(type: ClockActionType, reason: string | null = null) {
+  async performAction(type: ClockActionType, reason: string | null = null, allocations: ProjectAllocationInput[] | null = null) {
     if (this.loading()) return;
     this.loading.set(true);
     this.gpsStatus.set('locating');
@@ -374,6 +405,7 @@ export class Dashboard implements OnInit, OnDestroy {
         reason: type === 'clock-in' || type === 'clock-out' ? reason : undefined,
         challengeToken: challenge.token,
         turnstileToken: turnstileToken ?? undefined,
+        projectAllocations: type === 'clock-out' && allocations ? allocations : undefined,
       };
 
       let obs$: Observable<TodayAttendance>;

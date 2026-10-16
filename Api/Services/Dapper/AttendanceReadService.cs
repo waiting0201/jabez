@@ -177,6 +177,19 @@ public sealed class AttendanceReadService(IDbConnection db) : IAttendanceReadSer
         return row is null ? null : MapTodayRow(row);
     }
 
+    public async Task<IReadOnlyList<ProjectAllocationDto>> GetProjectAllocationsAsync(int attendanceRecordId)
+    {
+        const string sql = """
+            SELECT al.ProjectId, p.Code AS ProjectCode, p.Name AS ProjectName, al.Percentage
+            FROM AttendanceProjectAllocations al
+            INNER JOIN Projects p ON p.Id = al.ProjectId
+            WHERE al.AttendanceRecordId = @AttendanceRecordId
+            ORDER BY al.SortOrder, al.Id
+            """;
+        var rows = await db.QueryAsync<ProjectAllocationDto>(sql, new { AttendanceRecordId = attendanceRecordId });
+        return [.. rows];
+    }
+
     public async Task<TodayAttendanceDto?> GetOpenOvertimeOnAsync(Guid userId, DateTime day)
     {
         const string sql = """

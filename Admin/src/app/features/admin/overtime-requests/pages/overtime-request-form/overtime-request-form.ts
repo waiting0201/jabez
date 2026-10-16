@@ -24,13 +24,14 @@ import {Department} from '../../../departments/models/department.model';
 import {ApprovalFlowStepSummary} from '../../../approvals/models/approval.model';
 
 import {ScrollIntoViewDirective} from '@shared/directives/scroll-into-view.directive';
+import {ProjectTypeahead} from '@shared/components/project-typeahead';
 import {MAX_REQUEST_DATE, MIN_REQUEST_DATE} from '@shared/utils/date-bounds';
 import {ShiftDayType} from '../../../shift-schedules/models/shift-schedule.model';
 
 @Component({
   selector: 'app-overtime-request-form',
   templateUrl: './overtime-request-form.html',
-  imports: [ReactiveFormsModule, FormsModule, RouterLink, DatePipe, DecimalPipe, ApprovalTimeline, DesignatedReviewersPicker, ScrollIntoViewDirective],
+  imports: [ReactiveFormsModule, FormsModule, RouterLink, DatePipe, DecimalPipe, ApprovalTimeline, DesignatedReviewersPicker, ScrollIntoViewDirective, ProjectTypeahead],
 })
 export class OvertimeRequestForm implements OnInit {
   private fb          = inject(FormBuilder);
@@ -205,14 +206,12 @@ export class OvertimeRequestForm implements OnInit {
     this.projectsArray.removeAt(index);
   }
 
-  /** 第 index 列可選的專案：排除其他列已選過的（後端亦擋重複專案） */
-  availableProjects(index: number): Project[] {
-    const taken = new Set<number>(
-      this.projectControls
-          .filter((_, i) => i !== index)
-          .map(g => g.get('projectId')!.value as number | null)
-          .filter((v): v is number => v != null));
-    return this.projects.filter(p => !taken.has(p.id));
+  /** 第 index 列的專案 autocomplete 要排除的 id：其他列已選過的（後端亦擋重複專案） */
+  excludedProjectIds(index: number): number[] {
+    return this.projectControls
+        .filter((_, i) => i !== index)
+        .map(g => g.get('projectId')!.value as number | null)
+        .filter((v): v is number => v != null);
   }
 
   /** 重算預估總時數（對齊後端 decimal(5,1)） */

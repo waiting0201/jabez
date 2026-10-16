@@ -145,6 +145,7 @@ Bug 修復：
 - [payroll-formula.md](docs/business/payroll-formula.md) — 薪資 7 條公式 + 健保眷屬計算
 - [hr-profile.md](docs/business/hr-profile.md) — 員工人事資料卡（3 Tab + 9 子表 + 整批替換）
 - [notifications.md](docs/business/notifications.md) — 通知系統清單（9 種 Email + 9 種 LINE Flex Message + 系統開關 + 打卡提醒）
+- [project-work-hours.md](docs/business/project-work-hours.md) — **專案工時佔比與工時總表**（2026-10-16）：下班打卡必填專案佔比（≥1 專案、合計 100%），當日可改、隔日鎖定；工時總表一律以**每日 8 小時 × 佔比**計（不扣請假、不含加班），無分配的日子（系統補下班卡等）列「未分配」；權限 `reports-work-hours:read` 上線不回填角色
 - [flexible-work-hours.md](docs/business/flexible-work-hours.md) — **四週彈性工時（技術規格；八個階段程式已全部實作並部署 staging，但 `SystemSetting.FlexibleWorkStartDate` 為 null ＝ 制度尚未切換，全系統行為與現行一致）**：勞基法 §30-1 框架 / 09:00–18:00＋午休 12:30–13:30 / 個人排班排例休（**例假未排滿或觸及連續 12 天・14 天 2 例假即擋存**，休假未滿只警示；**2026-09-29：例假 ≥4、例＋休合計不變，多排的例假由休假轉入** —— 滾動 14 天規則一年須 52 天例假、每月 4 天只有 48 天，一年約 4 個月必排 5 例）/ 出勤排休總覽表（三色）/ 打卡與加班連動 / **〈改班申請〉逐部門五條簽核路線**（2026-09-17 改，取代原單一三關；「含底下部門」走既有 `ApprovalItem` 祖先部門繼承，不需新功能）/ **國定假日出勤加倍工資**（前 8 小時加發 1 日日薪 ＋ 第 9 小時起走**平日級距**，故 `OvertimePayCalculator` 不需新增級距表、只需改日別解析；**2026-09-17 改：主管的活動日旗標可壓在國定假日上**，被指定者當天解鎖上下班打卡、不需加班單，第 9 小時起才提加班申請 —— 連帶使加倍工資的取數變成「打卡紀錄 ∪ 已核准加班單」且**須依日期去重**，同仁側月曆仍唯讀、仍不佔配額）/ 補休 FIFO（**1–6 月用至 7 月底→8 月薪資結算；7–12 月用至隔年 1 月底→隔年 2 月結算**）/ 假日執行活動退場 / **與現行系統差異對照 + §10 決議（含 2026-09-16 客戶回覆 21 項、2026-09-17 回覆 2 項）**
 - [flexible-work-go-live.md](docs/business/flexible-work-go-live.md) — 四週彈性工時**正式站上線執行清單**（2026-10-11 建立）：程式已上正式站、權限未開、切換日 null；依日期列出 Script 14 / 2027 行事曆 / 打卡提醒 cron / 13a 活動日權限 / 13b 排班權限 / Script 12 期初補休 ＋ 設定切換日 2026-11-01 / 上線後檢查，含確認用 SQL；11 月份照現行規則 10/25 截止（2026-10-11 決議不延長，切換前不自動排班）
 - [flexible-work-hours-client.md](docs/business/flexible-work-hours-client.md) — 四週彈性工時**客戶確認版**（v1.4）：無技術內容與法條罰鍰，A–F 六區塊**逐項寫明實際做法**（v1.3 移除「確認」勾選欄與「修正意見」欄，改為把畫面行為／時點／擋存條件寫清楚；**v1.4 依客戶 2026-09-17 回覆 2 項**：改班申請逐部門流程、國定假日活動出勤；文末原有的「兩點請一併確認」區塊已於 2026-09-18 依客戶要求整段移除，客戶版全文已無待確認事項）。⚠️ **與上一份需人工同步**，改技術規格時要回頭確認客戶版是否受影響
@@ -189,6 +190,7 @@ Admin/src/app/
 │   │                                     #   **轉不了丟例外、不得退回原檔**（舊版靜默存入 HEIC 導致 PR-20261001-001 無法預覽）。六支明細表單、ImageCompressionService、預覽 modal 共用；
 │   │                                     #   預覽 modal 遇 .heic 會經 `/files/{invoices|advance-files|write-off-invoices|travel-write-off-invoices}/{*path}` 代理取 bytes 轉檔
 │   │   └── safe-url.ts                   # **預覽 iframe / 連結 URL 白名單**（2026-10 第二輪安全修補）：只認自家 API / Blob 來源，擋 `javascript:` 與外部網址；auth.interceptor 的 Bearer 亦只附加給自家 API，見 [docs/backend-design.md §4.7](docs/backend-design.md)
+│   ├── components/project-typeahead.ts   # **專案 autocomplete 共用元件**（2026-10-16，NgbTypeahead + ControlValueAccessor，值＝projectId）：7 支申請表單與報表的專案選擇一律用它、不再用原生 select；清單由呼叫端傳入、`excludeIds` 做多列互斥、`allowClear` 供篩選用，見 [docs/frontend-design.md §6.1](docs/frontend-design.md)
 │   └── services/
 │       ├── turnstile.service.ts          # **Cloudflare Turnstile 人機驗證**（2026-10，打卡用）：script 第一次呼叫才動態載入、每次 render 新 widget 取 token 後即 remove、
 │       │                                 #   `interaction-only`（平常看不到）；**取不到 token 一律回 null、不在前端擋**（由後端 `Turnstile:Mode` 決定）。sitekey 在 `environment*.ts`，CSP 須放行 challenges.cloudflare.com
@@ -207,6 +209,7 @@ Admin/src/app/
 │       └── customizer/
 └── features/
     ├── dashboard/              # 打卡系統（即時時鐘、上下班/加班打卡、GPS；**路由需 `attendances:read`**，選單同步；未持有者由根路由 `resolveLandingUrl()` 導向個人資訊；**打卡按鈕上方有「出差（在外辦公）」勾選框**（2026-08 新增）：整天一個旗標 `AttendanceRecord.IsBusinessTrip`，四個打卡動作皆帶出並覆寫，初始值由 `/attendances/today` 帶回故不會被第二次打卡誤清，出缺勤清單以「出差」badge 呈現）；**防機器人打卡（2026-10 hotfix）**：按下打卡時並行「取 GPS＋取一次性挑戰碼＋取 Turnstile token」、不足 3 秒自動補等，**GPS 選填**（2026-10-11 取消強制；取定位失敗會自動降級改用 Wi-Fi／基地台定位重試一次），見 [docs/business/attendance-clock-rules.md §防機器人打卡](docs/business/attendance-clock-rules.md)
+    │   # **下班打卡視窗 `components/clock-out-modal/`**（2026-10-16）：取代原 ConfirmModal，新舊制皆跳窗，填專案工時佔比（合計須 100%）＋新制早退／逾時原因；已下班後今日卡片可「修改」（`PUT /attendances/today/project-allocations`，僅限今天）
     │   ├── models/attendance.model.ts
     │   ├── services/attendance.service.ts
     │   └── pages/dashboard/
@@ -375,6 +378,7 @@ Api/
 │   ├── TravelRequestHandler.cs        # 出差預支申請 CRUD（單號 TR-yyyyMMdd-NNN，假日執行活動為 HTR-yyyyMMdd-NNN，**皆送簽時取號**；預支後沖銷）
 │   ├── TravelPaymentRequestHandler.cs # 出差請款申請 CRUD（單號 TPR-yyyyMMdd-NNN，**送簽時取號**；小額代墊直接請款）
 │   ├── CompensatoryReportHandler.cs   # 加班補休時數總表（2026-10，`GET /reports/compensatory`）：日別判定（`OvertimePayCalculator.ResolveDayContextAsync`，與加班費同源四值日別）/ 級距切分（`SplitCompensatoryTiers`，不截斷，國定假日前 8 小時不列級距）/ 餘額（切換後 `CompensatoryLotService`、切換前 `Common/CompensatoryBalance`）/ 金額遮蔽皆在此，`CompensatoryReportReadService` 只取原料
+│   ├── WorkHoursReportHandler.cs      # **工時總表**（2026-10-16，`GET /reports/work-hours` + `/daily` 逐日明細供 Excel 第二張表，`reports-work-hours:read`）：`HoursPerDay = 8m` × 佔比；有下班時間但無分配者整天 8 小時列「未分配」；部門 scope 同補休總表
 │   ├── OvertimeRequestHandler.cs      # 加班申請 CRUD（含補償方式 compensatory / pay；`GET /overtime-requests/estimate?date=&hours=` 加班費即時試算，對象一律取 JWT sub、不接受 employeeId）
 │   ├── AdvanceRequestHandler.cs       # 預支申請 CRUD（單號 ADV-yyyyMMdd-NNN，**送簽時取號**；追加批次沿用父單單號）＋**追加預支批次**（POST/PATCH/DELETE /advance-requests/{id}/supplements[/{roundNo}]；新增即送簽、無草稿階段；有進行中批次時禁止整單編輯/刪除）
 │   ├── WriteOffRequestHandler.cs      # 預支沖銷申請 CRUD（獨立簽核流程）＋**依預支單彙總檢視**（GET /write-off-requests/by-advance/{advanceRequestId}，回傳預支單完整資訊 + 該單全部沖銷單）＋**差額撥款分期**（PATCH /write-off-requests/{id}/installments，SUM 對應 RefundDue 超支增額）＋**支票已支付註記**（PATCH /{id}/check-payments）
@@ -678,6 +682,7 @@ Api/
 │   │                                    而列表只列自己的單），2026-09 一併收斂＝補缺口而非放寬。兩個地雷：① TravelRequests 一表兩型，須依 `IsHolidayTravel` 傳 `travel` / `holiday_travel`，
 │   │                                    否則查不到自己的簽核足跡；② 路由層權限碼仍在最外層（無 `xxx-requests:read` 者在 AppRouter 就 403，根本進不到這裡）
 │   ├── RequestDateGuard.cs            # 申請單「使用者輸入日期」年份合理性單一真相（2026-09 新增，純函式無 I/O）：今日 ±3 年（子女出生日期另為「過去 3 年內且不得晚於今日」），
+│   ├── ProjectAllocationValidator.cs  # 下班打卡專案佔比驗證單一真相（2026-10-16）：≥1 筆、專案不重複、每筆 0.01–100 且最多 2 位小數、合計恰 100、專案須 active；clock-out 與當日修改共用。資料存 `AttendanceProjectAllocation`（AttendanceRecord 子表，Cascade；Project 為 NO_ACTION，刪專案時被引用即擋）
 │   │                                    超出回 400 且訊息點名「是否誤填民國年」。10 種申請表的 Create / Update 全數套用（Ensure / EnsureAll / EnsureEach / EnsurePastWithin）。
 │   │                                    三個地雷：① 範圍是防呆不是業務規則（±3 年須容納育嬰留停 730 天的迄日）；② 必須排在該類型的資格 / 額度驗證之前，
 │   │                                    否則誤植年份會先撞上「子女未滿 3 歲」這類訊息；③ `default(DateTime)` 不進 guard（要回「必填」而非「0001-01-01 超出範圍」）。

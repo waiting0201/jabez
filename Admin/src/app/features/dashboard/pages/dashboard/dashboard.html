@@ -63,6 +63,29 @@
               </div>
             </div>
           </div>
+
+          <!-- 今日專案工時（已下班後顯示；僅今天的紀錄，可當日修改） -->
+          @if (todayRecord()?.clockOutTime) {
+            <div class="mt-4 pt-3 border-t">
+              <div class="flex flex-wrap items-center justify-between gap-2 mb-2">
+                <span class="fw-600">今日專案工時</span>
+                <button type="button" class="btn btn-sm btn-outline-primary" [disabled]="loading()" (click)="editAllocations()">修改</button>
+              </div>
+              @if (allocations().length > 0) {
+                <ul class="list-unstyled mb-0 small">
+                  @for (a of allocations(); track a.projectId) {
+                    <li class="flex flex-wrap gap-x-2">
+                      <span class="font-monospace fw-500">{{ a.projectCode }}</span>
+                      <span class="text-muted">{{ a.projectName }}</span>
+                      <span class="fw-600">{{ a.percentage }}%</span>
+                    </li>
+                  }
+                </ul>
+              } @else {
+                <p class="text-muted small mb-0">尚未分配專案工時（系統補卡或未填寫），可按「修改」補填。</p>
+              }
+            </div>
+          }
         </div>
       </div>
 
