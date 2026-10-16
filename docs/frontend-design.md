@@ -845,11 +845,11 @@ import {MAX_REQUEST_DATE, MIN_REQUEST_DATE} from '@shared/utils/date-bounds';
 
 ---
 
-### 6.1 專案 autocomplete（`<app-project-typeahead>`）
+### 6.1 專案 autocomplete / 下拉 combobox（`<app-project-typeahead>`）
 
 > 共用元件：[shared/components/project-typeahead.ts](../Admin/src/app/shared/components/project-typeahead.ts)。**全站「選專案」一律用它，禁止再寫原生 `<select>`**（專案數百筆，下拉無法搜尋）。已套用：請款 / 預審 / 預支 / 出差預支 / 出差請款 / 假日執行活動 / 加班（FormArray 每列）七張申請表單、加班紀錄報表篩選、工時總表篩選、下班打卡視窗的佔比列。
 
-**行為**：`NgbTypeahead` 包裝成 `ControlValueAccessor`，值 ＝ `projectId: number | null`。`debounceTime(150)`、`code` / `name` 不分大小寫 `includes`、最多 10 筆、`[editable]="false"`（只能從清單選）、打字後與已選專案不符即清空值、blur 觸發 touched。顯示格式 `code - name（部門）`；彈出層 `container="body"`（不被 `table-responsive` 切掉，z-index 高於 modal，見 tailwind.css `ngb-typeahead-window`）。
+**行為**：`NgbTypeahead` 包裝成 `ControlValueAccessor`，值 ＝ `projectId: number | null`。**同一欄位兼具 autocomplete 與下拉選單**（2026-10-16）：右側 ▼ 提示可下拉；**取得焦點 / 點欄位 / 點 ▼ 即列出全部專案**（`focus$` / `click$` 送空字串觸發，不會被已選專案的顯示文字篩掉，故已選定時點一下即可直接換選；清單已開著時再點不重送，以免洗掉正在打的篩選），彈出層高度上限 20rem 捲動（tailwind.css）。打字則 `debounceTime(150)`、`code` / `name` 不分大小寫 `includes`、最多 50 筆（`MAX_TYPED_RESULTS`）。`[editable]="false"`（只能從清單選）、打字後與已選專案不符即清空值、blur 觸發 touched。顯示格式 `code - name（部門）`；彈出層 `container="body"`（不被 `table-responsive` 切掉，z-index 高於 modal，見 tailwind.css `ngb-typeahead-window`）。
 
 **Inputs**
 
