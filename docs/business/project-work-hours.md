@@ -2,6 +2,21 @@
 
 客戶要知道每位員工的工時花在哪些專案上：**下班打卡時填專案工時佔比**，再由報表〈工時總表〉彙總。
 
+## 上線日（各環境分開設定）
+
+本檔所有功能（下班打卡填佔比、當日修改、系統補卡日強制補填、工時總表）都以 app setting **`ProjectAllocation__StartDate`**（`yyyy-MM-dd`）為上線日，單一真相 `Api/Services/ProjectAllocationSchedule.cs`（`IProjectAllocationSchedule`）：
+
+| 環境 | 值 |
+|---|---|
+| 本機 / staging（`jabez-api-staging`） | `2026-10-16` |
+| 正式站（`jabez-api`） | **`2026-10-21`** |
+
+- **未設定或格式錯誤 ＝ 不啟用**（安全側：漏設不會突然要求全公司填佔比）。
+- **上線日之前**：下班打卡維持原流程（舊制直接打、新制跳 ConfirmModal 填早退／逾時原因），後端忽略 `projectAllocations`；今日專案工時卡片與「修改」不顯示，`PUT /attendances/today/project-allocations` 回 400；不追問補填（清單恆空）；工時總表回空、選單隱藏（`GET /work-mode` 的 `isProjectAllocationActive`）。
+- **上線日當天起自動生效**，不需重新部署。補填與工時總表只算上線日（含）之後的紀錄。
+- 前端判斷來源：打卡頁看 `GET /attendances/today` 的 `projectAllocationRequired`；選單看 `WorkModeService.mode().isProjectAllocationActive`。
+- 正式站 2026-10-16 12:11 ～ 改版部署前曾短暫要求填佔比，該段資料在上線日之前，工時總表不會計入，不需清除。
+
 ## 下班打卡的專案佔比
 
 - **必填**：新舊制員工一律適用。打下班卡（`POST /attendances/clock-out`）須帶 `projectAllocations: [{ projectId, percentage }]`，驗證不過整筆下班卡不成立（回 400，打卡紀錄不變）。
@@ -19,12 +34,12 @@
 - 只能改**自己、今天、已打下班卡**的那一筆；尚未打下班卡回 400。端點只認「今天」，隔天起即鎖定（唯一例外見下節）。
 - 回傳與 `GET /attendances/today` 相同的 DTO，其中 `projectAllocations` 依 `SortOrder` 排序（無則 `[]`）。
 
-## 系統補下班卡日：進系統強制補填（2026-10-16）
+## 系統補下班卡日：進系統強制補填
 
 登入時 `AttendanceAutoClockService` 補上的下班卡（`IsClockOutAuto = 1`）沒經過下班打卡視窗，所以沒有佔比。
 這些日子在**下次進入系統**時強制補填：
 
-- **範圍**：本人、`IsClockOutAuto = 1`、有下班時間、**`RecordDate ≥ 2026-10-16`（上線日，`ProjectAllocationValidator.StartDate`）**、早於今天、尚無任何佔比。上線前的舊資料不追溯，工時總表仍列「未分配」。
+- **範圍**：本人、`IsClockOutAuto = 1`、有下班時間、**`RecordDate ≥ 上線日`**（見上方〈上線日〉）、早於今天、尚無任何佔比。上線前的舊資料不追溯。
 - `GET /attendances/missing-project-allocations`（`attendances:read`）列出待補日；`PUT` 同路徑（`attendances:write`）body `{ attendanceIds, projectAllocations }`，同一份佔比可一次套多天，驗證規則同 clock-out。
 - **只能補一次**：每個 id 都必須仍符合上述範圍（尚無佔比），否則整批 400 —— 不能藉此改歷史已填的佔比，「隔天鎖定」只對系統補卡日開這一次口。判準單一真相為 `AttendanceHandler.MissingAllocationDays`，GET 與 PUT 共用。
 - 前端：`MainLayout` 進入時（登入後、重新整理頁面皆會）由 `MissingAllocationPromptService` 查清單，有資料就**逐日**跳出無法關閉的下班打卡視窗（無 X、無取消、`backdrop: 'static'` + `keyboard: false`），視窗可勾「其餘 N 天套用相同佔比」一次填完。
@@ -37,11 +52,11 @@
 - 路由：`GET /reports/work-hours`（員工 × 專案彙總）、`GET /reports/work-hours/daily`（逐日明細，供 Excel 第二張工作表）。
 - 參數：`dateFrom` / `dateTo`（缺省為本月，跨度上限 400 天）、`departmentId`、`projectId`。部門可見性套用 `IProjectAccessResolver`（員工所屬部門），Superadmin 帳號不列入。
 - **計算方式（刻意簡化）**：
-  - 母體＝區間內**有下班時間**（`ClockOutTime IS NOT NULL`）的打卡紀錄。
+  - 母體＝區間內**有下班時間**（`ClockOutTime IS NOT NULL`）的打卡紀錄；起日早於上線日時自動夾到上線日，上線前回空。
   - 專案工時 ＝ **每天 8 小時 × 佔比 ÷ 100**（常數 `WorkHoursReportHandler.HoursPerDay = 8m`）。
   - **不使用實際上下班時間，也不扣請假**（請半天假的日子同樣以 8 小時計，屬業務假設，有異議再調）。
   - **加班不併入**，只算正常上下班。
-- **未分配**：有下班時間卻沒有專案分配的紀錄（上線前的舊資料、系統補下班卡後本人尚未進系統補填者）整天 8 小時歸入「未分配」（`projectId = null`）。帶 `projectId` 篩選時不列未分配。
+- **未分配**：有下班時間卻沒有專案分配的紀錄（系統補下班卡後本人尚未進系統補填者等）整天 8 小時歸入「未分配」（`projectId = null`）。帶 `projectId` 篩選時不列未分配。
 - 彙總只列工時、不列天數（2026-10-16 決議移除，天數在多專案分攤時會重複計算、易誤讀）；逐日明細的 `isAutoClockOut` 標示該日下班卡是否為系統補卡。
 - 排序：專案代號自然排序（英文前綴 → 數字段數值）、未分配最後，再依部門、員工姓名。
 

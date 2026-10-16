@@ -289,9 +289,14 @@ export class Dashboard implements OnInit, OnDestroy {
    * 出差只是出缺勤紀錄上的標記，不影響原因必填。
    *
    * 舊制（尚未切換）只顯示專案區塊，不顯示出勤時長與原因欄。
+   * 專案工時尚未上線（`projectAllocationRequired = false`）時走上線前的流程 {@link legacyConfirmAndClockOut}。
    */
   async confirmAndClockOut(): Promise<void> {
     const r = this.todayRecord();
+    if (!r?.projectAllocationRequired) {
+      await this.legacyConfirmAndClockOut();
+      return;
+    }
 
     const ref = this.modal.open(ClockOutModal, {centered: true, size: 'lg', backdrop: 'static'});
     const ci = ref.componentInstance as ClockOutModal;
@@ -335,6 +340,57 @@ export class Dashboard implements OnInit, OnDestroy {
       return;
     }
     this.performAction('clock-out', result.reason, result.allocations);
+  }
+
+  /**
+   * 專案工時上線前的下班打卡（2026-10-16 前的原行為，上線日後即不再走到）：
+   * 舊制不跳對話框；新制跳 ConfirmModal，早退／逾時須填原因。
+   */
+  private async legacyConfirmAndClockOut(): Promise<void> {
+    const r = this.todayRecord();
+    if (!r?.flexibleEnabled || !r.clockInTime) {
+      this.performAction('clock-out');
+      return;
+    }
+
+    const now = new Date();
+    const clockIn = new Date(r.clockInTime);
+    const worked = Math.max(0, now.getTime() - clockIn.getTime());
+    const workedText = `${Math.floor(worked / 3600000)} 小時 ${Math.floor((worked % 3600000) / 60000)} 分`;
+
+    const expected = r.expectedClockOutTime ? new Date(r.expectedClockOutTime) : null;
+    const diffMin = expected ? Math.round((expected.getTime() - now.getTime()) / 60000) : 0;
+    const isEarly = !!expected && now < expected;
+    const normalUntil = r.normalClockOutUntil ? new Date(r.normalClockOutUntil) : null;
+    const isOvertime = !!normalUntil && now > normalUntil;
+
+    const ref = this.modal.open(ConfirmModal, {centered: true});
+    const ci = ref.componentInstance as ConfirmModal;
+    ci.title = '確認下班打卡';
+    ci.message = `目前出勤 ${workedText}`;
+    ci.confirmText = '確定打卡';
+
+    if (isEarly) {
+      ci.tone = 'warning';
+      ci.detail = `今日出勤未達應下班時間（${this.timeText(expected!)}），尚差 ${diffMin} 分鐘。`;
+      ci.reasonLabel = '早退原因';
+      ci.reasonRequired = true;
+    } else if (isOvertime) {
+      ci.tone = 'warning';
+      ci.detail = `已超過應下班時間（${this.timeText(expected!)}）${Math.abs(diffMin)} 分鐘。`;
+      ci.reasonLabel = '逾時原因';
+      ci.reasonRequired = true;
+    } else if (expected) {
+      ci.detail = `應下班時間 ${this.timeText(expected)}，屬正常下班。`;
+    }
+
+    let result: ConfirmModalResult;
+    try {
+      result = await ref.result;
+    } catch {
+      return;
+    }
+    this.performAction('clock-out', result.reason);
   }
 
   /** 今日專案工時摘要（已下班後顯示，當天可修改；今日端點只回今天的紀錄，隔天自然不顯示） */

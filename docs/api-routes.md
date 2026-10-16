@@ -197,7 +197,7 @@
 | POST | `/attendances/clock-in` | `attendances:write` | 上班打卡（**GPS 選填（2026-10-11）+ `challengeToken` 必填**（防機器人打卡，四個打卡動作皆同），另可帶 `accuracy`；**`turnstileToken`** 是否必填依 `Turnstile:Mode`（enforce 時必填）；落在已核准請假 `[StartDate, EndDate)` 區間內會回 BadRequest）。**四週彈性工時切換後**另加：依當日日別鎖定（例假日全鎖／休假日鎖／國定假日僅活動日預定人力解鎖）、08:30 前不開放（請上午半天假者不受此限）、超過 09:30 記 `IsLate`（出差亦同；`isBusinessTrip` 為純標記，不需出差單） |
 | POST | `/attendances/clock-out` | `attendances:write` | 下班打卡（含 GPS；同上規則）。**2026-10 起 body 必帶 `projectAllocations: [{ projectId, percentage }]`**（至少 1 筆、專案不重複、每筆 > 0 且 ≤ 100、最多 2 位小數、合計精確 = 100、專案須存在且 active，違規回 400 中文訊息；與下班卡同一次 SaveChanges 寫入，見 [project-work-hours.md](business/project-work-hours.md)）。**切換後**另加 `reason` 欄位：以應下班時間 T（＝實際上班打卡 ＋ 9 小時，請上午半天假者 ＋4 小時）為界，`< T` 早退、`[T, T+30分]` 正常、`> T+30分` 逾時；早退／逾時時 `reason` 必填（出差亦同，2026-10-12），否則回 400 |
 | PUT | `/attendances/today/project-allocations` | `attendances:write` | 當日修改專案工時佔比（body `{ projectAllocations: [{ projectId, percentage }] }`，整批替換、驗證同 clock-out）。只能改**自己今天、已打下班卡**的那筆（否則 400），隔天起鎖定；回傳同 `GET /attendances/today` |
-| GET | `/attendances/missing-project-allocations` | `attendances:read` | 本人待補填專案佔比的日子（2026-10-16）：`IsClockOutAuto=1`、有下班時間、`RecordDate ≥ 2026-10-16`、早於今天、尚無佔比；回 `[{ id, recordDate, clockInTime, clockOutTime }]`，日期升冪。前端進系統時據此強制逐日補填，見 [project-work-hours.md](business/project-work-hours.md) |
+| GET | `/attendances/missing-project-allocations` | `attendances:read` | 本人待補填專案佔比的日子（2026-10-16）：`IsClockOutAuto=1`、有下班時間、`RecordDate ≥ 上線日`（app setting `ProjectAllocation__StartDate`，未設或未到則恆回 `[]`）、早於今天、尚無佔比；回 `[{ id, recordDate, clockInTime, clockOutTime }]`，日期升冪。前端進系統時據此強制逐日補填，見 [project-work-hours.md](business/project-work-hours.md) |
 | PUT | `/attendances/missing-project-allocations` | `attendances:write` | 補填系統補卡日的佔比：body `{ attendanceIds: number[], projectAllocations }`，同一份佔比套用到所有 id；每個 id 須仍在上方清單內（本人、尚無佔比），否則整批 400 —— **只能補一次**。回傳剩餘待補清單 |
 | POST | `/attendances/overtime-start` | `attendances:write` | 加班開始打卡（不受請假時段阻擋）。需帶**屬於自己**且當日已核准的加班申請；一般上班日須先打下班卡，**休假日（行事曆 `IsHoliday` / 該年度無行事曆時的六日）或當日全日已核准請假時免下班卡**，且今日無打卡紀錄時自動建立「只含加班時間」的 AttendanceRecord |
 | POST | `/attendances/overtime-end` | `attendances:write` | 加班結束打卡（不受請假時段阻擋） |
@@ -401,7 +401,7 @@
 
 | Method | Path | 說明 |
 |--------|------|------|
-| GET | `/work-mode` | 四週彈性工時是否已切換（**輕量端點，任何登入者**，免 `settings:read`）。回 `flexibleWorkStartDate` / `isFlexibleActive` |
+| GET | `/work-mode` | 四週彈性工時是否已切換（**輕量端點，任何登入者**，免 `settings:read`）。回 `flexibleWorkStartDate` / `isFlexibleActive`，以及專案工時上線日 `projectAllocationStartDate` / `isProjectAllocationActive`（後者供工時總表選單開關） |
 | GET | `/settings` | 取得系統設定 |
 | PATCH | `/settings` | 更新系統設定 |
 | POST | `/invoice-ocr` | 發票 / 收據 / 交通票根 OCR 辨識（multipart 欄位 `file`，後端透過 Google Gemini API）。**一張圖可包含多張，回傳 `data` 為陣列**（每張一筆 `{docType, invoiceNo, amount, invoiceDate, buyerName, buyerTaxId, sellerTaxId}`，無辨識結果回 `[]`）。`buyerName`/`buyerTaxId` 為統一發票買方抬頭/統編（票根固定空字串），供前端比對公司白名單顯示警告；`sellerTaxId` 為賣方（發票專用章）統編，供前端交叉比對——與 `buyerTaxId` 相同時代表 OCR 抄到賣方統編，不跳警告。**`invoiceNo` 後處理**：字軌與數字分開印時合併（`ED 22598786` → `ED22598786`）；統一發票抓到 8 碼純數字且等於 `buyerTaxId` / `sellerTaxId` 時視為誤抓統編欄而清空。登入即可用，不需特殊權限；**每人速率限制**（與 `/quote-ocr` 共用計數：每分鐘 10 次、每日 200 次），超限回 429 |

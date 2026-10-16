@@ -18,12 +18,6 @@ public static class ProjectAllocationValidator
     /// <summary>佔比合計必須等於的值（%）。</summary>
     public const decimal TotalPercentage = 100m;
 
-    /// <summary>
-    /// 本功能上線日（2026-10-16）。系統補下班卡的日子只有落在此日（含）之後才要求本人補填佔比；
-    /// 之前的舊資料不追溯，工時總表維持列「未分配」。
-    /// </summary>
-    public static readonly DateTime StartDate = new(2026, 10, 16);
-
     /// <summary>純函式檢查（不查 DB）。</summary>
     public static void Validate(IReadOnlyList<ProjectAllocationInput>? inputs)
     {

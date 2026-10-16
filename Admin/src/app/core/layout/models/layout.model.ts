@@ -28,4 +28,6 @@ export type MenuItemType = {
     children?: MenuItemType[]
     isCollapsed?: boolean
     requiredPermission?: string
+    /** 專案工時上線日（WorkModeService.isProjectAllocationActive）之前隱藏 */
+    requiresProjectAllocation?: boolean
 }
