@@ -262,6 +262,10 @@ export class WriteOffRequestForm implements OnInit {
   get checkTotal(): number {
     return this.itemArray.controls.reduce((s, c) => s + (+(c.get('checkAmount')?.value) || 0), 0);
   }
+  /** 費用明細與同仁繳回至少擇一：純匯回預支餘額時可不填明細（後端 EnsureItemsOrReturned 同規則） */
+  get hasContent(): boolean {
+    return this.itemArray.length > 0 || (this.returnedAmount() ?? 0) > 0;
+  }
   get grandTotal(): number {
     return this.itemArray.controls.reduce((s, c) => s + (+(c.get('totalPrice')?.value) || 0), 0);
   }
@@ -519,7 +523,10 @@ export class WriteOffRequestForm implements OnInit {
   /** 儲存（草稿或更新，不改變狀態） */
   save() {
     if (this.saving()) return;
-    if (this.itemArray.length === 0) return;
+    if (!this.hasContent) {
+      this.errorMsg.set('請至少填寫一筆費用明細，或填寫同仁匯回預支餘額。');
+      return;
+    }
     if (!this.isEdit && !this.selectedAdvanceId) {
       this.errorMsg.set('請選擇預支單。');
       return;
@@ -543,7 +550,10 @@ export class WriteOffRequestForm implements OnInit {
   /** 送出申請（先儲存再將狀態改為 pending） */
   submitForApproval() {
     if (this.saving()) return;
-    if (this.itemArray.length === 0) return;
+    if (!this.hasContent) {
+      this.errorMsg.set('請至少填寫一筆費用明細，或填寫同仁匯回預支餘額。');
+      return;
+    }
     if (!this.isEdit && !this.selectedAdvanceId) {
       this.errorMsg.set('請選擇預支單。');
       return;
