@@ -229,13 +229,13 @@ public sealed class WriteOffRequestHandler(
 
         EnsureAdvanceWriteOffable(ar);
 
-        // 解析沖銷明細
+        // 解析沖銷明細（可為 0 列：純匯回預支餘額時不填明細，於下方繳回驗證後檢查「至少擇一」）
         if (string.IsNullOrWhiteSpace(itemsJson))
             return new BadRequestObjectResult(ApiResponse.Fail("items 欄位為必填。"));
 
         var items = JsonSerializer.Deserialize<WriteOffItemMetadata[]>(itemsJson, JsonOpts);
-        if (items is null || items.Length == 0)
-            return new BadRequestObjectResult(ApiResponse.Fail("At least one write-off item is required."));
+        if (items is null)
+            return new BadRequestObjectResult(ApiResponse.Fail("items 欄位格式不正確。"));
 
         // 年份合理性（擋民國年誤植）
         RequestDateGuard.EnsureEach(items, i => i.InvoiceDate, "發票日期");
@@ -309,6 +309,7 @@ public sealed class WriteOffRequestHandler(
 
         // 同仁繳回預支餘額（新單沒有舊憑證可刪）
         await ApplyReturnedCashAsync(wo, form);
+        EnsureItemsOrReturned(items.Length > 0, wo);
 
         db.WriteOffRecords.Add(wo);
         await db.SaveChangesAsync();
@@ -411,8 +412,8 @@ public sealed class WriteOffRequestHandler(
         if (!string.IsNullOrWhiteSpace(itemsJson))
         {
             var items = JsonSerializer.Deserialize<WriteOffItemMetadata[]>(itemsJson, JsonOpts);
-            if (items is null || items.Length == 0)
-                return new BadRequestObjectResult(ApiResponse.Fail("At least one write-off item is required."));
+            if (items is null)
+                return new BadRequestObjectResult(ApiResponse.Fail("items 欄位格式不正確。"));
 
             // 年份合理性（擋民國年誤植，比照 CreateAsync）
             RequestDateGuard.EnsureEach(items, i => i.InvoiceDate, "發票日期");
@@ -477,6 +478,7 @@ public sealed class WriteOffRequestHandler(
 
             // 繳回金額上限依「本次核銷」計算，須在 GrandTotal 更新之後才驗
             replacedReturnedProofUrl = await ApplyReturnedCashAsync(wo, form);
+            EnsureItemsOrReturned(items.Length > 0, wo);
 
             await db.SaveChangesAsync();
 
@@ -492,6 +494,7 @@ public sealed class WriteOffRequestHandler(
         else
         {
             replacedReturnedProofUrl = await ApplyReturnedCashAsync(wo, form);
+            EnsureItemsOrReturned(await db.WriteOffItems.AnyAsync(i => i.WriteOffRecordId == wo.Id), wo);
             await db.SaveChangesAsync();
         }
 
@@ -599,6 +602,9 @@ public sealed class WriteOffRequestHandler(
 
         // 送簽當下重新確認來源預支單仍可沖銷（避免對追加簽核中、總額變動中的預支單沖銷）
         await EnsureAdvanceWriteOffableAsync(wo.AdvanceRequestId);
+
+        // 費用明細與同仁繳回至少擇一（防既有草稿繞過表單檢查）
+        EnsureItemsOrReturned(await db.WriteOffItems.AnyAsync(i => i.WriteOffRecordId == wo.Id), wo);
 
         // 退回重送：清除舊審核記錄，重置指定審核者狀態
         // 2026-10 安全修正：不論 draft 或 returned 送出一律清空舊簽核足跡（原只清 returned）。
@@ -836,6 +842,16 @@ public sealed class WriteOffRequestHandler(
     /// 來源預支單是否可沖銷：須已核准且未結案。
     /// 追加簽核中的預支單狀態為 pending / returned，總額仍在變動，禁止沖銷。
     /// </summary>
+    /// <summary>
+    /// 費用明細與「同仁繳回預支餘額」至少擇一（2026-10）：純匯回餘額時可不填明細（GrandTotal = 0），
+    /// 不必為了送出而硬塞一筆假發票，否則實際費用核銷金額會錯。須在 ApplyReturnedCashAsync 之後呼叫。
+    /// </summary>
+    private static void EnsureItemsOrReturned(bool hasItems, WriteOffRecord wo)
+    {
+        if (!hasItems && (wo.ReturnedAmount ?? 0) <= 0)
+            throw AppException.BadRequest("請至少填寫一筆費用明細，或填寫同仁匯回預支餘額。");
+    }
+
     private static void EnsureAdvanceWriteOffable(AdvanceRequest ar)
     {
         if (ar.CurrentRoundNo > 1 && (ar.ApprovalStatus == "pending" || ar.ApprovalStatus == "returned"))

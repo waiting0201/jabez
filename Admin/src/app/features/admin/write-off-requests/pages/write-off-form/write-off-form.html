@@ -374,7 +374,7 @@
                 }
               } @empty {
                 <tr>
-                  <td colspan="13" class="text-center text-muted py-4 small">請上傳發票圖檔，或點擊「手動新增行」</td>
+                  <td colspan="13" class="text-center text-muted py-4 small">請上傳發票圖檔，或點擊「手動新增行」<br>若僅匯回預支餘額，可不填明細，直接填寫下方「同仁匯回預支餘額」</td>
                 </tr>
               }
             </tbody>
@@ -490,14 +490,14 @@
 
     <div class="mt-6 flex gap-2">
       <button type="submit" class="btn btn-outline-secondary"
-              [disabled]="itemArray.length === 0 || isAnyOcrPending || saving() || (!isEdit && !selectedAdvanceId)">
+              [disabled]="!hasContent || isAnyOcrPending || saving() || (!isEdit && !selectedAdvanceId)">
         @if (saving()) {
           <span class="spinner-border spinner-border-sm me-1" role="status"></span>
         }
         {{ isEdit ? '儲存' : '儲存草稿' }}
       </button>
       <button type="button" class="btn btn-primary"
-              [disabled]="itemArray.length === 0 || isAnyOcrPending || saving() || (!isEdit && !selectedAdvanceId)"
+              [disabled]="!hasContent || isAnyOcrPending || saving() || (!isEdit && !selectedAdvanceId)"
               (click)="submitForApproval()">
         @if (isAnyOcrPending || saving()) {
           <span class="spinner-border spinner-border-sm me-1" role="status"></span>

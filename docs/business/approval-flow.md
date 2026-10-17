@@ -205,6 +205,7 @@ RefundDue = max(0, 前次已沖銷 + 本次沖銷 − 預支總額)
 - **尚未結清金額 ＝ 預支總額 − 已核准核銷 − 已核准繳回**（「已」一律只計 `approved`，與「已沖銷金額」同基準）。**僅作顯示警示**（≠ 0 時以警示色提醒），**不擋結案、不擋送簽、不擋核准**
 - **填寫（沖銷申請單）**：multipart 欄位 `returnedAmount` / `returnedAt` / `returnedProofFile`（Update 另有 `removeReturnedProof`），憑證經 `AttachmentProcessor.UploadItemFileAsync`（magic-byte＋10MB）存入既有的 `write-off-invoices` 容器，預覽沿用 `/files/write-off-invoices/{*path}`
 - **驗證（400）**：金額不可為負；金額為 0 或空＝無繳回（四欄一併清空，並刪舊憑證 blob）；金額 > 0 時**繳回日期與憑證皆必填**（日期過 `RequestDateGuard`）；金額不得超過「預支總額 − 他單已核准核銷 − 本單核銷 − 他單已核准繳回」，訊息會列出上限。修改明細金額後上限即時重算，故驗證排在 `GrandTotal` 更新之後
+- **純匯回、不填明細（2026-10-17）**：費用明細與繳回**至少擇一**——同仁只是把用不完的預支款匯回時，明細可為 0 列（`GrandTotal` = 0、`RefundDue` = 0、不需差額分期），只填繳回金額＋日期＋憑證即可送出。過去明細至少一列，同仁只能塞假發票而使實際費用核銷金額錯誤。後端 `WriteOffRequestHandler.EnsureItemsOrReturned` 於 Create / Update（繳回驗證之後）與 Submit 三處檢查，前端 `hasContent` 控按鈕
 - **讀取**：`WriteOffRequestDto` / `WriteOffTaskDetailDto` 帶出四欄與 `AdvanceReturnedTotal`（同預支單**他單**已核准繳回合計，不含本單，前端據此算本單的尚未結清）；`writeOffHistory[]` 與 `by-advance` 彙總檢視同步帶出各次繳回
 - **歷史補登**：已核准單前台不可編輯，由客戶提供「預支單號＋繳回金額＋繳回日期」後以 [`Api/Data/Scripts/18-backfill-write-off-returned-cash.sql`](../../Api/Data/Scripts/18-backfill-write-off-returned-cash.sql) 補登（`@Commit` 空跑開關、以 `RequestNo` 定位、寫在該預支單最後一張已核准沖銷單、不含憑證照片、冪等；閘門：單號不存在 / 無已核准沖銷 / 金額超過尚未結清 / 已有不同繳回資料 → 中止）
 - **出差預支沖銷不在本次範圍**（該表無附件結構，需另案）
