@@ -111,4 +111,5 @@ public sealed record OvertimePostHocContextDto(
     DateTime? ClockOutTime,
     bool      IsClockOutAuto,
     DateTime? RegularEnd,          // 該日應下班時間（預填「實際加班開始」用）；非工作日 null
-    bool      HasOvertimePunch);
+    bool      HasOvertimePunch,
+    DateTime? Deadline = null);    // 事後申請期限＝加班日之後第一個公司工作日（當日 23:59 前）；加班日晚於今天時 null

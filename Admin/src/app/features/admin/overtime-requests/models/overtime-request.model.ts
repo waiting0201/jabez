@@ -51,6 +51,8 @@ export interface PostHocContext {
   isClockOutAuto: boolean;
   regularEnd: string | null;
   hasOvertimePunch: boolean;
+  /** 事後申請期限＝加班日之後第一個公司工作日（當日 23:59 前）；加班日晚於今天時 null */
+  deadline?: string | null;
 }
 
 export const COMPENSATION_TYPE_LABELS: Record<OvertimeCompensationType, string> = {

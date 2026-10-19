@@ -142,29 +142,36 @@ public static class OvertimeRequestGuard
     // ── 事後申請（RequestKind = post_hoc，2026-10）─────────────────────────────────
 
     /// <summary>
-    /// 事後申請資格判定（資料面）：加班日為今天或昨天、當日有出缺勤紀錄、已<b>親自</b>打下班卡（非系統補卡）、
-    /// 且尚無加班打卡。<c>GET /overtime-requests/post-hoc-context</c> 與送件驗證共用，避免兩處漂移。
-    /// 回傳的 <c>Record</c> 為 AsNoTracking 快照。
+    /// 事後申請資格判定（資料面）：須於<b>加班日後一個工作日內</b>提出（截止日＝加班日之後第一個公司工作日 23:59:59，
+    /// 遇週六日 / 國定假日順延，見 <see cref="WorkCalendarHelper.NextCompanyWorkingDayAsync"/>）、當日有出缺勤紀錄、
+    /// 已<b>親自</b>打下班卡（非系統補卡）、且尚無加班打卡。
+    /// <c>GET /overtime-requests/post-hoc-context</c> 與送件驗證共用，避免兩處漂移。回傳的 <c>Record</c> 為 AsNoTracking 快照。
     /// </summary>
-    public static async Task<(bool Eligible, string? Reason, Models.Entities.AttendanceRecord? Record)>
-        EvaluatePostHocEligibilityAsync(AppDbContext db, Guid ownerId, DateTime overtimeDate)
+    public static async Task<(bool Eligible, string? Reason, Models.Entities.AttendanceRecord? Record, DateTime? Deadline)>
+        EvaluatePostHocEligibilityAsync(AppDbContext db, ICalendarDayReadService calendarReader, Guid ownerId, DateTime overtimeDate)
     {
         var day = overtimeDate.Date;
         var today = Clock.Today;
-        if (day != today && day != today.AddDays(-1))
-            return (false, "事後申請的加班日期僅限今天或昨天。", null);
+        if (day > today)
+            return (false, "加班日期不可晚於今天。", null, null);
+
+        var deadline = await WorkCalendarHelper.NextCompanyWorkingDayAsync(calendarReader, day);
+        if (today > deadline)
+            return (false,
+                $"事後申請須於加班日的下一個工作日（{deadline:yyyy/MM/dd}）23:59 前提出，已逾期；請洽主管由出缺勤補正。",
+                null, deadline);
 
         var record = await db.AttendanceRecords.AsNoTracking()
             .FirstOrDefaultAsync(a => a.UserId == ownerId && a.RecordDate == day);
 
         if (record is null || record.ClockOutTime is null)
-            return (false, $"{day:yyyy/MM/dd} 尚未打下班卡，無法申請事後加班；請改用正常申請，或下班打卡後再申請。", record);
+            return (false, $"{day:yyyy/MM/dd} 尚未打下班卡，無法申請事後加班；請改用正常申請，或下班打卡後再申請。", record, deadline);
         if (record.IsClockOutAuto)
-            return (false, $"{day:yyyy/MM/dd} 的下班卡為系統補卡（非親自打卡），無法申請事後加班，請洽主管由出缺勤補正。", record);
+            return (false, $"{day:yyyy/MM/dd} 的下班卡為系統補卡（非親自打卡），無法申請事後加班，請洽主管由出缺勤補正。", record, deadline);
         if (record.OvertimeStartTime is not null || record.OvertimeEndTime is not null)
-            return (false, $"{day:yyyy/MM/dd} 已有加班打卡紀錄，請改用正常申請（或洽主管由出缺勤補正）。", record);
+            return (false, $"{day:yyyy/MM/dd} 已有加班打卡紀錄，請改用正常申請（或洽主管由出缺勤補正）。", record, deadline);
 
-        return (true, null, record);
+        return (true, null, record, deadline);
     }
 
     /// <summary>
@@ -175,10 +182,11 @@ public static class OvertimeRequestGuard
     /// <b>刻意不比對下班卡時間</b>（使用者決議：起訖自由填寫，真實性由審核者把關，稽核紀錄可追查）。
     /// </summary>
     public static async Task EnsurePostHocAsync(
-        AppDbContext db, IShiftScheduleReadService shiftSchedule, IWorkdayScheduleProvider scheduleProvider,
+        AppDbContext db, ICalendarDayReadService calendarReader, IShiftScheduleReadService shiftSchedule,
+        IWorkdayScheduleProvider scheduleProvider,
         Guid ownerId, DateTime overtimeDate, DateTime? actualStart, DateTime? actualEnd, decimal projectHours)
     {
-        var (eligible, reason, _) = await EvaluatePostHocEligibilityAsync(db, ownerId, overtimeDate);
+        var (eligible, reason, _, _) = await EvaluatePostHocEligibilityAsync(db, calendarReader, ownerId, overtimeDate);
         if (!eligible) throw AppException.BadRequest(reason!);
 
         if (actualStart is null || actualEnd is null)

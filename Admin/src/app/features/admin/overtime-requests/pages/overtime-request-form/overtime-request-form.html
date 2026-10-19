@@ -78,7 +78,7 @@
                 </div>
               </div>
               <div class="form-text">
-                「事後申請」適用於已親自打下班卡、事後才補報實際加班時段（限今天或昨天）；核准後系統自動寫入出缺勤。
+                「事後申請」適用於已親自打下班卡、事後才補報實際加班時段，須於加班日後一個工作日 23:59 前提出（遇週六日、國定假日順延）；核准後系統自動寫入出缺勤。
               </div>
             </div>
 
@@ -108,6 +108,9 @@
                     <span>{{ ctx.reason || '此日期不可事後申請。' }}</span>
                   </div>
                 } @else {
+                  @if (ctx.deadline) {
+                    <p class="text-muted small mb-2">申請期限：{{ ctx.deadline | date:'yyyy/MM/dd' }} 23:59 前須送出簽核。</p>
+                  }
                   <div class="row g-3 mb-2">
                     <div class="col-12 col-md-6">
                       <label class="form-label fw-500">實際加班開始 <span class="text-danger">*</span></label>

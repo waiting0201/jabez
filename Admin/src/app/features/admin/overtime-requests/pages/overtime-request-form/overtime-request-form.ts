@@ -58,9 +58,12 @@ export class OvertimeRequestForm implements OnInit {
   /** 載入的單是否為事後申請（唯讀顯示 badge 用；新增時以表單 requestKind 為準） */
   isPostHoc = false;
   requestNo = '';   // OT-yyyyMMdd-NNN；草稿尚未取號故為空
-  /** 台北時區今天 / 昨天（yyyy-MM-dd）；事後申請的日期範圍 */
+  /**
+   * 台北時區今天（yyyy-MM-dd）與事後申請可選的最早日期。事後申請期限＝加班日後一個工作日（遇六日 / 國定假日順延），
+   * 前端不知道行事曆，故日期選擇器只放寬到 14 天前（涵蓋春節等長假），實際可否申請由 post-hoc-context 判定並顯示原因。
+   */
   readonly todayStr = OvertimeRequestForm.taipeiDate(0);
-  readonly yesterdayStr = OvertimeRequestForm.taipeiDate(-1);
+  readonly postHocMinStr = OvertimeRequestForm.taipeiDate(-14);
   private static taipeiDate(offsetDays: number): string {
     const d = new Date(Date.now() + offsetDays * 86400000);
     return new Intl.DateTimeFormat('en-CA', {timeZone: 'Asia/Taipei'}).format(d);
@@ -77,7 +80,7 @@ export class OvertimeRequestForm implements OnInit {
   }
 
   /** 日期 input 的 min / max：事後申請限昨天～今天 */
-  get dateMin(): string { return this.isPostHocKind ? this.yesterdayStr : this.minDate; }
+  get dateMin(): string { return this.isPostHocKind ? this.postHocMinStr : this.minDate; }
   get dateMax(): string { return this.isPostHocKind ? this.todayStr : this.maxDate; }
 
   /** 事後申請不符資格 / 起訖不完整 / 時數不合 → 擋送出 */
@@ -115,7 +118,7 @@ export class OvertimeRequestForm implements OnInit {
     if (this.isReadOnly) return;
     if (this.isPostHocKind) {
       const d = this.form.get('overtimeDate')!.value as string;
-      if (!d || d < this.yesterdayStr || d > this.todayStr) this.form.patchValue({overtimeDate: this.todayStr}, {emitEvent: false});
+      if (!d || d < this.postHocMinStr || d > this.todayStr) this.form.patchValue({overtimeDate: this.todayStr}, {emitEvent: false});
       this.loadPostHocContext();
     } else {
       this.postHocCtx.set(null);
