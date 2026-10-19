@@ -177,7 +177,7 @@ public static class OvertimeRequestGuard
     /// <summary>
     /// 事後申請送件檢查（Create / Update / Submit 共用，僅 RequestKind = post_hoc 時呼叫）：
     /// 資格（見 <see cref="EvaluatePostHocEligibilityAsync"/>）→ 起訖必填、訖 &gt; 起、起 ≥ 加班日 00:00、
-    /// 訖 &lt; 隔日 06:00（<see cref="OvertimeSettlementService.CrossDayEndCutoffHour"/>）
+    /// 訖 &lt; 隔日 06:00（<see cref="OvertimeSettlementService.CrossDayEndCutoffHour"/>）、訖 ≤ 現在（不可申報尚未發生的時段）
     /// → 專案時數合計不得超過「起訖時數扣除與正常上班時段重疊」。
     /// <b>刻意不比對下班卡時間</b>（使用者決議：起訖自由填寫，真實性由審核者把關，稽核紀錄可追查）。
     /// </summary>
@@ -200,6 +200,9 @@ public static class OvertimeRequestGuard
         if (actualEnd.Value >= day.AddDays(1).AddHours(OvertimeSettlementService.CrossDayEndCutoffHour))
             throw AppException.BadRequest(
                 $"實際加班結束時間須早於隔日 {OvertimeSettlementService.CrossDayEndCutoffHour:00}:00。");
+        // 事後申請只能申報「已發生」的加班：否則當天提早下班後即可預報當晚時段，核准當下就寫入出缺勤並結算
+        if (actualEnd.Value > Clock.Now)
+            throw AppException.BadRequest("事後申請的實際加班結束時間不可晚於現在（尚未發生的加班請改用正常申請）。");
 
         var dayType  = await shiftSchedule.ResolveDayTypeAsync(ownerId, day);
         var schedule = await scheduleProvider.ForAsync(day);

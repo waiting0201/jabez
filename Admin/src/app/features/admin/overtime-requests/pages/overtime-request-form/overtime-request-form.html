@@ -128,6 +128,9 @@
                   @if (!isReadOnly && actualDurationHours === null) {
                     <div class="text-danger small mb-2">請填寫實際加班起訖，且結束須晚於開始。</div>
                   }
+                  @if (!isReadOnly && isActualEndInFuture) {
+                    <div class="text-danger small mb-2">實際加班結束時間不可晚於現在；尚未發生的加班請改用正常申請。</div>
+                  }
                   <div class="form-text mb-4">
                     核准後系統將自動寫入當日出缺勤的加班開始／結束時間（下班卡不變動）。
                     @if (actualDurationHours !== null) {

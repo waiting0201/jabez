@@ -88,7 +88,18 @@ export class OvertimeRequestForm implements OnInit {
     if (!this.isPostHocKind) return false;
     const ctx = this.postHocCtx();
     if (!ctx || !ctx.eligible) return true;
-    return !this.composeActual();
+    return !this.composeActual() || this.isActualEndInFuture;
+  }
+
+  /** 實際加班結束時間晚於現在（台北時間）→ 尚未發生，事後申請不得送出（後端 EnsurePostHocAsync 同步擋） */
+  get isActualEndInFuture(): boolean {
+    const c = this.composeActual();
+    if (!c) return false;
+    const now = new Intl.DateTimeFormat('sv-SE', {
+      timeZone: 'Asia/Taipei', year: 'numeric', month: '2-digit', day: '2-digit',
+      hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false,
+    }).format(new Date()).replace(' ', 'T');
+    return c.end > now;
   }
 
   /** 實際加班時長（小時）；起訖不完整或訖 ≤ 起回 null */
@@ -396,9 +407,11 @@ export class OvertimeRequestForm implements OnInit {
           // 字串切割而非 toISOString()，避免台北 +8 轉 UTC 造成日期少一天
           overtimeDate:     r.overtimeDate?.toString().slice(0, 10) ?? '',
           compensationType: r.compensationType ?? 'compensatory',
-          requestKind: r.requestKind ?? 'normal',
           reason: r.reason,
         });
+        // requestKind 不觸發 valueChanges：否則 onKindChange 會多發一次資格查詢，
+        // 後到的回應把已存的起訖蓋成預填值（應下班 / 下班卡時間）。資格改由下方明確查一次。
+        this.form.patchValue({requestKind: r.requestKind ?? 'normal'}, {emitEvent: false});
         if (this.isPostHoc && r.actualStartTime && r.actualEndTime) {
           const d = r.overtimeDate.toString().slice(0, 10);
           this.form.patchValue({
@@ -406,8 +419,9 @@ export class OvertimeRequestForm implements OnInit {
             actualEndTime:   r.actualEndTime.slice(11, 16),
             endNextDay:      r.actualEndTime.slice(0, 10) > d,
           });
-          if (!this.isReadOnly) { this._keepLoadedTimes = true; this.loadPostHocContext(); }
+          this._keepLoadedTimes = true;
         }
+        if (this.isPostHoc && !this.isReadOnly) this.loadPostHocContext();
         // 唯讀模式顯示核准當下寫入的快照，不重新試算（避免調薪後金額與已發放的不符）
         this.snapshotPayAmount    = r.overtimePayAmount ?? null;
         this.snapshotPayableHours = r.payableHours ?? null;

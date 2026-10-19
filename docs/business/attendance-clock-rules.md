@@ -447,7 +447,7 @@ Excel 匯出於時間後加註「（系統補卡）」，以區分本人打卡�
 1. **須於加班日後一個工作日 23:59:59 前提出**（2026-10-19 依客戶規則改，原為「今天或昨天」）：截止日＝加班日之後第一個**公司工作日**（`WorkCalendarHelper.NextCompanyWorkingDayAsync`，行事曆 `IsHoliday` 優先、含國定假日 / 彈性休假日，未匯入年度退回六日；**不看個人排班**）。例：10/19（一）加班 → 10/20 前；週五或六日加班 → 下週一前；遇國定假日 / 連假順延至假後第一個工作日。加班日不可晚於今天；以 `Clock.Today` 判定，草稿放到逾期再送簽會被擋。事後申請**不套**一般加班單的 7 天補登期限（長假後第一個工作日可能超過 7 天）。`post-hoc-context` 回 `deadline` 供表單顯示，日期選擇器放寬到 14 天前、可否申請以後端判定為準。
 2. 當日 `AttendanceRecord` 存在、`ClockOutTime` 非空且 `IsClockOutAuto = false`（**須親自打下班卡**，系統補卡不算）。
 3. 當日尚無加班打卡（`OvertimeStartTime` / `OvertimeEndTime` 皆空）；已有者走正常申請或由 HR 補正。
-4. 實際起訖必填；訖 > 起；起 ≥ 加班日 00:00；訖 < 隔日 06:00（`OvertimeSettlementService.CrossDayEndCutoffHour`）。
+4. 實際起訖必填；訖 > 起；起 ≥ 加班日 00:00；訖 < 隔日 06:00（`OvertimeSettlementService.CrossDayEndCutoffHour`）；**訖 ≤ 現在**（2026-10-19 補：不可申報尚未發生的時段，否則當天提早下班即可預報當晚加班、核准當下就寫入出缺勤並結算；前端同步擋送出）。
 5. 專案時數合計（`EstimatedHours`）≤「起訖時數扣除與正常上班時段重疊」（`ComputeSettled` / `RegularWindowFor`，捨去到 0.1 小時）。
 6. 既有送件規則照套：同人同日一張、每月上限、全天有薪假、假日活動互斥、單日 4h / 12h 上限。
 
