@@ -1,9 +1,18 @@
 <div class="container-fluid py-3">
-  <div class="flex items-center gap-2 mb-6">
-    <svg class="sa-icon sa-icon-2x text-primary" style="stroke: currentColor">
-      <use href="/assets/icons/sprite.svg#check-square"></use>
-    </svg>
-    <h4 class="mb-0">簽核作業</h4>
+  <div class="flex flex-wrap items-center justify-between gap-2 mb-6">
+    <div class="flex items-center gap-2">
+      <svg class="sa-icon sa-icon-2x text-primary" style="stroke: currentColor">
+        <use href="/assets/icons/sprite.svg#check-square"></use>
+      </svg>
+      <h4 class="mb-0">簽核作業</h4>
+    </div>
+    <!-- 匯出 Excel：僅「已核准」頁籤 + 財務體系（同預計撥款兩欄），依目前篩選條件匯出全部筆數 -->
+    @if (showPaymentPlan()) {
+      <button class="btn btn-outline inline-flex items-center gap-1" [disabled]="exporting() || totalCount() === 0" (click)="exportExcel()">
+        <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#download"></use></svg>
+        @if (exporting()) { 匯出中... } @else { 匯出 Excel }
+      </button>
+    }
   </div>
 
   <!-- Tabs -->
@@ -229,6 +238,10 @@
               <th class="hidden md:table-cell">摘要</th>
               <th>狀態</th>
               <th class="hidden lg:table-cell">申請日期</th>
+              @if (showPaymentPlan()) {
+                <th class="whitespace-nowrap">預計撥款日</th>
+                <th class="text-right whitespace-nowrap">預計撥款額</th>
+              }
               <th class="text-right">操作</th>
             </tr>
           </thead>
@@ -263,6 +276,26 @@
                   </div>
                 </td>
                 <td class="text-muted small hidden lg:table-cell">{{ t.submittedAt | date:'yyyy-MM-dd' }}</td>
+                @if (showPaymentPlan()) {
+                  @let plan = getPaymentPlan(t);
+                  <!-- 只列尚未撥款的各期（一期一行）；金額為未撥各期合計 -->
+                  <td class="small whitespace-nowrap">
+                    @if (!plan) {
+                      <span class="text-muted">—</span>
+                    } @else if (plan.state === 'unscheduled') {
+                      <span class="text-warning">未排定</span>
+                    } @else if (plan.state === 'done') {
+                      <span class="text-muted">已撥畢</span>
+                    } @else {
+                      @for (i of plan.pending; track i.installmentNo) {
+                        <div>{{ ymd(i.expectedDate) }}@if (plan.pending.length > 1) {<span class="text-muted">（{{ i.amount.toLocaleString() }}）</span>}</div>
+                      }
+                    }
+                  </td>
+                  <td class="small text-right whitespace-nowrap fw-500">
+                    @if (plan?.state === 'pending') { {{ plan!.amount.toLocaleString() }} } @else { <span class="text-muted">—</span> }
+                  </td>
+                }
                 <td class="text-right" style="white-space: nowrap">
                   <a [routerLink]="[t.applicationType, t.id, 'review']"
                      [queryParams]="listQueryParams()"
@@ -275,7 +308,7 @@
               </tr>
             } @empty {
               <tr>
-                <td [attr.colspan]="(activeTab() === 'pending' && canBatchApprove()) ? 8 : 7" class="text-center text-muted py-4">
+                <td [attr.colspan]="(activeTab() === 'pending' && canBatchApprove()) ? 8 : showPaymentPlan() ? 9 : 7" class="text-center text-muted py-4">
                   {{ activeTab() === 'director' ? '目前沒有' + DIRECTOR_STATUS_LABELS[directorStatus()] + '的總監室簽核作業。'
                      : activeTab() === 'pending' ? '目前沒有待審核的簽核作業。'
                      : activeTab() === 'reviewed' ? '目前沒有您已核准、仍在簽核中的申請。'

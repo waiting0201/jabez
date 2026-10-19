@@ -29,6 +29,9 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
     private const int SeniorReviewerMaxLevel = 3;
     public  static readonly HashSet<string> ValidAppTypes = ["payment_request", "leave", "leave_revocation", "travel", "overtime", "advance", "write_off", "travel_write_off", "holiday_travel", "travel_payment", "pre_review", "shift_change"];
 
+    /// <summary>匯出模式（export=true）的 pageSize 上限，比照 OvertimeReportHandler.ExportMaxPageSize</summary>
+    public const int ExportMaxPageSize = 5000;
+
     public async Task<IActionResult> GetAllAsync(HttpRequest req)
     {
         // 依審核者職稱過濾，讓每個人只看到「當前步驟符合自己職稱」的待審申請
@@ -64,7 +67,9 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
         }
 
         int    page     = int.TryParse(req.Query["page"],     out var p)  ? Math.Max(1, p)         : 1;
-        int    pageSize = int.TryParse(req.Query["pageSize"], out var ps) ? Math.Clamp(ps, 1, 100) : 20;
+        // export=true（已核准頁籤匯出 Excel）放寬 pageSize 上限，比照 OvertimeReportHandler；一般列表仍為 100
+        bool   isExport = req.Query["export"] == "true";
+        int    pageSize = int.TryParse(req.Query["pageSize"], out var ps) ? Math.Clamp(ps, 1, isExport ? ExportMaxPageSize : 100) : 20;
         string? rawStatus = req.Query["status"].ToString() is { Length: > 0 } s  ? s  : null;
         string? scope     = req.Query["scope"].ToString()  is { Length: > 0 } sc ? sc : null;
 

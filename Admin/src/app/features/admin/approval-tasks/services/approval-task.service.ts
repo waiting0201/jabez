@@ -33,8 +33,10 @@ export class ApprovalTaskService {
   private http = inject(HttpClient);
   private notification = inject(NotificationService);
 
-  getPaged(page: number, pageSize: number, status?: string, paymentStatus?: string, applicationType?: string, submittedByUserId?: string, scope?: string, dateFrom?: string, dateTo?: string, directorReviewedOn?: string): Observable<PagedResult<ApprovalTask>> {
+  getPaged(page: number, pageSize: number, status?: string, paymentStatus?: string, applicationType?: string, submittedByUserId?: string, scope?: string, dateFrom?: string, dateTo?: string, directorReviewedOn?: string, exportAll?: boolean): Observable<PagedResult<ApprovalTask>> {
     const params: Record<string, any> = {page, pageSize};
+    // export=true：後端放寬 pageSize 上限（ApprovalTaskHandler.ExportMaxPageSize），供匯出 Excel 一次取回全部
+    if (exportAll) params['export'] = 'true';
     if (status) params['status'] = status;
     if (paymentStatus) params['paymentStatus'] = paymentStatus;
     if (applicationType) params['applicationType'] = applicationType;

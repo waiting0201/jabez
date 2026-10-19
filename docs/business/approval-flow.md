@@ -347,6 +347,16 @@ RefundDue = max(0, 前次已沖銷 + 本次沖銷 − 預支總額)
 - **舊行為修正**：2026-08 之前 `StepMatchClause` 沒有 `returned` 分支，非 Superadmin 傳 `status=returned` 會 fall through 到待審核分支（寫死 `ApprovalStatus = 'pending'`），**靜默回傳完全不相干的待審清單**。現行 `status` 一律走 [ApprovalTaskHandler](../../Api/Handlers/ApprovalTaskHandler.cs) 的 `ValidListStatuses` 白名單正規化。
 - **列表為唯讀**：退回單的 `status` 不是 `pending`，操作欄自動顯示查看圖示；要重新簽核須等申請人修改後重送。
 
+## 簽核作業「已核准」頁籤：預計撥款欄位與匯出 Excel（2026-10-19 新增）
+
+財務 / 會計排款用。僅「已核准」頁籤且為**財務體系部門或 Superadmin**（與撥款子篩選同一判準 `canSeePaymentFilter` → `showPaymentPlan`）才出現，其他人的已核准清單欄位不變。
+
+- **預計撥款日 / 預計撥款額**：資料取自清單 API 本來就帶回的 `installments`（單一真相），**只列尚未撥款（`paidAt` 為空）的各期**：日期一期一行（多期時括號附該期金額），金額＝未撥各期合計。
+  - 已核准但財務尚未排任何一期 →「未排定」；各期皆已撥 →「已撥畢」；無撥款概念的類型（請假 / 加班 / 假日執行活動 / 出差預支沖銷等）→「—」。
+  - 預支沖銷取**本單超支差額分期**（公司補撥給同仁），未超支（`refundDue = 0`）→「—」；**不取**關聯預支單的分期（那筆屬預支單本身，會重複計）。
+  - 判定收斂在 `approval-task-list.ts` 的 `getPaymentPlan()`，畫面與 Excel 共用。
+- **匯出 Excel**：頁首「匯出 Excel」鈕，依目前篩選（類型 / 申請人 / 申請日期 / 撥款子篩選）一次取回全部（`GET /approval-tasks?status=approved&export=true`，上限 `ApprovalTaskHandler.ExportMaxPageSize = 5000`，超出以 toastr 明講「匯出不完整」），一張單一列，欄位＝類型 / 單號 / 申請人 / 摘要 / 撥款狀態 / 申請日期 / 預計撥款日 / 預計撥款額，**末列為預計撥款額合計**。預計撥款額為數值欄（無值留空），Excel 內可再加總。
+
 ## 簽核作業列表「申請人」篩選（2026-07 新增）
 
 簽核作業列表「已核准」頁籤原本只有「全部類型」下拉，新增「全部申請人」下拉，供財務清查特定同仁的已核准單據（可與類型、撥款 / 退款子篩選任意組合）。
