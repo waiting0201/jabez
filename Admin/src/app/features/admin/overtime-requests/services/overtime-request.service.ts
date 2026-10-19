@@ -1,7 +1,7 @@
 import {Injectable, inject} from '@angular/core';
 import {HttpClient} from '@angular/common/http';
 import {Observable} from 'rxjs';
-import {OvertimePayEstimate, OvertimeRequest, OvertimeRequestPayload} from '../models/overtime-request.model';
+import {OvertimePayEstimate, OvertimeRequest, PostHocContext, OvertimeRequestPayload} from '../models/overtime-request.model';
 import {PagedResult} from '../../../../shared/models/paged-result.model';
 import {environment} from '@/environments/environment';
 
@@ -42,6 +42,11 @@ export class OvertimeRequestService {
     return this.http.get<OvertimePayEstimate>(`${environment.apiUrl}/overtime-requests/estimate`, {
       params: {date, hours},
     });
+  }
+
+  /** 事後申請資格與預填起訖（本人；date yyyy-MM-dd） */
+  getPostHocContext(date: string): Observable<PostHocContext> {
+    return this.http.get<PostHocContext>(`${environment.apiUrl}/overtime-requests/post-hoc-context`, {params: {date}});
   }
 
   /** 送出申請（draft → pending） */

@@ -499,7 +499,7 @@ export class ApprovalTaskList {
       const d = t.overtimeDetail;
       const dateStr = new Date(d.overtimeDate).toLocaleDateString('zh-TW');
       const projects = (d.projects ?? []).map(p => `${p.projectCode} ${p.estimatedHours}h`).join('、');
-      const prefix = d.isBackfill ? '補加班・' : '';
+      const prefix = d.requestKind === 'post_hoc' ? '事後申請・' : '';
       return projects
         ? `${prefix}${dateStr}・${d.estimatedHours} 小時（${projects}）・${d.reason}`
         : `${prefix}${dateStr}・${d.estimatedHours} 小時・${d.reason}`;

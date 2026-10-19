@@ -8,8 +8,8 @@
       @if (isEdit && requestNo) {
         <span class="font-monospace text-muted ml-2">{{ requestNo }}</span>
       }
-      @if (isEdit && isBackfill) {
-        <span class="badge bg-warning-subtle text-warning-emphasis ml-2">補加班</span>
+      @if (isEdit && isPostHoc) {
+        <span class="badge bg-warning-subtle text-warning-emphasis ml-2">事後申請</span>
       }
     </h4>
   </div>
@@ -63,16 +63,32 @@
           </div>
           <div class="card-body">
 
+            <div class="mb-4">
+              <label class="form-label fw-500">申請類別 <span class="text-danger">*</span></label>
+              <div class="flex flex-wrap items-center gap-6">
+                <div class="form-check mb-0">
+                  <input class="form-check-input" type="radio" id="kind-normal"
+                         formControlName="requestKind" value="normal">
+                  <label class="form-check-label" for="kind-normal">正常申請</label>
+                </div>
+                <div class="form-check mb-0">
+                  <input class="form-check-input" type="radio" id="kind-post-hoc"
+                         formControlName="requestKind" value="post_hoc">
+                  <label class="form-check-label" for="kind-post-hoc">事後申請</label>
+                </div>
+              </div>
+              <div class="form-text">
+                「事後申請」適用於已親自打下班卡、事後才補報實際加班時段（限今天或昨天）；核准後系統自動寫入出缺勤。
+              </div>
+            </div>
+
             <div class="row g-3 mb-4">
               <div class="col-12 col-md-6">
                 <label class="form-label fw-500">加班日期 <span class="text-danger">*</span></label>
                 <input type="date" class="form-control" formControlName="overtimeDate"
-                       [min]="minDate" [max]="maxDate">
+                       [min]="dateMin" [max]="dateMax">
                 @if (form.get('overtimeDate')?.invalid && form.get('overtimeDate')?.touched) {
                   <div class="text-danger small mt-1">請選擇加班日期。</div>
-                }
-                @if (isBackfillByDate) {
-                  <div class="form-text text-warning-emphasis">加班日期早於今天，本單將標記為補加班。</div>
                 }
               </div>
               <div class="col-12 col-md-6">
@@ -81,6 +97,48 @@
                 <div class="form-text">由下方各專案時數自動加總，不可直接編輯。</div>
               </div>
             </div>
+
+            @if (isPostHocKind) {
+              @if (postHocLoading()) {
+                <p class="text-muted small mb-4">查詢事後申請資格中…</p>
+              } @else if (postHocCtx(); as ctx) {
+                @if (!ctx.eligible) {
+                  <div class="alert alert-warning flex items-center gap-2 mb-4 py-2" role="alert">
+                    <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#alert-triangle"></use></svg>
+                    <span>{{ ctx.reason || '此日期不可事後申請。' }}</span>
+                  </div>
+                } @else {
+                  <div class="row g-3 mb-2">
+                    <div class="col-12 col-md-6">
+                      <label class="form-label fw-500">實際加班開始 <span class="text-danger">*</span></label>
+                      <input type="time" class="form-control" formControlName="actualStartTime">
+                    </div>
+                    <div class="col-12 col-md-6">
+                      <label class="form-label fw-500">實際加班結束 <span class="text-danger">*</span></label>
+                      <input type="time" class="form-control" formControlName="actualEndTime">
+                      <div class="form-check mt-2 mb-0">
+                        <input class="form-check-input" type="checkbox" id="endNextDay" formControlName="endNextDay">
+                        <label class="form-check-label" for="endNextDay">隔日（結束時間跨過午夜，最晚至隔日 06:00）</label>
+                      </div>
+                    </div>
+                  </div>
+                  @if (!isReadOnly && actualDurationHours === null) {
+                    <div class="text-danger small mb-2">請填寫實際加班起訖，且結束須晚於開始。</div>
+                  }
+                  <div class="form-text mb-4">
+                    核准後系統將自動寫入當日出缺勤的加班開始／結束時間（下班卡不變動）。
+                    @if (actualDurationHours !== null) {
+                      實際加班 {{ actualDurationHours | number:'1.1-1' }} 小時；下方各專案時數合計不應超過此時數。
+                    } @else {
+                      下方各專案時數合計不應超過實際加班時數。
+                    }
+                  </div>
+                  @if (actualDurationHours !== null && totalHours() > actualDurationHours) {
+                    <div class="text-danger small mb-4">專案時數合計（{{ totalHours() | number:'1.1-1' }} h）超過實際加班時數（{{ actualDurationHours | number:'1.1-1' }} h），送出時將被退回。</div>
+                  }
+                }
+              }
+            }
 
             <div class="mb-4">
               <label class="form-label fw-500">補償方式 <span class="text-danger">*</span></label>
@@ -343,13 +401,13 @@
 
         @if (!isReadOnly) {
           <div class="mt-6 flex gap-2">
-            <button type="submit" class="btn btn-outline-secondary" [disabled]="form.invalid || saving() || isBlocked">
+            <button type="submit" class="btn btn-outline-secondary" [disabled]="form.invalid || saving() || isBlocked || isPostHocBlocked">
               @if (saving()) {
                 <span class="spinner-border spinner-border-sm me-1" role="status"></span>
               }
               {{ isEdit ? '儲存' : '儲存草稿' }}
             </button>
-            <button type="button" class="btn btn-primary" [disabled]="form.invalid || saving() || isBlocked"
+            <button type="button" class="btn btn-primary" [disabled]="form.invalid || saving() || isBlocked || isPostHocBlocked"
                     (click)="submitForApproval()">
               @if (saving()) {
                 <span class="spinner-border spinner-border-sm me-1" role="status"></span>

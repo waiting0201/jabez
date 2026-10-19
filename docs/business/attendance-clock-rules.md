@@ -435,6 +435,37 @@ Excel 匯出於時間後加註「（系統補卡）」，以區分本人打卡�
   清單掛「已修正」badge（tooltip 顯示修改人與時間），Excel 備註欄註記「管理者已修正（姓名）」。
 - 目前**沒有查詢異動紀錄的 API / 畫面**（需補 `GET /attendances/{id}/audit-logs`，屬 AppRouter 範圍，待後續）；資料已在表內可直接查 DB。
 
+### 加班「事後申請」與自動寫入出缺勤（2026-10-19）
+
+加班申請分兩類（`OvertimeRequest.RequestKind`）：
+
+- **正常申請 `normal`（事前）**：流程不變，核准後照常打加班開始 / 結束卡。
+- **事後申請 `post_hoc`**：同仁一路忙到很晚才打下班卡、事後才送單，加班卡根本打不了（開始卡須在下班卡之後、加班單須先核准）→ 結算 0。事後申請讓同仁在已打下班卡後，於**加班當天或隔天**送單並自填實際起訖；**終局核准時系統自動把起訖寫入當日出缺勤的加班開始 / 結束欄並結算**，不必再請 HR 手改。
+
+送件條件（Create / Update / Submit 皆驗，`OvertimeRequestGuard.EnsurePostHocAsync`）：
+
+1. 加班日為**今天或昨天**（以 `Clock.Today` 判定；草稿放過夜後送簽會被擋）。
+2. 當日 `AttendanceRecord` 存在、`ClockOutTime` 非空且 `IsClockOutAuto = false`（**須親自打下班卡**，系統補卡不算）。
+3. 當日尚無加班打卡（`OvertimeStartTime` / `OvertimeEndTime` 皆空）；已有者走正常申請或由 HR 補正。
+4. 實際起訖必填；訖 > 起；起 ≥ 加班日 00:00；訖 < 隔日 06:00（`OvertimeSettlementService.CrossDayEndCutoffHour`）。
+5. 專案時數合計（`EstimatedHours`）≤「起訖時數扣除與正常上班時段重疊」（`ComputeSettled` / `RegularWindowFor`，捨去到 0.1 小時）。
+6. 既有送件規則照套：同人同日一張、每月上限、全天有薪假、假日活動互斥、單日 4h / 12h 上限。
+
+終局核准時（單筆、批次、Superadmin 自動核准、全自審自動核准同一條路徑，`PostHocOvertimeService`）：
+
+- 寫入 `OvertimeStartTime` / `OvertimeEndTime` ＝ 申請單 `ActualStartTime` / `ActualEndTime`、綁 `OvertimeRequestId`、標 `IsManuallyAdjusted`。**上班卡 / 下班卡一律不動**。
+- 寫一筆 `AttendanceAuditLog`，修改人為核准者、`ModifiedByName` ＝ `系統（事後加班核准 {單號}）`。
+- 以起訖直接結算 `SettledHours`（再同步加班費快照與補休 lot）。
+- 核准當下若該日已出現（非本單的）加班打卡 → 400，請 HR 處理後再核准。舊「補加班」回填單沒有起訖，核准時**不**自動寫入（維持原狀）。
+- 退回 / 拒絕：出缺勤不變（本來就還沒寫）。
+- 打卡端：事後申請單不可用於 `overtime-start`，打卡頁當日已核准加班單下拉也不列。
+
+已知取捨 / 風險（請勿「修正」）：
+
+- **起訖自由填寫、與下班卡不比對**，等於放寬 10 月的防灌工時 —— 時數真實性**完全靠審核者把關**；出缺勤稽核紀錄可事後追查。
+- 下班卡可能落在加班時段內（例：下班卡 18:30、加班填 18:00–22:00），這是預期且**刻意不調整**：結算只扣「正常上班時段」重疊、薪資不讀下班卡，**不影響給付金額**。
+- 出缺勤報表列帶 `overtimeRequestKind`，前端據此在加班欄加註「事後申請」以解釋上述重疊。
+
 ### 加班給付依實際打卡結算（2026-10 防灌工時）
 
 加班費、補休時數**不再信任申請單的預估時數**，改依實際加班打卡結算。核心欄位 `OvertimeRequest.SettledHours`（`decimal?`）：

@@ -728,12 +728,18 @@
                     <div class="col-6 col-md-4">
                       <div class="text-muted small mb-1">加班單號</div>
                       <span class="fw-500 font-monospace">{{ d.requestNo || '—' }}</span>
-                      @if (d.isBackfill) { <span class="badge bg-warning-subtle text-warning-emphasis ms-1">補加班</span> }
+                      @if (d.requestKind === 'post_hoc') { <span class="badge bg-warning-subtle text-warning-emphasis ms-1">事後申請</span> }
                     </div>
                     <div class="col-6 col-md-4">
                       <div class="text-muted small mb-1">加班日期</div>
                       <span class="fw-500">{{ d.overtimeDate | date:'yyyy-MM-dd' }}</span>
                     </div>
+                    @if (d.requestKind === 'post_hoc' && d.actualStartTime && d.actualEndTime) {
+                      <div class="col-12 col-md-4">
+                        <div class="text-muted small mb-1">實際加班（事後申請）</div>
+                        <span class="fw-500">{{ d.actualStartTime | date:'MM/dd HH:mm' }} ～ {{ d.actualEndTime | date:'MM/dd HH:mm' }}</span>
+                      </div>
+                    }
                     <div class="col-6 col-md-4">
                       <div class="text-muted small mb-1">申請人</div>
                       <span class="fw-500">{{ task.submittedBy }}</span>

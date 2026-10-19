@@ -178,6 +178,9 @@
                 </td>
                 <td class="text-center">
                   {{ row.overtimeStartTime }}
+                  @if (row.overtimeRequestKind === 'post_hoc' && row.overtimeStartTime) {
+                    <div><span class="badge bg-warning-subtle text-warning-emphasis" title="由事後加班申請核准後自動寫入">事後申請</span></div>
+                  }
                   @if (row.overtimeStartLatitude != null && row.overtimeStartLongitude != null) {
                     <button class="btn btn-sm btn-ghost-primary inline-flex items-center p-0 ms-1" title="查看打卡位置" (click)="openMap('加班開始', row.overtimeStartLatitude!, row.overtimeStartLongitude!)">
                       <svg class="sa-icon sa-icon-1x" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#map-pin"></use></svg>

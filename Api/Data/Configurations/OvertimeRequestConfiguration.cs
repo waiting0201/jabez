@@ -63,6 +63,12 @@ public class OvertimeRequestConfiguration : IEntityTypeConfiguration<OvertimeReq
         builder.Property(o => o.ExcessHours)
                .HasColumnType("decimal(5,1)");
 
+        // 申請類別（normal / post_hoc）。migration 依「加班日早於送簽日」把舊的補加班單回填為 post_hoc
+        builder.Property(o => o.RequestKind)
+               .IsRequired()
+               .HasMaxLength(20)
+               .HasDefaultValue("normal");
+
         builder.Property(o => o.ReviewNote)
                .HasMaxLength(1000);
 

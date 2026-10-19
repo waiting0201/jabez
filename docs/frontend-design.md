@@ -2239,9 +2239,9 @@ onTaxIdBlur() {
 
 Excel 一律**在前端產生**：後端只回 JSON（不設 `Content-Disposition`、不引入 ClosedXML / EPPlus），前端 `import * as XLSX from 'xlsx'` 組表後 `XLSX.writeFile(wb, 檔名)`。已採用：出缺勤 / 加班 / 款項統計三張報表 + **人事薪資總表**。
 
-> **報表新增欄位三處同改（2026-10 加班報表「申請類別」為例）**：`OvertimeReportRow` 介面 + `fetchData()` 手動 map（漏 map 會靜默顯示預設值，`isBackfill` 為 undefined 時一律顯示「申請加班」）+ `exportExcel()` 的 `wsData`（Excel 文字「申請加班／補申請加班」）；空列 `colspan` 同步（`canSeeAmount ? 10 : 9`）。badge：補申請加班 `bg-warning-subtle text-warning-emphasis`、申請加班 `bg-secondary-subtle text-secondary`。
+> **報表新增欄位三處同改（2026-10 加班報表「申請類別」為例）**：`OvertimeReportRow` 介面 + `fetchData()` 手動 map（漏 map 會靜默顯示預設值，`requestKind` 為 undefined 時一律顯示「正常申請」）+ `exportExcel()` 的 `wsData`（Excel 文字「正常申請／事後申請」）；空列 `colspan` 同步（`canSeeAmount ? 10 : 9`）。badge：事後申請 `bg-warning-subtle text-warning-emphasis`、正常申請 `bg-secondary-subtle text-secondary`。
 >
-> **「補加班」badge（2026-10）**：後端 DTO `isBackfill` 為單一真相（加班日 < 送簽日；草稿以今天判定），表單標題單號旁、清單單號欄、簽核詳情單號旁皆掛 `badge bg-warning-subtle text-warning-emphasis`「補加班」，簽核清單摘要前綴「補加班・」。表單另在日期欄下以 `form-text` 即時提示（台北時區字串比較，`Intl.DateTimeFormat('en-CA', {timeZone:'Asia/Taipei'})`）。
+> **「事後申請」badge（2026-10-19，取代原依日期推導的「補加班」）**：後端 DTO `requestKind`（`normal` / `post_hoc`，落欄位）為單一真相，表單標題單號旁、清單單號欄、簽核詳情單號旁皆掛 `badge bg-warning-subtle text-warning-emphasis`「事後申請」，簽核清單摘要前綴「事後申請・」，出缺勤報表加班開始欄另掛小 badge（`overtimeRequestKind`）。表單頂端「申請類別」二選一；事後申請時日期限昨天～今天，依 `GET /overtime-requests/post-hoc-context` 判資格（不符顯示 alert 並擋送出），起訖預填「應下班～下班卡」可改，結束可勾「隔日」。
 
 ### 12.7.1 資料來源二選一
 

@@ -97,10 +97,10 @@
                 <td class="fw-500">{{ row.employeeName }}</td>
                 <td class="text-center text-muted small">{{ row.overtimeDate }}</td>
                 <td class="text-center">
-                  @if (row.isBackfill) {
-                    <span class="badge bg-warning-subtle text-warning-emphasis">補申請加班</span>
+                  @if (row.requestKind === 'post_hoc') {
+                    <span class="badge bg-warning-subtle text-warning-emphasis">事後申請</span>
                   } @else {
-                    <span class="badge bg-secondary-subtle text-secondary">申請加班</span>
+                    <span class="badge bg-secondary-subtle text-secondary">正常申請</span>
                   }
                 </td>
                 <td class="hidden md:table-cell">

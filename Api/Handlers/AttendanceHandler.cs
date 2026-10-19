@@ -364,6 +364,8 @@ public sealed class AttendanceHandler(
             throw AppException.BadRequest("加班申請尚未核准。");
         if (otRequest.OvertimeDate.Date != today)
             throw AppException.BadRequest("加班申請日期與今日不符。");
+        if (otRequest.RequestKind == OvertimeRequestKinds.PostHoc)
+            throw AppException.BadRequest("事後申請的加班核准後由系統自動寫入出缺勤，不需（也不能）打加班開始卡。");
 
         // 2. 今日打卡紀錄（休假日可能尚未建立）
         var record = await db.AttendanceRecords
@@ -566,20 +568,8 @@ public sealed class AttendanceHandler(
             var modifierName = await db.Users.AsNoTracking()
                 .Where(u => u.Id == callerId).Select(u => u.Name).FirstOrDefaultAsync() ?? "—";
             var now = Clock.Now;
-            db.AttendanceAuditLogs.Add(new AttendanceAuditLog
-            {
-                AttendanceRecordId  = record.Id,
-                OwnerUserId         = record.UserId,
-                RecordDate          = record.RecordDate,
-                ModifiedById        = callerId,
-                ModifiedByName      = modifierName,
-                ModifiedAt          = now,
-                ClockInBefore       = record.ClockInTime,       ClockInAfter       = body.ClockInTime,
-                ClockOutBefore      = record.ClockOutTime,      ClockOutAfter      = body.ClockOutTime,
-                OvertimeStartBefore = record.OvertimeStartTime, OvertimeStartAfter = body.OvertimeStartTime,
-                OvertimeEndBefore   = record.OvertimeEndTime,   OvertimeEndAfter   = body.OvertimeEndTime,
-                RemarkBefore        = record.Remark,            RemarkAfter        = newRemark,
-            });
+            AttendanceAuditWriter.Add(db, record, callerId, modifierName, now,
+                body.ClockInTime, body.ClockOutTime, body.OvertimeStartTime, body.OvertimeEndTime, newRemark);
 
             // 「系統補卡」旗標**不再清除**：IsClockInAuto / IsClockOutAuto 記的是「這個值最初怎麼來的」，
             // 管理者改過另以 IsManuallyAdjusted 標示，報表兩個 badge 可並存（原本是系統補的、後來被誰改過）。

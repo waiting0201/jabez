@@ -646,6 +646,11 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
                 if (action == "approved" && ot.EmployeeId is { } otOwner)
                     await HolidayTravelParticipantGuard.EnsureNoOvertimeConflictAsync(db, calendarReader, otOwner, ot.OvertimeDate);
 
+                // 事後申請：核准前先確認當日出缺勤仍可寫入（送件後若被補了加班卡 → 400 請 HR 處理）。
+                // 放在任何狀態變更之前，批次核准遇到時不會留下髒的 tracked 變更。
+                if (action == "approved")
+                    await PostHocOvertimeService.EnsureCanApplyAsync(db, ot);
+
                 var otApplicant = ot.EmployeeId.HasValue
                     ? await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == ot.EmployeeId.Value)
                     : null;
@@ -668,6 +673,12 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
                 // 補休 lot：終局核准且補償方式為補休時開一筆（帶原始費率快照與到期日）；
                 // 其餘狀態收掉。ApplyAsync 內部自行判斷，故無條件呼叫。
                 await CompensatoryLotService.ApplyAsync(db, shiftSchedule, scheduleProvider, ot);
+
+                // 事後申請終局核准：把自填的實際起訖寫入當日出缺勤加班欄（不動上下班卡）+ 稽核 + 以起訖結算。
+                // 必須排在上面兩個 ApplyAsync 之後：它們走 ResolveFromDbAsync（AsNoTracking）讀不到尚未存檔的加班卡 → 結算 0，
+                // 這裡的 SyncFromPunchesAsync 直接以起訖重算，覆蓋成正確的 SettledHours / 加班費快照 / 補休 lot。
+                // 非事後申請 / 非終局核准時為 no-op。
+                await PostHocOvertimeService.ApplyOnApprovalAsync(db, shiftSchedule, scheduleProvider, ot, reviewerId);
 
                 await db.SaveChangesAsync();
                 break;

@@ -64,6 +64,19 @@ public class OvertimeRequest
     /// </summary>
     public decimal? ExcessHours        { get; set; }
 
+    /// <summary>
+    /// 申請類別（2026-10）：normal＝正常申請（事前，核准後照常打加班卡）/ post_hoc＝事後申請
+    /// （已親自打下班卡後送出，終局核准時系統自動把 Actual* 寫入當日出缺勤的加班欄）。
+    /// 常數與正規化見 <see cref="Jabez.Api.Common.OvertimeRequestKinds"/>；取代原本依日期推導的 OvertimeBackfill。
+    /// </summary>
+    public string   RequestKind      { get; set; } = "normal";
+
+    /// <summary>事後申請自填的實際加班開始時間（台北 naive）；normal 恆為 null，舊回填單亦為 null。</summary>
+    public DateTime? ActualStartTime { get; set; }
+
+    /// <summary>事後申請自填的實際加班結束時間（可跨日，須早於隔日 06:00）；normal 恆為 null。</summary>
+    public DateTime? ActualEndTime   { get; set; }
+
     public string   Reason           { get; set; } = string.Empty;
     public string   ApprovalStatus   { get; set; } = "pending";  // pending | approved | rejected | returned
     public int      CurrentStepOrder { get; set; } = 1;

@@ -1,5 +1,6 @@
 using Jabez.Api.Common;
 using Jabez.Api.Data;
+using Jabez.Api.Services.Dapper;
 using Microsoft.EntityFrameworkCore;
 
 namespace Jabez.Api.Services;
@@ -136,6 +137,72 @@ public static class OvertimeRequestGuard
         if (am && pm)
             throw AppException.BadRequest(
                 $"{day:yyyy/MM/dd} 您已有全天的已核准請假（有薪假），該日不可申請加班。");
+    }
+
+    // ── 事後申請（RequestKind = post_hoc，2026-10）─────────────────────────────────
+
+    /// <summary>
+    /// 事後申請資格判定（資料面）：加班日為今天或昨天、當日有出缺勤紀錄、已<b>親自</b>打下班卡（非系統補卡）、
+    /// 且尚無加班打卡。<c>GET /overtime-requests/post-hoc-context</c> 與送件驗證共用，避免兩處漂移。
+    /// 回傳的 <c>Record</c> 為 AsNoTracking 快照。
+    /// </summary>
+    public static async Task<(bool Eligible, string? Reason, Models.Entities.AttendanceRecord? Record)>
+        EvaluatePostHocEligibilityAsync(AppDbContext db, Guid ownerId, DateTime overtimeDate)
+    {
+        var day = overtimeDate.Date;
+        var today = Clock.Today;
+        if (day != today && day != today.AddDays(-1))
+            return (false, "事後申請的加班日期僅限今天或昨天。", null);
+
+        var record = await db.AttendanceRecords.AsNoTracking()
+            .FirstOrDefaultAsync(a => a.UserId == ownerId && a.RecordDate == day);
+
+        if (record is null || record.ClockOutTime is null)
+            return (false, $"{day:yyyy/MM/dd} 尚未打下班卡，無法申請事後加班；請改用正常申請，或下班打卡後再申請。", record);
+        if (record.IsClockOutAuto)
+            return (false, $"{day:yyyy/MM/dd} 的下班卡為系統補卡（非親自打卡），無法申請事後加班，請洽主管由出缺勤補正。", record);
+        if (record.OvertimeStartTime is not null || record.OvertimeEndTime is not null)
+            return (false, $"{day:yyyy/MM/dd} 已有加班打卡紀錄，請改用正常申請（或洽主管由出缺勤補正）。", record);
+
+        return (true, null, record);
+    }
+
+    /// <summary>
+    /// 事後申請送件檢查（Create / Update / Submit 共用，僅 RequestKind = post_hoc 時呼叫）：
+    /// 資格（見 <see cref="EvaluatePostHocEligibilityAsync"/>）→ 起訖必填、訖 &gt; 起、起 ≥ 加班日 00:00、
+    /// 訖 &lt; 隔日 06:00（<see cref="OvertimeSettlementService.CrossDayEndCutoffHour"/>）
+    /// → 專案時數合計不得超過「起訖時數扣除與正常上班時段重疊」。
+    /// <b>刻意不比對下班卡時間</b>（使用者決議：起訖自由填寫，真實性由審核者把關，稽核紀錄可追查）。
+    /// </summary>
+    public static async Task EnsurePostHocAsync(
+        AppDbContext db, IShiftScheduleReadService shiftSchedule, IWorkdayScheduleProvider scheduleProvider,
+        Guid ownerId, DateTime overtimeDate, DateTime? actualStart, DateTime? actualEnd, decimal projectHours)
+    {
+        var (eligible, reason, _) = await EvaluatePostHocEligibilityAsync(db, ownerId, overtimeDate);
+        if (!eligible) throw AppException.BadRequest(reason!);
+
+        if (actualStart is null || actualEnd is null)
+            throw AppException.BadRequest("事後申請須填寫實際加班開始與結束時間。");
+
+        var day = overtimeDate.Date;
+        if (actualEnd.Value <= actualStart.Value)
+            throw AppException.BadRequest("實際加班結束時間須晚於開始時間。");
+        if (actualStart.Value < day)
+            throw AppException.BadRequest("實際加班開始時間不可早於加班日 00:00。");
+        if (actualEnd.Value >= day.AddDays(1).AddHours(OvertimeSettlementService.CrossDayEndCutoffHour))
+            throw AppException.BadRequest(
+                $"實際加班結束時間須早於隔日 {OvertimeSettlementService.CrossDayEndCutoffHour:00}:00。");
+
+        var dayType  = await shiftSchedule.ResolveDayTypeAsync(ownerId, day);
+        var schedule = await scheduleProvider.ForAsync(day);
+        var window   = OvertimeSettlement.RegularWindowFor(day, dayType, schedule);
+
+        // approvedHours 傳入夠大的值，取回的就是「扣除正常上班時段重疊後、捨去到 0.1 小時」的可申請上限
+        var maxHours = OvertimeSettlement.ComputeSettled(999m, actualStart, actualEnd, window?.Start, window?.End);
+        if (projectHours > maxHours)
+            throw AppException.BadRequest(
+                $"專案時數合計 {projectHours:0.#} 小時超過實際加班起訖可計的 {maxHours:0.#} 小時" +
+                "（起訖時數扣除與正常上班時段重疊的部分）。");
     }
 
     // ── 內部 ────────────────────────────────────────────────────────────────

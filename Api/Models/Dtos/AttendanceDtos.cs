@@ -66,7 +66,9 @@ public sealed record AttendanceRecordDto(
     /// <summary>員工上班打卡時填寫的遲到原因</summary>
     string?   LateReason = null,
     /// <summary>員工下班打卡時填寫的早退／逾時原因（依 IsEarlyLeave 區分標籤）</summary>
-    string?   ClockOutReason = null);
+    string?   ClockOutReason = null,
+    /// <summary>連結的加班單申請類別（normal / post_hoc）；無連結加班單為 null。post_hoc 者加班欄由核准自動寫入，下班卡可能落在加班時段內（預期）。</summary>
+    string?   OvertimeRequestKind = null);
 
 /// <summary>出缺勤報表列中的單張請假資訊（當日份）</summary>
 public sealed record AttendanceLeaveDto(

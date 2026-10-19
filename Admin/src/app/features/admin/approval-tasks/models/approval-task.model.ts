@@ -243,8 +243,11 @@ export interface OvertimeTaskDetail {
   overtimeRequestId: number;
   requestNo?: string | null;   // OT-yyyyMMdd-NNN
   overtimeDate: Date;
-  /** 補加班（加班日期早於送簽日），後端推導 */
-  isBackfill?: boolean;
+  /** 申請類別：normal 正常申請 / post_hoc 事後申請 */
+  requestKind?: 'normal' | 'post_hoc';
+  /** 事後申請的實際加班起訖（本地 naive ISO）；正常申請為 null */
+  actualStartTime?: string | null;
+  actualEndTime?: string | null;
   /** 預估總時數（= projects 各列加總） */
   estimatedHours: number;
   reason: string;
