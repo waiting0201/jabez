@@ -833,6 +833,7 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
                            WHERE w3.AdvanceRequestId = wo.AdvanceRequestId
                              AND w3.ApprovalStatus = 'approved'
                              AND w3.Id <> wo.Id), 0) AS AdvanceReturnedTotal,
+                   {WriteOffRequestReadService.OverspendPaidSql("wo")},
                    wo.ReturnedAmount, wo.ReturnedAt, wo.ReturnedProofFileName, wo.ReturnedProofUrl,
                    worefundby.SignatureUrl AS RefundedBySignatureUrl,
                    arx.IsClosed AS AdvanceIsClosed,
@@ -1819,7 +1820,9 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
                 (DateTime?)row.ReturnedAt,
                 (string?)row.ReturnedProofFileName,
                 (string?)row.ReturnedProofUrl,
-                (decimal)row.AdvanceReturnedTotal),
+                (decimal)row.AdvanceReturnedTotal,
+                (decimal)row.OverspendPaidTotal,
+                (DateTime?)row.OverspendLastPaidAt),
             null,
             GetRecords("write_off", (int)row.Id),
             GetDesignatedReviewers("write_off", (int)row.Id),

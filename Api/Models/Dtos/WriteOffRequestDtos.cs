@@ -47,7 +47,10 @@ public sealed record WriteOffRequestDto(
     DateTime?                 ReturnedAt = null,
     string?                   ReturnedProofFileName = null,
     string?                   ReturnedProofUrl = null,
-    decimal                   AdvanceReturnedTotal = 0);   // 同預支單「他單」已核准繳回合計（不含本單）
+    decimal                   AdvanceReturnedTotal = 0,    // 同預支單「他單」已核准繳回合計（不含本單）
+    // ── 公司已補撥的超支差額（尚未結清為負時判定「已結清」用）──
+    decimal                   OverspendPaidTotal = 0,      // 同預支單已核准 ∪ 本單沖銷的已撥款差額分期合計
+    DateTime?                 OverspendLastPaidAt = null); // 上述分期的最後撥款日
 
 /// <summary>同一張預支單底下的各次沖銷（供沖銷資訊卡列出第 N 次沖銷金額）</summary>
 public sealed record WriteOffRoundDto(
@@ -144,7 +147,9 @@ public sealed record WriteOffTaskDetailDto(
     DateTime?           ReturnedAt = null,
     string?             ReturnedProofFileName = null,
     string?             ReturnedProofUrl = null,
-    decimal             AdvanceReturnedTotal = 0);    // 同預支單「他單」已核准繳回合計（不含本單）
+    decimal             AdvanceReturnedTotal = 0,     // 同預支單「他單」已核准繳回合計（不含本單）
+    decimal             OverspendPaidTotal = 0,       // 同預支單已核准 ∪ 本單沖銷的已撥款差額分期合計
+    DateTime?           OverspendLastPaidAt = null);  // 上述分期的最後撥款日
 
 // ── 支票已支付註記 ────────────────────────────────────────────────────────────
 

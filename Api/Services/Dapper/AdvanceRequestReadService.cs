@@ -122,8 +122,19 @@ public sealed class AdvanceRequestReadService(IDbConnection db, IInstallmentRead
             """;
         var supRows = await db.QueryAsync<dynamic>(supSql, new { Id = id });
 
+        // 公司已補撥的超支差額（已核准沖銷的已撥款差額分期）
+        const string overspendSql = """
+            SELECT ISNULL(SUM(oi.Amount), 0) AS PaidTotal, MAX(oi.PaidAt) AS LastPaidAt
+            FROM WriteOffInstallments oi
+            JOIN WriteOffRecords ow ON ow.Id = oi.WriteOffRecordId
+            WHERE ow.AdvanceRequestId = @Id AND ow.ApprovalStatus = 'approved' AND oi.PaidAt IS NOT NULL
+            """;
+        var overspend = await db.QuerySingleAsync<dynamic>(overspendSql, new { Id = id });
+
         return dto with
         {
+            OverspendPaidTotal  = (decimal)overspend.PaidTotal,
+            OverspendLastPaidAt = (DateTime?)overspend.LastPaidAt,
             DesignatedReviewers = designatedReviewers.Length > 0 ? designatedReviewers : null,
             WriteOffRecords = writeOffRecords.Length > 0 ? writeOffRecords : null,
             Installments = instList.Count > 0 ? instList.ToArray() : null,

@@ -92,7 +92,8 @@
           [currentGrandTotal]="r.grandTotal"
           [refundDue]="r.refundDue ?? 0"
           [advanceReturnedTotal]="r.advanceReturnedTotal ?? 0"
-          [currentReturnedAmount]="r.returnedAmount" />
+          [currentReturnedAmount]="r.returnedAmount"
+          [overspendPaidTotal]="r.overspendPaidTotal" [overspendLastPaidAt]="r.overspendLastPaidAt" />
 
         <!-- 本單同仁匯回預支餘額（金額 / 日期 / 匯款證明） -->
         <app-write-off-returned-info

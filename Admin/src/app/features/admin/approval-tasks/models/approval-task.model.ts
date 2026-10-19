@@ -372,6 +372,10 @@ export interface WriteOffReturnedCash {
   returnedProofUrl?: string | null;
   /** 同預支單「其他」已核准沖銷單的繳回加總（不含本單） */
   advanceReturnedTotal?: number;
+  /** 公司已補撥的超支差額合計（同預支單已核准 ∪ 本單的已撥款差額分期） */
+  overspendPaidTotal?: number;
+  /** 上述差額分期的最後撥款日 */
+  overspendLastPaidAt?: string | null;
 }
 
 export interface WriteOffTaskDetail extends WriteOffReturnedCash {

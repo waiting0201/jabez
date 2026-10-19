@@ -7,8 +7,26 @@ namespace Jabez.Api.Services.Dapper;
 
 public sealed class WriteOffRequestReadService(IDbConnection db, IInstallmentReadService installments) : IWriteOffRequestReadService
 {
+    /// <summary>
+    /// 公司已補撥給同仁的超支差額：同預支單「已核准 ∪ 本單」沖銷的已撥款 WriteOffInstallments 合計與最後撥款日。
+    /// 供「尚未結清金額」為負（沖銷大於預支）時判定是否已結清並顯示撥匯日；WriteOffRequestDto / WriteOffTaskDetailDto 共用。
+    /// <paramref name="woAlias"/> 為外層 WriteOffRecords 別名。
+    /// </summary>
+    internal static string OverspendPaidSql(string woAlias) => $"""
+        ISNULL((SELECT SUM(oi.Amount) FROM WriteOffInstallments oi
+                JOIN WriteOffRecords ow ON ow.Id = oi.WriteOffRecordId
+                WHERE ow.AdvanceRequestId = {woAlias}.AdvanceRequestId
+                  AND (ow.ApprovalStatus = 'approved' OR ow.Id = {woAlias}.Id)
+                  AND oi.PaidAt IS NOT NULL), 0) AS OverspendPaidTotal,
+        (SELECT MAX(oi.PaidAt) FROM WriteOffInstallments oi
+                JOIN WriteOffRecords ow ON ow.Id = oi.WriteOffRecordId
+                WHERE ow.AdvanceRequestId = {woAlias}.AdvanceRequestId
+                  AND (ow.ApprovalStatus = 'approved' OR ow.Id = {woAlias}.Id)
+                  AND oi.PaidAt IS NOT NULL) AS OverspendLastPaidAt
+        """;
+
     // 預支沖銷申請主查詢：WriteOffRecords 關聯 AdvanceRequests、Projects、Users、WriteOffItems
-    private const string BaseSql = """
+    private static readonly string BaseSql = $$"""
         SELECT wo.Id, wo.RequestNo, wo.AdvanceRequestId, ar.RequestNo AS AdvanceRequestNo,
                wo.WriteOffNo, proj.Code AS ProjectCode, proj.Name AS ProjectName,
                ar.ActivityName, ar.ActivityPeriod,
@@ -33,6 +51,7 @@ public sealed class WriteOffRequestReadService(IDbConnection db, IInstallmentRea
                          AND w3.ApprovalStatus = 'approved'
                          AND w3.Id <> wo.Id), 0) AS AdvanceReturnedTotal,
                wo.ReturnedAmount, wo.ReturnedAt, wo.ReturnedProofFileName, wo.ReturnedProofUrl,
+               {{OverspendPaidSql("wo")}},
                CAST(ISNULL(ar.IsClosed, 0) AS BIT) AS AdvanceIsClosed,
                ar.ClosedAt AS AdvanceClosedAt,
                ar.EstimatedRefundDate, ar.RefundedAt,
@@ -324,6 +343,8 @@ public sealed class WriteOffRequestReadService(IDbConnection db, IInstallmentRea
             ReturnedAt:            (DateTime?)x.wo.ReturnedAt,
             ReturnedProofFileName: (string?)x.wo.ReturnedProofFileName,
             ReturnedProofUrl:      (string?)x.wo.ReturnedProofUrl,
-            AdvanceReturnedTotal:  (decimal)x.wo.AdvanceReturnedTotal));
+            AdvanceReturnedTotal:  (decimal)x.wo.AdvanceReturnedTotal,
+            OverspendPaidTotal:    (decimal)x.wo.OverspendPaidTotal,
+            OverspendLastPaidAt:   (DateTime?)x.wo.OverspendLastPaidAt));
     }
 }

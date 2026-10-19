@@ -193,7 +193,8 @@ export class WriteOffPdfService {
         { content: '結餘', colSpan: 6, styles: { halign: 'right', fontStyle: 'bold' } },
         { content: fmt(balance), colSpan: 2, styles: { fontStyle: 'bold', halign: 'right', textColor: balance < 0 ? [...CIS.red] : [...CIS.textPrimary] } },
         '',
-        '',
+        // 沖銷大於預支且公司已補撥足額 → 備註標「已結清」（與頁面 write-off-summary 同判準）
+        balance < 0 && (r.overspendPaidTotal ?? 0) >= -balance ? '已結清' : '',
       ]);
       // 差額撥款分期（沖銷超支時公司補撥給員工，可分多期）
       const fmtDate = (v?: string) => v ? new Date(v).toLocaleDateString('zh-TW', { year: 'numeric', month: '2-digit', day: '2-digit', timeZone: 'Asia/Taipei' }) : '尚未設定';

@@ -254,9 +254,14 @@
                 <tr class="table-light">
                   <td colspan="3" class="text-right fw-500 small">尚未結清（預支 − 核銷 − 繳回）</td>
                   <td colspan="2" class="text-right fw-600"
-                      [class.text-warning]="unsettled(r) !== 0" [class.text-green]="unsettled(r) === 0">
+                      [class.text-warning]="unsettled(r) !== 0 && !overspendSettled(r)"
+                      [class.text-green]="unsettled(r) === 0 || overspendSettled(r)">
                     {{ unsettled(r) | number:'1.0-0' }}
-                    @if (unsettled(r) !== 0) {
+                    @if (overspendSettled(r)) {
+                      <span class="badge bg-success-subtle text-success ml-1">
+                        已結清@if (r.overspendLastPaidAt) {（{{ r.overspendLastPaidAt | date:'yyyy-MM-dd' }} 已撥匯）}
+                      </span>
+                    } @else if (unsettled(r) !== 0) {
                       <span class="badge bg-warning-subtle text-warning-emphasis ml-1">未結清</span>
                     }
                   </td>

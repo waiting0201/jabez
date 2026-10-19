@@ -1265,7 +1265,7 @@ UI 行為規範（5 種申請類型一致）：
 
 Input：`advanceRounds` / `writeOffHistory` / `currentGrandTotal` / `refundDue` / `advanceReturnedTotal`（他單已核准繳回，後端帶回）/ `currentReturnedAmount`（本單繳回）。加總一律由陣列 `reduce` 推導，不吃任何快取欄位。
 
-**2026-10 底部新增「結清對帳」四行表**：原始預支金額 / 實際費用核銷 / 現金・匯款繳回 / **尚未結清金額**（= 預支 − 核銷 − 繳回，`unsettled()`）。≠ 0 以 `text-warning` + 「未結清」badge 警示（**只警示、不擋結案**）。已沖銷歷史列若該次有繳回，金額下方以小字「繳回 N（yyyy-MM-dd）」呈現（日期取 `WriteOffRound.returnedAt`）。沖銷清單頁金額欄同樣以小字「繳回 N」標示（純匯回單金額為 0，不標會看不出有繳回）。**預支單詳情頁**於「結案與退款資訊」卡之前有「沖銷與繳回紀錄」卡：一張沖銷一列（次別 / 單號 / 狀態 badge / 費用核銷 / 同仁繳回 / 繳回日期 / 匯款證明 eye 鈕開 file-preview-modal），非已核准列 `text-muted`，表尾「已核准合計」與「尚未結清」（同 `unsettled()` 的警示樣式）。
+**2026-10 底部新增「結清對帳」四行表**：原始預支金額 / 實際費用核銷 / 現金・匯款繳回 / **尚未結清金額**（= 預支 − 核銷 − 繳回，`unsettled()`）。≠ 0 以 `text-warning` + 「未結清」badge 警示（**只警示、不擋結案**）。已沖銷歷史列若該次有繳回，金額下方以小字「繳回 N（yyyy-MM-dd）」呈現（日期取 `WriteOffRound.returnedAt`）。沖銷清單頁金額欄同樣以小字「繳回 N」標示（純匯回單金額為 0，不標會看不出有繳回）。**預支單詳情頁**於「結案與退款資訊」卡之前有「沖銷與繳回紀錄」卡：一張沖銷一列（次別 / 單號 / 狀態 badge / 費用核銷 / 同仁繳回 / 繳回日期 / 匯款證明 eye 鈕開 file-preview-modal），非已核准列 `text-muted`，表尾「已核准合計」與「尚未結清」（同 `unsettled()` 的警示樣式）。**尚未結清為負且公司已補撥足額**（`overspendSettled()`：`unsettled < 0 && overspendPaidTotal ≥ −unsettled`）時改為 `text-green` + `badge bg-success-subtle text-success`「已結清（yyyy-MM-dd 已撥匯）」，`write-off-summary`（inputs `overspendPaidTotal` / `overspendLastPaidAt`）與預支詳情卡同判準。
 
 **同仁匯回預支餘額（現金／匯款繳回）**：
 - 唯讀呈現統一用 [`<app-write-off-returned-info>`](../Admin/src/app/shared/components/write-off-returned-info.ts)（金額 / 日期 / 證明檔），詳情頁、彙總頁（每張沖銷單卡內）、簽核頁共用；`amount` 為空或 0 整塊不顯示，點證明檔 emit `(preview)` 由父層開 `file-preview-modal`。

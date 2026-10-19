@@ -75,6 +75,12 @@ export class AdvanceDetail implements OnInit {
     return r.grandTotal - this.approvedWrittenOffTotal(r) - this.approvedReturnedTotal(r);
   }
 
+  /** 沖銷大於預支（尚未結清為負）且公司已補撥足額 → 已結清（與 write-off-summary 同判準）*/
+  overspendSettled(r: AdvanceRequest): boolean {
+    const u = this.unsettled(r);
+    return u < 0 && (r.overspendPaidTotal ?? 0) >= -u;
+  }
+
   // ── 追加預支 ──────────────────────────────────────────────────────────────
 
   /** 各預支批次（後端未回傳時不顯示批次清單，退回單一預支日期）*/
