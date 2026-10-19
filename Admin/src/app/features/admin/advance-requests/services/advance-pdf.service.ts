@@ -269,6 +269,16 @@ export class AdvancePdfService {
           { content: fmt(wo.grandTotal), colSpan: 2, styles: { fontStyle: 'bold', halign: 'right' } },
           '', '',
         ]);
+        if ((wo.returnedAmount ?? 0) > 0) {
+          const retDate = wo.returnedAt
+            ? new Date(wo.returnedAt).toLocaleDateString('zh-TW', { year: 'numeric', month: '2-digit', day: '2-digit', timeZone: 'Asia/Taipei' })
+            : '日期未填';
+          woBodyRows.push([
+            { content: `現金/匯款繳回（${retDate}）`, colSpan: 6, styles: { halign: 'right' } },
+            { content: fmt(wo.returnedAmount ?? 0), colSpan: 2, styles: { halign: 'right' } },
+            '', '',
+          ]);
+        }
 
         autoTable(doc, {
           startY: y,

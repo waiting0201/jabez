@@ -128,7 +128,12 @@ public sealed record WriteOffRecordDto(
     string?           Note,
     string?           SubmittedBy,
     DateTime          CreatedAt,
-    WriteOffItemDto[] Items);
+    WriteOffItemDto[] Items,
+    // ── 同仁繳回預支餘額（預支詳情頁「沖銷與繳回紀錄」卡 / 預支 PDF 用）──
+    decimal?          ReturnedAmount        = null,
+    DateTime?         ReturnedAt            = null,
+    string?           ReturnedProofFileName = null,
+    string?           ReturnedProofUrl      = null);
 
 /// <summary>沖銷摘要（用於預支申請列表顯示）</summary>
 public sealed record WriteOffSummaryDto(

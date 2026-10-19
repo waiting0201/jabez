@@ -94,6 +94,7 @@ public sealed class AdvanceRequestReadService(IDbConnection db, IInstallmentRead
             SELECT wo.Id, wo.RequestNo, wo.WriteOffNo, wo.CashTotal, wo.CheckTotal,
                    wo.GrandTotal, wo.ApprovalStatus, wo.Note,
                    sub.Name AS SubmittedBy, wo.CreatedAt,
+                   wo.ReturnedAmount, wo.ReturnedAt, wo.ReturnedProofFileName, wo.ReturnedProofUrl,
                    wi.Id AS ItemId, wi.Category, wi.SeqNo, wi.ItemName,
                    wi.UnitPrice, wi.Quantity, wi.TotalPrice,
                    wi.CashAmount AS ItemCash, wi.CheckAmount AS ItemCheck,
@@ -268,7 +269,11 @@ public sealed class AdvanceRequestReadService(IDbConnection db, IInstallmentRead
                 (string?)x.wo.Note,
                 (string?)x.wo.SubmittedBy,
                 (DateTime)x.wo.CreatedAt,
-                [.. x.items]))
+                [.. x.items],
+                ReturnedAmount:        (decimal?)x.wo.ReturnedAmount,
+                ReturnedAt:            (DateTime?)x.wo.ReturnedAt,
+                ReturnedProofFileName: (string?)x.wo.ReturnedProofFileName,
+                ReturnedProofUrl:      (string?)x.wo.ReturnedProofUrl))
             .ToArray();
     }
 

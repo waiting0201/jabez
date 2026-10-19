@@ -360,6 +360,8 @@ export interface WriteOffRound {
   isCurrent: boolean;
   /** 該次沖銷附帶的同仁匯回預支餘額（無則 null） */
   returnedAmount?: number | null;
+  /** 該次繳回日期 */
+  returnedAt?: string | null;
 }
 
 /** 同仁匯回預支餘額（現金／匯款繳回）— 不計入沖銷金額；金額 > 0 時須附日期與匯款證明 */

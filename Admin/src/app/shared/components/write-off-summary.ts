@@ -58,7 +58,10 @@ import {WriteOffRound} from '../../features/admin/approval-tasks/models/approval
                       [class.text-muted]="wo.approvalStatus !== 'approved' && !wo.isCurrent">
                     {{ wo.grandTotal | number:'1.0-0' }}
                     @if (wo.returnedAmount) {
-                      <div class="text-muted small fw-normal">繳回 {{ wo.returnedAmount | number:'1.0-0' }}</div>
+                      <div class="text-muted small fw-normal">
+                        繳回 {{ wo.returnedAmount | number:'1.0-0' }}
+                        @if (wo.returnedAt) { （{{ wo.returnedAt | date:'yyyy-MM-dd' }}） }
+                      </div>
                     }
                   </td>
                 </tr>

@@ -240,7 +240,7 @@ public sealed class WriteOffRequestReadService(IDbConnection db, IInstallmentRea
     private async Task<WriteOffRoundDto[]> GetWriteOffHistoryAsync(int advanceRequestId, int currentId)
     {
         const string sql = """
-            SELECT Id, WriteOffNo, RequestNo, GrandTotal, ApprovalStatus, CreatedAt, ReturnedAmount
+            SELECT Id, WriteOffNo, RequestNo, GrandTotal, ApprovalStatus, CreatedAt, ReturnedAmount, ReturnedAt
             FROM WriteOffRecords
             WHERE AdvanceRequestId = @AdvanceRequestId AND ApprovalStatus <> 'rejected'
             ORDER BY WriteOffNo, Id
@@ -254,7 +254,8 @@ public sealed class WriteOffRequestReadService(IDbConnection db, IInstallmentRea
             (string)r.ApprovalStatus,
             (DateTime)r.CreatedAt,
             (int)r.Id == currentId,
-            (decimal?)r.ReturnedAmount))];
+            (decimal?)r.ReturnedAmount,
+            (DateTime?)r.ReturnedAt))];
     }
 
     // ── Grouping helpers ─────────────────────────────────────────────────────

@@ -150,6 +150,11 @@ export interface WriteOffRecord {
   submittedBy?: string;
   createdAt: string;
   items: WriteOffItem[];
+  /** 同仁繳回預支餘額（無則 null） */
+  returnedAmount?: number | null;
+  returnedAt?: string | null;
+  returnedProofFileName?: string | null;
+  returnedProofUrl?: string | null;
 }
 
 /** 常用分類選項（與 write-off-request.model.ts 的同名常數必須保持一致：沖銷表單會從母預支單複製 category） */

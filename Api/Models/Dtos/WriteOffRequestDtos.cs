@@ -58,7 +58,8 @@ public sealed record WriteOffRoundDto(
     string   ApprovalStatus,
     DateTime CreatedAt,
     bool     IsCurrent,
-    decimal? ReturnedAmount = null);   // 該次沖銷的同仁繳回金額（歷程列顯示用）
+    decimal? ReturnedAmount = null,    // 該次沖銷的同仁繳回金額（歷程列顯示用）
+    DateTime? ReturnedAt = null);      // 該次繳回日期（歷程列 / 沖銷 PDF 逐筆列出用）
 
 // ── 依預支單彙總檢視 DTO ─────────────────────────────────────────────────────
 
