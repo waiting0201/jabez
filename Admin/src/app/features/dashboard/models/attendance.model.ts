@@ -53,6 +53,8 @@ export interface TodayAttendance {
   projectAllocations?: ProjectAllocation[];
   /** 今天下班打卡是否須填專案佔比（已到專案工時上線日）；false 時維持上線前流程、不顯示今日專案工時卡片 */
   projectAllocationRequired?: boolean;
+  /** 上班卡最晚可打的時間（當日有已核准請假才有值；全日請假為當日 00:00＝今日不開放）；無請假為 null */
+  clockInNotAfter?: string | null;
 }
 
 /** 專案工時佔比（讀取：含案號與名稱供顯示） */

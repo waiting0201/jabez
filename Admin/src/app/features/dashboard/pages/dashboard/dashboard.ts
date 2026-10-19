@@ -114,7 +114,17 @@ export class Dashboard implements OnInit, OnDestroy {
     const r = this.todayRecord();
     // canClockInOut 是後端依當日日別算好的旗標（例假全鎖 / 休假鎖 / 國定假日僅活動日預定人力解鎖）。
     // 前端不自行重組規則，只吃旗標 —— 規則變動時只要改後端一處。
-    return !r?.clockInTime && !this.loading() && !this.currentLeave() && this.dayAllowsClock();
+    return !r?.clockInTime && !this.loading() && !this.currentLeave() && this.dayAllowsClock()
+      && !this.clockInClosedByLeave();
+  });
+
+  /**
+   * 今日有請假且應出勤時段已結束（或全日請假）→ 不可再打上班卡。
+   * 時間點由後端 clockInNotAfter 算好（與 ClockInAsync 擋件同一函式），前端只比對 now。
+   */
+  clockInClosedByLeave = computed(() => {
+    const notAfter = this.todayRecord()?.clockInNotAfter;
+    return !!notAfter && this.now().getTime() >= new Date(notAfter).getTime();
   });
 
   canClockOut = computed(() => {
