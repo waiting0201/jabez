@@ -518,7 +518,7 @@ export class ApprovalTaskList {
 
   /**
    * 匯出 Excel：以目前的篩選條件（類型 / 申請人 / 申請日期 / 撥款子篩選）一次取回全部，不受分頁影響；
-   * 一張單一列，末列為預計撥款額合計。
+   * 一期一列（多期未撥款的單拆成多列），末列為預計撥款額合計。
    */
   exportExcel(): void {
     if (this.exporting()) return;
@@ -536,21 +536,26 @@ export class ApprovalTaskList {
           }
 
           let total = 0;
-          const rows = items.map(t => {
+          // 一期一列：同一張單有多期未撥款時拆成多列，單據欄位每列重複帶出，Excel 依日期排序 / 篩選才不會掉資料
+          const rows = items.flatMap(t => {
             const plan = this.getPaymentPlan(t);
             total += plan?.amount ?? 0;
-            return {
+            const base = {
               '類型': this.appTypeLabel[t.applicationType],
               '單號': this.getRequestNo(t),
               '申請人': t.submittedBy,
               '摘要': this.getSummary(t),
               '撥款狀態': this.getPaymentBadge(t)?.label ?? '',
               '申請日期': this.ymd(t.submittedAt),
-              '預計撥款日': !plan ? '' : plan.state === 'unscheduled' ? '未排定' : plan.state === 'done' ? '已撥畢'
-                           : plan.pending.map(i => this.ymd(i.expectedDate)).join('、'),
-              // 數值欄留 number 型別，Excel 才能加總；無撥款概念或已撥畢者留空
-              '預計撥款額': plan?.state === 'pending' ? plan.amount : '',
             };
+            if (plan?.state === 'pending') {
+              // 數值欄留 number 型別，Excel 才能加總
+              return plan.pending.map(i => ({...base, '預計撥款日': this.ymd(i.expectedDate), '預計撥款額': i.amount as number | string}));
+            }
+            // 無撥款概念或已撥畢者金額留空
+            return [{...base,
+              '預計撥款日': !plan ? '' : plan.state === 'unscheduled' ? '未排定' : '已撥畢',
+              '預計撥款額': '' as number | string}];
           });
           rows.push({
             '類型': '合計', '單號': '', '申請人': '', '摘要': `共 ${items.length} 筆`,
@@ -558,7 +563,7 @@ export class ApprovalTaskList {
           });
 
           const ws = XLSX.utils.json_to_sheet(rows);
-          ws['!cols'] = [{wch: 12}, {wch: 18}, {wch: 10}, {wch: 50}, {wch: 10}, {wch: 12}, {wch: 24}, {wch: 14}];
+          ws['!cols'] = [{wch: 12}, {wch: 18}, {wch: 10}, {wch: 50}, {wch: 10}, {wch: 12}, {wch: 12}, {wch: 14}];
           const wb = XLSX.utils.book_new();
           XLSX.utils.book_append_sheet(wb, ws, '已核准');
           XLSX.writeFile(wb, `簽核作業_已核准_${this.exportSuffix()}.xlsx`);
