@@ -410,12 +410,12 @@ export class PaymentForm implements OnInit {
       return {id, file};
     });
 
-    // 使用後端 Gemini API 辨識發票（並行處理所有檔案；一張圖可辨識出多筆 → 展開多列）
+    // 使用後端 Gemini API 辨識發票（並行處理所有檔案；一張圖只辨識一張發票 → 一列）
     await Promise.all(entries.map(async ({id, file}) => {
       try {
         const results = await firstValueFrom(this.service.ocrInvoice(file));
         const idx = this.invoiceArray.controls.findIndex(c => c.get('id')?.value === id);
-        // 第 1 筆填入 placeholder 列；第 2..N 筆各新增一列（共用同一檔案，各存一份複本）
+        // 辨識結果填入 placeholder 列（多張發票請分開拍 / 上傳，2026-10-20 關閉一圖多列展開）
         if (results.length >= 1 && idx >= 0) {
           this.invoiceArray.controls[idx].patchValue({
             invoiceNo:   results[0].invoiceNo ?? '',
@@ -424,17 +424,6 @@ export class PaymentForm implements OnInit {
             ...(results[0].docType === 'ticket' ? { note: '票號' } : {}),
           });
           this._checkBuyer(id, results[0]);
-        }
-        for (const item of results.slice(1)) {
-          const newId      = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
-          const previewUrl = URL.createObjectURL(file);
-          this.fileMap.set(newId, file);
-          this.invoiceArray.push(this._invoiceGroup(
-            newId, file.name, item.invoiceNo ?? '', item.amount ?? 0, previewUrl, '', '',
-            item.docType === 'ticket' ? '票號' : '', item.invoiceDate ?? '',
-          ));
-          this._checkBuyer(newId, item);
-          this.invoiceArray.at(this.invoiceArray.length - 1).markAllAsTouched();
         }
       } catch {
         // OCR failed — leave fields empty for manual entry

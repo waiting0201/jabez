@@ -2100,7 +2100,7 @@ async onFileSelected(event: Event) {
 - [`<app-attachments-upload>`](../Admin/src/app/shared/components/attachments-upload.ts)（可編輯）：`[existing]` 帶入既有附件、`[disabled]` 控制唯讀；內部自管新增 / 既有 / 刪除狀態，圖片以 `ImageCompressionService`（maxSize 1600）壓縮。父表單透過 `viewChild(AttachmentsUpload)` 取得實例，於 `_buildFormData()` 呼叫 `getMeta()`（JSON → `attachments` 欄位）與 `getNewFiles()`（檔案 → `attachmentFiles` 欄位）。請款兩種 type（vendor / general）皆帶附件。
 - [`<app-attachments-list>`](../Admin/src/app/shared/components/attachments-list.ts)（唯讀）：`[attachments]` 帶入；用於申請詳情頁與簽核審核頁，逐項顯示檔名 + 檢視。附件存於私有 `request-attachments` 容器，「檢視」透過 [`FilePreviewLoader`](../Admin/src/app/shared/services/file-preview-loader.ts) 走 JWT 代理抓 blob 後再交 `FilePreviewModal`（見 §12.4 鐵則）。
 
-### 12.5c 發票 OCR 上傳（一檔可展開多列）
+### 12.5c 發票 OCR 上傳（一檔一列）
 
 請款 / 預審申請 / 預支沖銷 / 出差請款 / 出差預支沖銷五個表單的明細，上傳發票 / 票根時走 OCR 自動辨識帶入欄位。共用 [`PaymentRequestService.ocrInvoice`](../Admin/src/app/features/admin/payment-requests/services/payment-request.service.ts)（`POST /invoice-ocr`，後端 Google Gemini；預審申請走 `QuoteOcrHandler` 的 `quoteOcr`）。
 
@@ -2115,8 +2115,8 @@ async onFileSelected(event: Event) {
    > 不包的話轉檔完成寫入 `heicUrl` 就會讓 effect 重跑、把剛轉好的圖清掉再轉 —— 無限循環、畫面永遠停在「轉換中」（2026-10 上線後實際踩到）。
    > 另有 60 秒逾時保險（`HEIC_PREVIEW_TIMEOUT_MS`），逾時改顯示「下載」。
 2. 每檔先 push **一列 loading placeholder**（`ocrLoadingIds.add(id)` + `fileMap.set(id, file)` + `URL.createObjectURL` 預覽），即時回饋。
-3. `Promise.all` 並行呼叫 `ocrInvoice`，**回傳為陣列**（一張圖可含多張發票/票根）：
-   - 第 1 筆 patch 進 placeholder 那列；第 2..N 筆**各 push 一新列**，新列產生新 `id`、`fileMap.set(newId, file)` **指向同一個 File 物件**（→ 存檔時各 append 一份複本，N 列各存一份檔案）。
+3. `Promise.all` 並行呼叫 `ocrInvoice`，回傳為陣列但**最多 1 筆**（一張圖只辨識一張發票/票根）：
+   - 第 1 筆 patch 進 placeholder 那列；**不再展開多列**（2026-10-20 關閉「一張照片放多張發票一起辨識」：準確度低且一檔多列會存多份複本。多張請分開拍或一次多選上傳多個檔，webcam 連拍亦可）。後端 prompt 只辨識最清楚的一張、並以 `Take(1)` 截斷。
    - 陣列為空（沒辨識到）→ placeholder 留空供手動輸入。
 4. `docType==='ticket'` 時各表單套用各自規則（`note='票號'`、出差請款另帶 `category='交通費'`）；金額帶入 `unitPrice/totalPrice`（+ 預支沖銷 `cashAmount`）、`quantity='1式'`。
 5. `isAnyOcrPending` 控制送出按鈕禁用，存檔組 FormData 的逐列 `fileMap.get(id)` → `append('files')` 迴圈不變。**OCR 呼叫務必加前端逾時**（`.pipe(timeout(45000))`，略大於後端 Gemini 30 秒上限），否則請求卡住時 `ocrLoadingIds` 永不清除、`isAnyOcrPending` 恆為 true，會把「送出 / 儲存」按鈕**永久鎖住**且畫面無提示。同時 OCR 進行中**須在按鈕區顯示「辨識中…請稍候」hint**（避免使用者誤以為按鈕壞掉）。
@@ -2125,7 +2125,7 @@ async onFileSelected(event: Event) {
 
 **警告列附「確認無誤」checkbox**：容錯規則沒接住的誤判（OCR 讀成完全不同的公司名、統編抄到他欄等）由使用者自行放行 —— 元件上另備 `invoiceConfirmed = new Set<string>()`（key 同為列 id），勾選後該列警告由 `text-danger` 轉 `text-muted` 並在訊息前加「已確認無誤：」。**確認狀態與警告一樣純顯示**：不阻擋送出（本來就不擋）、不進 FormControl、不寫 DB、重開草稿不重現。`_checkBuyer()` 開頭須 `invoiceConfirmed.delete(rowId)`（同一列重新 OCR → 舊確認失效）、`removeItem()` 須比照 `invoiceWarnings` 一併 `delete`。四個表單皆須套用，不可只修其中一個。
 
-> 多張擠在一張照片時辨識準確度較低，各列辨識後仍需人工核對（欄位皆可手動修改）。
+> 一張照片只辨識一張；畫面中若有多張，只帶入最清楚的那張，其餘須另外拍攝上傳。辨識結果仍需人工核對（欄位皆可手動修改）。
 
 #### 明細列下方警告列 pattern
 
