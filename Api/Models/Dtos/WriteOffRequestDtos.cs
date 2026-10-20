@@ -149,7 +149,8 @@ public sealed record WriteOffTaskDetailDto(
     string?             ReturnedProofUrl = null,
     decimal             AdvanceReturnedTotal = 0,     // 同預支單「他單」已核准繳回合計（不含本單）
     decimal             OverspendPaidTotal = 0,       // 同預支單已核准 ∪ 本單沖銷的已撥款差額分期合計
-    DateTime?           OverspendLastPaidAt = null);  // 上述分期的最後撥款日
+    DateTime?           OverspendLastPaidAt = null,   // 上述分期的最後撥款日
+    string              ActivityName = "");           // 關聯預支單的活動名稱
 
 // ── 支票已支付註記 ────────────────────────────────────────────────────────────
 

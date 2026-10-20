@@ -815,6 +815,7 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
 
         var writeOffSql = $"""
             SELECT wo.Id, wo.RequestNo, wo.AdvanceRequestId, arx.RequestNo AS AdvanceRequestNo,
+                   arx.ActivityName,
                    proj.Code AS ProjectCode, proj.Name AS ProjectName,
                    wo.GrandTotal, wo.CashTotal, wo.CheckTotal, wo.Note,
                    wo.ApprovalStatus, wo.ApprovalItemId, wo.CurrentStepOrder,
@@ -1822,7 +1823,8 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
                 (string?)row.ReturnedProofUrl,
                 (decimal)row.AdvanceReturnedTotal,
                 (decimal)row.OverspendPaidTotal,
-                (DateTime?)row.OverspendLastPaidAt),
+                (DateTime?)row.OverspendLastPaidAt,
+                ActivityName: (string?)row.ActivityName ?? ""),
             null,
             GetRecords("write_off", (int)row.Id),
             GetDesignatedReviewers("write_off", (int)row.Id),

@@ -385,6 +385,8 @@ export interface WriteOffTaskDetail extends WriteOffReturnedCash {
   advanceRequestNo: string;
   projectCode: string;
   projectName: string;
+  /** 關聯預支單的活動名稱 */
+  activityName?: string;
   grandTotal: number;
   cashTotal: number;
   checkTotal: number;
