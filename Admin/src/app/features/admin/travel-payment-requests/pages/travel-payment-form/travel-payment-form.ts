@@ -22,6 +22,7 @@ import {NgbModal} from '@ng-bootstrap/ng-bootstrap';
 import {ApprovalTimeline} from '../../../../../shared/components/approval-timeline';
 import {InstallmentsTable} from '../../../../../shared/components/installments-table';
 import {FilePreviewModal, PreviewFileData} from '../../../../../shared/components/file-preview-modal';
+import {isWebcamSupported, openWebcamCapture} from '../../../../../shared/components/webcam-capture-modal';
 import {SubmitSuccessModal} from '../../../../../shared/components/submit-success-modal';
 import {DesignatedReviewersPicker, DesignatedReviewerPayload} from '../../../../../shared/components/designated-reviewers-picker/designated-reviewers-picker';
 import {DepartmentService} from '../../../departments/services/department.service';
@@ -55,6 +56,9 @@ export class TravelPaymentForm implements OnInit {
   private cdr            = inject(ChangeDetectorRef);
   private modal          = inject(NgbModal);
   private sanitizer      = inject(DomSanitizer);
+
+  /** 瀏覽器支援鏡頭擷取時才顯示「用鏡頭拍攝」按鈕 */
+  readonly webcamSupported = isWebcamSupported();
 
   /** invoice id → File 物件（新上傳的檔案） */
   fileMap = new Map<string, File>();
@@ -280,12 +284,21 @@ export class TravelPaymentForm implements OnInit {
   }
 
   /** 發票檔案上傳 — 自動新增行、OCR 辨識 */
-  async onFilesSelected(event: Event) {
+  onFilesSelected(event: Event) {
     const input = event.target as HTMLInputElement;
     if (!input.files?.length) return;
-
     const rawFiles = Array.from(input.files);
     input.value = '';
+    return this.processInvoiceFiles(rawFiles);
+  }
+
+  /** 用鏡頭拍攝發票：拍好的 JPEG 與選檔走同一條 HEIC 轉檔 / OCR 流程 */
+  async openWebcam() {
+    const files = await openWebcamCapture(this.modal);
+    if (files.length) await this.processInvoiceFiles(files);
+  }
+
+  async processInvoiceFiles(rawFiles: File[]) {
 
     const files = (await Promise.all(rawFiles.map(f => this._convertHeicIfNeeded(f))))
       .filter((f): f is File => f !== null);

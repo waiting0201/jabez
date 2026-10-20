@@ -113,6 +113,14 @@
           <input type="file" class="hidden" multiple accept="image/*,.heic,.heif,application/pdf"
                  (change)="onFilesSelected($event)">
         </label>
+        @if (webcamSupported) {
+          <div class="text-center mt-3">
+            <button type="button" class="btn btn-sm btn-outline-primary inline-flex items-center gap-1" (click)="openWebcam()">
+              <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#camera"></use></svg>
+              用鏡頭拍攝
+            </button>
+          </div>
+        }
       </div>
     </div>
 

@@ -1,7 +1,9 @@
 import {ChangeDetectionStrategy, Component, inject, input, signal} from '@angular/core';
 import {DomSanitizer} from '@angular/platform-browser';
 import {ImageCompressionService} from '../services/image-compression.service';
+import {NgbModal} from '@ng-bootstrap/ng-bootstrap';
 import {FilePreviewModal, PreviewFileData} from './file-preview-modal';
+import {isWebcamSupported, openWebcamCapture} from './webcam-capture-modal';
 import {AttachmentItem} from '../../features/admin/approval-tasks/models/approval-task.model';
 
 /** 單筆附件的內部狀態：既有檔（含 fileUrl）或新上傳檔（含 file） */
@@ -32,7 +34,8 @@ interface AttachmentEntry {
       </div>
       <div class="card-body">
         @if (!disabled()) {
-          <label class="flex flex-col items-center justify-center rounded-3 py-4 px-4 mb-4 text-center"
+          <label [class.mb-4]="!webcamSupported" [class.mb-2]="webcamSupported"
+                 class="flex flex-col items-center justify-center rounded-3 py-4 px-4 text-center"
                  style="cursor:pointer; border: 2px dashed var(--bs-border-color);">
             <svg class="sa-icon sa-icon-2x text-muted mb-2" style="stroke: currentColor">
               <use href="/assets/icons/sprite.svg#upload"></use>
@@ -45,6 +48,14 @@ interface AttachmentEntry {
             <input type="file" class="hidden" multiple accept="image/*,.heic,.heif,application/pdf"
                    (change)="onFilesSelected($event)">
           </label>
+          @if (webcamSupported) {
+            <div class="text-center mb-4">
+              <button type="button" class="btn btn-sm btn-outline-primary inline-flex items-center gap-1" (click)="openWebcam()">
+                <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#camera"></use></svg>
+                用鏡頭拍攝
+              </button>
+            </div>
+          }
         }
 
         @if (entries().length > 0) {
@@ -87,6 +98,10 @@ export class AttachmentsUpload {
 
   private imageCompression = inject(ImageCompressionService);
   private sanitizer        = inject(DomSanitizer);
+  private modal            = inject(NgbModal);
+
+  /** 瀏覽器支援鏡頭擷取時才顯示「用鏡頭拍攝」按鈕 */
+  readonly webcamSupported = isWebcamSupported();
 
   entries = signal<AttachmentEntry[]>([]);
   private uidSeq = 0;
@@ -112,7 +127,16 @@ export class AttachmentsUpload {
     if (!input.files?.length) return;
     const rawFiles = Array.from(input.files);
     input.value = '';
+    await this.processFiles(rawFiles);
+  }
 
+  /** 用鏡頭拍攝附件：拍好的 JPEG 與選檔走同一條壓縮流程 */
+  async openWebcam() {
+    const files = await openWebcamCapture(this.modal);
+    if (files.length) await this.processFiles(files);
+  }
+
+  private async processFiles(rawFiles: File[]) {
     for (const raw of rawFiles) {
       const file = await this.imageCompression.compress(raw, {maxSize: 1600, quality: 0.85});
       this.entries.update(list => [...list, {

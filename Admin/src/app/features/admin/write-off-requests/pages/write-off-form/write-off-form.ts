@@ -10,6 +10,7 @@ import {convertHeicIfNeeded, heicFailedMessage} from '@shared/utils/heic';
 import {ImageCompressionService} from '../../../../../shared/services/image-compression.service';
 import {NgbModal} from '@ng-bootstrap/ng-bootstrap';
 import {FilePreviewModal, PreviewFileData} from '../../../../../shared/components/file-preview-modal';
+import {isWebcamSupported, openWebcamCapture} from '../../../../../shared/components/webcam-capture-modal';
 import {AttachmentsUpload} from '../../../../../shared/components/attachments-upload';
 import {SubmitSuccessModal} from '../../../../../shared/components/submit-success-modal';
 import {AttachmentItem} from '../../../approval-tasks/models/approval-task.model';
@@ -55,6 +56,9 @@ export class WriteOffRequestForm implements OnInit {
   attachmentsUpload = viewChild(AttachmentsUpload);
   private sanitizer      = inject(DomSanitizer);
   private imageCompression = inject(ImageCompressionService);
+
+  /** 瀏覽器支援鏡頭擷取時才顯示「用鏡頭拍攝」按鈕 */
+  readonly webcamSupported = isWebcamSupported();
 
   /** 編輯模式回填的既有附件 */
   loadedAttachments: AttachmentItem[] = [];
@@ -377,12 +381,21 @@ export class WriteOffRequestForm implements OnInit {
   }
 
   /** 發票檔案上傳 — 自動新增行、OCR 辨識 */
-  async onFilesSelected(event: Event) {
+  onFilesSelected(event: Event) {
     const input = event.target as HTMLInputElement;
     if (!input.files?.length) return;
-
     const rawFiles = Array.from(input.files);
     input.value = '';
+    return this.processInvoiceFiles(rawFiles);
+  }
+
+  /** 用鏡頭拍攝發票：拍好的 JPEG 與選檔走同一條 HEIC 轉檔 / OCR 流程 */
+  async openWebcam() {
+    const files = await openWebcamCapture(this.modal);
+    if (files.length) await this.processInvoiceFiles(files);
+  }
+
+  async processInvoiceFiles(rawFiles: File[]) {
 
     const files = (await Promise.all(rawFiles.map(f => this._convertHeicIfNeeded(f))))
       .filter((f): f is File => f !== null);

@@ -9,6 +9,7 @@ import {ToastrService} from 'ngx-toastr';
 import {convertHeicIfNeeded, heicFailedMessage} from '@shared/utils/heic';
 import {NgbModal} from '@ng-bootstrap/ng-bootstrap';
 import {FilePreviewModal, PreviewFileData} from '../../../../../shared/components/file-preview-modal';
+import {isWebcamSupported, openWebcamCapture} from '../../../../../shared/components/webcam-capture-modal';
 import {SubmitSuccessModal} from '../../../../../shared/components/submit-success-modal';
 import {DesignatedReviewersPicker, DesignatedReviewerPayload} from '../../../../../shared/components/designated-reviewers-picker/designated-reviewers-picker';
 import {TravelWriteOffRequestService} from '../../services/travel-write-off-request.service';
@@ -46,6 +47,9 @@ export class TravelWriteOffForm implements OnInit {
   private cdr            = inject(ChangeDetectorRef);
   private modal          = inject(NgbModal);
   private sanitizer      = inject(DomSanitizer);
+
+  /** 瀏覽器支援鏡頭擷取時才顯示「用鏡頭拍攝」按鈕 */
+  readonly webcamSupported = isWebcamSupported();
 
   /**
    * 「已存在於後端的沖銷單 ID」：編輯模式進場即有；新增模式在 create 成功後填入。
@@ -253,12 +257,21 @@ export class TravelWriteOffForm implements OnInit {
   }
 
   /** 發票檔案上傳 — 自動新增行、OCR 辨識 */
-  async onFilesSelected(event: Event) {
+  onFilesSelected(event: Event) {
     const input = event.target as HTMLInputElement;
     if (!input.files?.length) return;
-
     const rawFiles = Array.from(input.files);
     input.value = '';
+    return this.processInvoiceFiles(rawFiles);
+  }
+
+  /** 用鏡頭拍攝發票：拍好的 JPEG 與選檔走同一條 HEIC 轉檔 / OCR 流程 */
+  async openWebcam() {
+    const files = await openWebcamCapture(this.modal);
+    if (files.length) await this.processInvoiceFiles(files);
+  }
+
+  async processInvoiceFiles(rawFiles: File[]) {
 
     const files = (await Promise.all(rawFiles.map(f => this._convertHeicIfNeeded(f))))
       .filter((f): f is File => f !== null);

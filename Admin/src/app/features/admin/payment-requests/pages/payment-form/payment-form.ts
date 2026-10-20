@@ -9,6 +9,7 @@ import {debounceTime, distinctUntilChanged, map, take} from 'rxjs/operators';
 import {ToastrService} from 'ngx-toastr';
 import {convertHeicIfNeeded, heicFailedMessage} from '@shared/utils/heic';
 import {FilePreviewModal, PreviewFileData} from '../../../../../shared/components/file-preview-modal';
+import {isWebcamSupported, openWebcamCapture} from '../../../../../shared/components/webcam-capture-modal';
 import {ApprovalTimeline} from '../../../../../shared/components/approval-timeline';
 import {InstallmentsTable} from '../../../../../shared/components/installments-table';
 import {AttachmentsUpload} from '../../../../../shared/components/attachments-upload';
@@ -62,6 +63,9 @@ export class PaymentForm implements OnInit {
   private sanitizer    = inject(DomSanitizer);
   private modal        = inject(NgbModal);
   pdfService           = inject(PaymentPdfService);
+
+  /** 瀏覽器支援鏡頭擷取時才顯示「用鏡頭拍攝」按鈕 */
+  readonly webcamSupported = isWebcamSupported();
 
   attachmentsUpload = viewChild(AttachmentsUpload);
 
@@ -374,12 +378,21 @@ export class PaymentForm implements OnInit {
     return this.allUsers.find(u => u.id === userId)?.name ?? userId;
   }
 
-  async onFilesSelected(event: Event) {
+  onFilesSelected(event: Event) {
     const input = event.target as HTMLInputElement;
     if (!input.files?.length) return;
-
     const rawFiles = Array.from(input.files);
     input.value = '';
+    return this.processInvoiceFiles(rawFiles);
+  }
+
+  /** 用鏡頭拍攝發票：拍好的 JPEG 與選檔走同一條 HEIC 轉檔 / OCR 流程 */
+  async openWebcam() {
+    const files = await openWebcamCapture(this.modal);
+    if (files.length) await this.processInvoiceFiles(files);
+  }
+
+  async processInvoiceFiles(rawFiles: File[]) {
     this.showInvoiceError = false;
 
     // HEIC/HEIF → JPEG 轉換（iPhone 預設拍照格式）

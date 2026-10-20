@@ -2159,6 +2159,19 @@ async onFileSelected(event: Event) {
 
 > 只有買方警告列附 checkbox（人工放行有意義）；同檔的 `amountWarnings`（總價 ≠ 現金＋支票）維持純紅字列。
 
+### 12.5d 用鏡頭拍攝（webcam，2026-10）
+
+發票上傳區（請款 / 預支沖銷 / 出差請款 / 出差預支沖銷）與整單附件共用元件 `<app-attachments-upload>`（請款 / 預支沖銷 / 預審）的虛線上傳框下方，另有一顆 `btn btn-sm btn-outline-primary`「用鏡頭拍攝」（`camera` icon）。手機瀏覽器點上傳框本來就能選拍照，這顆按鈕主要讓**電腦**可以用 webcam 拍。
+
+- 共用元件 [`webcam-capture-modal.ts`](../Admin/src/app/shared/components/webcam-capture-modal.ts)：呼叫端一律用 `openWebcamCapture(this.modal)`（回傳 `File[]`，取消時回 `[]`、不會 reject），按鈕以 `isWebcamSupported()` 判斷要不要顯示（不支援 `mediaDevices.getUserMedia` 或非 HTTPS 時隱藏）
+- **連拍**：每張按「拍照」→ 縮圖列在下方（可逐張移除）→ 按「完成（N 張）」才一次交回；上限 20 張。拍出 `image/jpeg`（品質 0.92，盡量要 1920×1080），檔名 `webcam-yyyyMMdd-HHmmss-N.jpg`
+- **拍好的檔案必須走與選檔相同的處理入口**：表單把 `onFilesSelected(event)` 拆成「取出 `File[]`」＋ `processInvoiceFiles(files)`（附件元件為 `processFiles`），選檔與拍照都呼叫後者 —— HEIC 轉檔、placeholder 列、OCR、壓縮全部只有一份
+- ⚠ **鏡頭串流在完成 / 取消 / 換鏡頭 / destroy 時一律 `getTracks().forEach(t => t.stop())`**，等權限期間視窗已被關掉的話，拿到 stream 後也要立刻 stop。漏掉的話鏡頭指示燈會一直亮著，視訊會議等其他程式也拿不到鏡頭
+- 有多支鏡頭時（外接 webcam、文件攝影機）顯示下拉切換；`enumerateDevices()` 必須在取得權限**之後**呼叫才拿得到鏡頭名稱
+- 權限被拒 / 找不到鏡頭 / 鏡頭被占用的訊息顯示在 modal 內的 `alert-warning`，不用 toastr（使用者要看著說明去改設定）
+- CSP 不管鏡頭權限；`staticwebapp.config.json` 若日後加上 `Permissions-Policy`，必須放行 `camera=(self)`，否則這顆按鈕會全部變成「沒有鏡頭使用權限」
+- 筆電內建鏡頭多為 720p 定焦，辨識率比手機拍的差；拍不清楚時 OCR 失敗、欄位留空讓人手動填（與選檔相同）
+
 ### 12.5 外部 API 即時查詢欄位（blur 觸發 pattern）
 
 某些欄位（如統編 → 廠商名稱）可在 blur 時打 API 自動帶入相關欄位，提升輸入速度。標準作法：

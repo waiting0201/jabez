@@ -191,6 +191,7 @@ Admin/src/app/
 │   │                                     #   預覽 modal 遇 .heic 會經 `/files/{invoices|advance-files|write-off-invoices|travel-write-off-invoices}/{*path}` 代理取 bytes 轉檔
 │   │   └── safe-url.ts                   # **預覽 iframe / 連結 URL 白名單**（2026-10 第二輪安全修補）：只認自家 API / Blob 來源，擋 `javascript:` 與外部網址；auth.interceptor 的 Bearer 亦只附加給自家 API，見 [docs/backend-design.md §4.7](docs/backend-design.md)
 │   ├── components/project-typeahead.ts   # **專案 autocomplete 共用元件**（2026-10-16，NgbTypeahead + ControlValueAccessor，值＝projectId；**兼具下拉**：點欄位 / ▼ 即列全部、打字篩選）：7 支申請表單與報表的專案選擇一律用它、不再用原生 select；清單由呼叫端傳入、`excludeIds` 做多列互斥、`allowClear` 供篩選用，見 [docs/frontend-design.md §6.1](docs/frontend-design.md)
+│   ├── components/webcam-capture-modal.ts # **用鏡頭拍攝共用視窗**（2026-10）：`openWebcamCapture(modal)` 連拍後回傳 `File[]`、`isWebcamSupported()` 決定按鈕顯示；四支發票表單與 attachments-upload 的上傳框下方「用鏡頭拍攝」皆用它，拍好的檔案走與選檔相同的 `processInvoiceFiles` / `processFiles`，見 [docs/frontend-design.md §12.5d](docs/frontend-design.md)
 │   └── services/
 │       ├── turnstile.service.ts          # **Cloudflare Turnstile 人機驗證**（2026-10，打卡用）：script 第一次呼叫才動態載入、每次 render 新 widget 取 token 後即 remove、
 │       │                                 #   `interaction-only`（平常看不到）；**取不到 token 一律回 null、不在前端擋**（由後端 `Turnstile:Mode` 決定）。sitekey 在 `environment*.ts`，CSP 須放行 challenges.cloudflare.com
