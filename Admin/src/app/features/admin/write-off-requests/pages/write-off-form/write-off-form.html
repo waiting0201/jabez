@@ -356,19 +356,19 @@
       </div>
       <div class="card-body">
         <div class="row g-3">
-          <div class="col-12 col-md-4">
+          <div class="col-12 col-md-6 col-lg-3">
             <label class="form-label fw-500">繳回金額</label>
             <input type="number" class="form-control" min="0" step="1" placeholder="未繳回請留空"
                    [ngModel]="returnedAmount()" (ngModelChange)="returnedAmount.set($event === '' ? null : $event)"
                    [ngModelOptions]="{standalone: true}">
           </div>
-          <div class="col-12 col-md-4">
+          <div class="col-12 col-md-6 col-lg-3">
             <label class="form-label fw-500">匯款／繳回日期</label>
             <input type="date" class="form-control" [min]="minDate" [max]="maxDate"
                    [ngModel]="returnedAt()" (ngModelChange)="returnedAt.set($event)"
                    [ngModelOptions]="{standalone: true}">
           </div>
-          <div class="col-12 col-md-4">
+          <div class="col-12 col-md-6 col-lg-3">
             <label class="form-label fw-500">匯款證明</label>
             @if (returnedProofBusy()) {
               <div class="text-muted small py-2">處理中…</div>
@@ -396,6 +396,21 @@
                        (change)="onReturnedProofSelected($event)">
               </label>
             }
+          </div>
+          <div class="col-12 col-md-6 col-lg-3">
+            <label class="form-label fw-500">匯款資訊</label>
+            <div class="border rounded p-3 bg-light small flex flex-col gap-3">
+              <div>
+                <div class="fw-600">雅比斯國際創意策略股份有限公司</div>
+                <div class="text-muted">台北富邦商業銀行營業部分行</div>
+                <div class="font-monospace">82120000101820</div>
+              </div>
+              <div>
+                <div class="fw-600">疆界地域美學有限公司</div>
+                <div class="text-muted">上海商業銀行世貿分行</div>
+                <div class="font-monospace">43102000031973</div>
+              </div>
+            </div>
           </div>
         </div>
         <div class="form-text mt-2">繳回金額不計入沖銷金額；金額大於 0 時需附匯款證明與日期。</div>
