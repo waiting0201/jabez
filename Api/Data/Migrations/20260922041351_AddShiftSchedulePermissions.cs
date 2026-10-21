@@ -43,7 +43,7 @@ namespace Jabez.Api.Data.Migrations
 
                 DECLARE @NewPerms TABLE (Seq int, Code nvarchar(200), Name nvarchar(200), Module nvarchar(100), Descr nvarchar(1000));
                 INSERT INTO @NewPerms (Seq, Code, Name, Module, Descr) VALUES
-                    (1, 'shift-schedule:read',         N'瀏覽',           @AttendanceModule, N'檢視個人排班月曆'),
+                    (1, 'shift-schedule:read',         N'排班瀏覽',       @AttendanceModule, N'檢視個人排班月曆'),
                     (2, 'shift-schedule:write',        N'排班',           @AttendanceModule, N'排定 / 修改自己的班表（例假日、休假日）'),
                     (3, 'shift-schedule:view-all',     N'檢視全公司排班', @AttendanceModule, N'不受部門可見性限制，可檢視全公司排班狀態'),
                     (4, 'reports-shift-schedule:read', N'出勤排休總覽表', @ReportModule,     N'檢視全員當月預排出勤狀態表');

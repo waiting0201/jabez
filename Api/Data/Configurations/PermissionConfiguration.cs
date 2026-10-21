@@ -85,7 +85,7 @@ public class PermissionConfiguration : IEntityTypeConfiguration<Permission>
             // 出勤打卡（員工本人的打卡動作）
             // Id 37/38 為重用的歷史空號：2026-02 曾建立、2026-03 由 SyncSeedDataWithDatabase 刪除，2026-08 重新啟用。
             // 刻意不取 78+ —— PermissionHandler.CreateAsync 以 max(Id)+1 配號，78 起可能已被 UI 建立的權限占用。
-            new Permission { Id = "37", Code = "attendances:read",                 Name = "瀏覽",     Module = "出勤打卡",   Description = "出勤打卡" },
+            new Permission { Id = "37", Code = "attendances:read",                 Name = "打卡頁瀏覽", Module = "出勤打卡",   Description = "出勤打卡" },
             new Permission { Id = "38", Code = "attendances:write",                Name = "打卡",     Module = "出勤打卡",   Description = "出勤打卡" },
             // 系統設定
             new Permission { Id = "39", Code = "settings:read",                    Name = "瀏覽",     Module = "系統設定",   Description = "系統設定" },

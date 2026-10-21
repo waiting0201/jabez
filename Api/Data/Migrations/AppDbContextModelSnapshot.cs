@@ -3870,7 +3870,7 @@ namespace Jabez.Api.Data.Migrations
                             Code = "attendances:read",
                             Description = "出勤打卡",
                             Module = "出勤打卡",
-                            Name = "瀏覽"
+                            Name = "打卡頁瀏覽"
                         },
                         new
                         {
