@@ -252,12 +252,12 @@ export class LeaveRequestForm implements OnInit {
     return this.form.get('leaveType')?.value as LeaveType || 'annual';
   }
 
-  /** 半天模式「上午」開始時段的下拉標籤（補休自 09:00 起，其餘 08:00） */
+  /** 半天模式「上午」開始時段的下拉標籤（一律自 09:00 起） */
   get amSlotLabel(): string {
     return `上午（從 ${String(halfDayAmStartHour(this.selectedLeaveType)).padStart(2, '0')}:00）`;
   }
 
-  /** 半天模式「上午」結束時段的下拉標籤（補休至 13:00，其餘 12:00） */
+  /** 半天模式「上午」結束時段的下拉標籤（一律至 13:00） */
   get amEndSlotLabel(): string {
     return `上午（至 ${String(halfDayAmEndHour(this.selectedLeaveType)).padStart(2, '0')}:00）`;
   }
@@ -1134,7 +1134,7 @@ export class LeaveRequestForm implements OnInit {
         ? `${v.startDate}T23:59:00`
         : `${v.endDate}T23:59:00`;
     } else {
-      // half_day：將 slot 轉為代表性時間（上午時段依假別，補休為 09:00–13:00）
+      // half_day：將 slot 轉為代表性時間（上午 09:00–13:00、下午 13:00–17:00）
       const amStart = String(halfDayAmStartHour(type)).padStart(2, '0');
       const amEnd   = String(halfDayAmEndHour(type)).padStart(2, '0');
       const startHour = v.startSlot === 'am' ? `${amStart}:00:00` : '13:00:00';
@@ -1221,7 +1221,7 @@ export class LeaveRequestForm implements OnInit {
     : {startSlot: HalfDaySlot; endSlot: HalfDaySlot} {
     const startHour = new Date(startDate).getHours();
     const endHour = new Date(endDate).getHours();
-    // 起 13:00＝下午開始；訖 12:00 / 13:00（補休）皆為上午結束，故兩端界線不同
+    // 起 13:00＝下午開始；訖 13:00（2026-10-21 前的舊單為 12:00）皆為上午結束，故兩端界線不同
     const startSlot: HalfDaySlot = startHour >= LUNCH_END_HOUR ? 'pm' : 'am';
     const endSlot: HalfDaySlot = endHour <= LUNCH_END_HOUR ? 'am' : 'pm';
     return {startSlot, endSlot};
