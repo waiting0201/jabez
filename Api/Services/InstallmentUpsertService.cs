@@ -72,9 +72,8 @@ public static class InstallmentUpsertService
                     }
                     else if (input.PaidAt.Value.Date != prevPaidDate)
                     {
-                        // 已撥款列更正實際撥款日：出納簽名章改記更正者、照發已撥款通知；日期未變則原值不動
-                        ent.PaidAt       = input.PaidAt.Value.Date + nowTaipei.TimeOfDay;
-                        ent.PaidByUserId = userId;
+                        // 已撥款列更正實際撥款日：PaidByUserId 保留原撥款人（PDF 出納章不換人）、照發已撥款通知；日期未變則原值不動
+                        ent.PaidAt = input.PaidAt.Value.Date + nowTaipei.TimeOfDay;
                         newlyPaid.Add(new(ent.InstallmentNo, ent.PaidAt.Value, ent.Amount, inputs.Count));
                     }
                 }
