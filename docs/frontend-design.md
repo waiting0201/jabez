@@ -1270,7 +1270,7 @@ Input：`advanceRounds` / `writeOffHistory` / `currentGrandTotal` / `refundDue` 
 
 **同仁匯回預支餘額（現金／匯款繳回）**：
 - 唯讀呈現統一用 [`<app-write-off-returned-info>`](../Admin/src/app/shared/components/write-off-returned-info.ts)（金額 / 日期 / 證明檔），詳情頁、彙總頁（每張沖銷單卡內）、簽核頁共用；`amount` 為空或 0 整塊不顯示，點證明檔 emit `(preview)` 由父層開 `file-preview-modal`。
-- 表單（write-off-form）在「附件」卡上方有獨立卡片「同仁匯回預支餘額」：金額（min 0）+ 匯款／繳回日期（`min`/`max` 取 `date-bounds`）+ **單張證明上傳**（見 §12.1b）。**繳回金額不計入沖銷金額**；金額 > 0 時前端先擋「需日期與證明」，後端再驗一次。**費用明細與繳回至少擇一**（getter `hasContent` 控儲存／送出按鈕）：純匯回時明細可為 0 列，明細空列提示會說明；詳情頁明細表 `@empty` 顯示「無費用明細（僅匯回預支餘額）」。
+- 表單（write-off-form）在「附件」卡上方有獨立卡片「同仁匯回預支餘額」：金額（min 0）+ 匯款／繳回日期（`min`/`max` 取 `date-bounds`）+ **單張證明上傳**（見 §12.1b）。**最右欄為唯讀「匯款資訊」**（2026-10-21，公司收款帳戶兩組：雅比斯國際創意策略 / 疆界地域美學，戶名＋分行＋帳號，寫死於 HTML、帳號以 `font-monospace` 呈現），四欄 `col-12 col-md-6 col-lg-3`。**繳回金額不計入沖銷金額**；金額 > 0 時前端先擋「需日期與證明」，後端再驗一次。**費用明細與繳回至少擇一**（getter `hasContent` 控儲存／送出按鈕）：純匯回時明細可為 0 列，明細空列提示會說明；詳情頁明細表 `@empty` 顯示「無費用明細（僅匯回預支餘額）」。
 
 ### 7.7.1 分類小計 / 預支 vs 沖銷對照表（2026-10-21）
 
