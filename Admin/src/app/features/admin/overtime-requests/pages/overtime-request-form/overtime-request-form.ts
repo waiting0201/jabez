@@ -9,7 +9,7 @@ import {HttpErrorResponse} from '@angular/common/http';
 import {OvertimeRequestService} from '../../services/overtime-request.service';
 import {ProjectService} from '../../../projects/services/project.service';
 import {Project} from '../../../projects/models/project.model';
-import {ApprovalStatus, APPROVAL_STATUS_LABELS, APPROVAL_STATUS_CLASSES, COMPENSATION_TYPE_LABELS, DesignatedReviewer, OvertimeCompensationType, OvertimePayEstimate, OvertimeProject, OvertimeRequestPayload} from '../../models/overtime-request.model';
+import {ApprovalStatus, APPROVAL_STATUS_LABELS, APPROVAL_STATUS_CLASSES, COMPENSATION_TYPE_LABELS, DesignatedReviewer, OvertimeCompensationType, OvertimePayEstimate, OvertimeProject, OvertimeRequestKind, OvertimeRequestPayload, PostHocContext} from '../../models/overtime-request.model';
 import {JobTitleService} from '../../../job-titles/services/job-title.service';
 import {UserService} from '../../../users/services/user.service';
 import {ApprovalService} from '../../../approvals/services/approval.service';
@@ -55,15 +55,124 @@ export class OvertimeRequestForm implements OnInit {
   isReturned = false;
   isDraft    = true;
   approvalStatus: ApprovalStatus = 'draft';
-  isBackfill = false;   // 載入的單是否為補加班（後端推導）
+  /** 載入的單是否為事後申請（唯讀顯示 badge 用；新增時以表單 requestKind 為準） */
+  isPostHoc = false;
   requestNo = '';   // OT-yyyyMMdd-NNN；草稿尚未取號故為空
-  /** 目前選的加班日期是否早於今天（台北時區字串比較）→ 即時提示補加班 */
-  get isBackfillByDate(): boolean {
-    const d = this.form?.get('overtimeDate')?.value as string | null;
-    if (!d || d.length < 10) return false;
-    const today = new Intl.DateTimeFormat('en-CA', {timeZone: 'Asia/Taipei'}).format(new Date());
-    return d.slice(0, 10) < today;
+  /**
+   * 台北時區今天（yyyy-MM-dd）與事後申請可選的最早日期。事後申請期限＝加班日後一個工作日（遇六日 / 國定假日順延），
+   * 前端不知道行事曆，故日期選擇器只放寬到 14 天前（涵蓋春節等長假），實際可否申請由 post-hoc-context 判定並顯示原因。
+   */
+  readonly todayStr = OvertimeRequestForm.taipeiDate(0);
+  readonly postHocMinStr = OvertimeRequestForm.taipeiDate(-14);
+  private static taipeiDate(offsetDays: number): string {
+    const d = new Date(Date.now() + offsetDays * 86400000);
+    return new Intl.DateTimeFormat('en-CA', {timeZone: 'Asia/Taipei'}).format(d);
   }
+
+  /** 事後申請資格（post-hoc-context）；null＝尚未查詢 */
+  postHocCtx = signal<PostHocContext | null>(null);
+  postHocLoading = signal(false);
+  /** 編輯載入時的起訖不被預填覆蓋（僅第一次查詢） */
+  private _keepLoadedTimes = false;
+
+  get isPostHocKind(): boolean {
+    return this.form.get('requestKind')?.value === 'post_hoc';
+  }
+
+  /** 日期 input 的 min / max：事後申請限昨天～今天 */
+  get dateMin(): string { return this.isPostHocKind ? this.postHocMinStr : this.minDate; }
+  get dateMax(): string { return this.isPostHocKind ? this.todayStr : this.maxDate; }
+
+  /** 事後申請不符資格 / 起訖不完整 / 時數不合 → 擋送出 */
+  get isPostHocBlocked(): boolean {
+    if (!this.isPostHocKind) return false;
+    const ctx = this.postHocCtx();
+    if (!ctx || !ctx.eligible) return true;
+    return !this.composeActual() || this.isActualEndInFuture;
+  }
+
+  /** 實際加班結束時間晚於現在（台北時間）→ 尚未發生，事後申請不得送出（後端 EnsurePostHocAsync 同步擋） */
+  get isActualEndInFuture(): boolean {
+    const c = this.composeActual();
+    if (!c) return false;
+    const now = new Intl.DateTimeFormat('sv-SE', {
+      timeZone: 'Asia/Taipei', year: 'numeric', month: '2-digit', day: '2-digit',
+      hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false,
+    }).format(new Date()).replace(' ', 'T');
+    return c.end > now;
+  }
+
+  /** 實際加班時長（小時）；起訖不完整或訖 ≤ 起回 null */
+  get actualDurationHours(): number | null {
+    const c = this.composeActual();
+    if (!c) return null;
+    const diff = (new Date(c.end).getTime() - new Date(c.start).getTime()) / 3600000;
+    return diff > 0 ? Math.round(diff * 10) / 10 : null;
+  }
+
+  /** 組出 "yyyy-MM-ddTHH:mm:00"；任一未填回 null */
+  private composeActual(): {start: string; end: string} | null {
+    const v = this.form.getRawValue();
+    const date = v.overtimeDate;
+    if (!date || !v.actualStartTime || !v.actualEndTime) return null;
+    const endDate = v.endNextDay ? this.addDays(date, 1) : date;
+    return {start: `${date}T${v.actualStartTime}:00`, end: `${endDate}T${v.actualEndTime}:00`};
+  }
+
+  private addDays(date: string, n: number): string {
+    const [y, m, d] = date.split('-').map(Number);
+    const dt = new Date(Date.UTC(y, m - 1, d + n));
+    return dt.toISOString().slice(0, 10);
+  }
+
+  onKindChange() {
+    if (this.isReadOnly) return;
+    if (this.isPostHocKind) {
+      const d = this.form.get('overtimeDate')!.value as string;
+      if (!d || d < this.postHocMinStr || d > this.todayStr) this.form.patchValue({overtimeDate: this.todayStr}, {emitEvent: false});
+      this.loadPostHocContext();
+    } else {
+      this.postHocCtx.set(null);
+    }
+  }
+
+  onDateChange() {
+    if (this.isReadOnly || !this.isPostHocKind) return;
+    this.loadPostHocContext();
+  }
+
+  /** 查詢事後申請資格並預填起訖（起＝應下班時間、訖＝下班卡時間，皆可改） */
+  private loadPostHocContext() {
+    const date = (this.form.get('overtimeDate')!.value as string | null)?.slice(0, 10);
+    if (!date) { this.postHocCtx.set(null); return; }
+    this.postHocLoading.set(true);
+    this.service.getPostHocContext(date).subscribe({
+      next: ctx => {
+        // 回應已過期（使用者又換了日期 / 類別）則丟棄
+        if (!this.isPostHocKind || this.form.get('overtimeDate')!.value?.slice(0, 10) !== date) return;
+        this.postHocCtx.set(ctx);
+        this.postHocLoading.set(false);
+        if (ctx.eligible && !this._keepLoadedTimes) {
+          const startT = ctx.regularEnd?.slice(11, 16) ?? '';
+          const endT = ctx.clockOutTime?.slice(11, 16) ?? '';
+          this.form.patchValue({
+            actualStartTime: startT,
+            actualEndTime: endT,
+            endNextDay: !!ctx.clockOutTime && ctx.clockOutTime.slice(0, 10) > date,
+          });
+        }
+        this._keepLoadedTimes = false;
+        this.cdr.markForCheck();
+      },
+      error: (err: HttpErrorResponse) => {
+        this.postHocLoading.set(false);
+        this.postHocCtx.set({eligible: false, reason: err.error?.message || '無法查詢事後申請資格，請稍後再試。',
+          clockOutTime: null, isClockOutAuto: false, regularEnd: null, hasOvertimePunch: false});
+        this.cdr.markForCheck();
+      },
+    });
+  }
+
   errorMsg = signal('');
   /** 儲存 / 送出進行中：鎖按鈕 + spinner，避免連按建出多張單（見 docs/frontend-design.md §8.4.1） */
   saving = signal(false);
@@ -167,7 +276,12 @@ export class OvertimeRequestForm implements OnInit {
   readonly statusClass = APPROVAL_STATUS_CLASSES;
 
   form = this.fb.group({
+    requestKind:      ['normal' as OvertimeRequestKind, Validators.required],
     overtimeDate:     ['', Validators.required],
+    // 事後申請的實際起訖（HH:mm）；訖可勾「隔日」跨午夜
+    actualStartTime:  [''],
+    actualEndTime:    [''],
+    endNextDay:       [false],
     // 補償方式二擇一；預設補休（與後端 Normalize 的安全側一致）
     compensationType: ['compensatory' as OvertimeCompensationType, Validators.required],
     reason:           ['', Validators.required],
@@ -225,6 +339,10 @@ export class OvertimeRequestForm implements OnInit {
     // 同一 tick 內若尚未重算會拿到舊值。
     this.projectsArray.valueChanges.subscribe(() => this.recomputeTotalHours());
 
+    // 申請類別 / 加班日期變動 → 事後申請資格查詢（用 valueChanges 而非模板 (change)，避免事件順序讀到舊值）
+    this.form.get('requestKind')!.valueChanges.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(() => this.onKindChange());
+    this.form.get('overtimeDate')!.valueChanges.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(() => this.onDateChange());
+
     // 加班時數試算（**兩種補償方式都查**，2026-09 改）：超出上限
     // 這兩種擋件與補償方式無關，補休模式若只在切到「加班費」才查，使用者選補休送出時
     // 完全看不到擋件訊息，只能等後端 400 才發現。金額 / 分段明細仍只在 isPayMode 顯示（見 template）。
@@ -281,7 +399,7 @@ export class OvertimeRequestForm implements OnInit {
         if (!r) return;
         this.approvalStatus = r.approvalStatus;
         this.requestNo      = r.requestNo ?? '';
-        this.isBackfill     = !!r.isBackfill;
+        this.isPostHoc      = r.requestKind === 'post_hoc';
         this.isDraft    = r.approvalStatus === 'draft';
         this.isReturned = r.approvalStatus === 'returned';
         this.isReadOnly = r.approvalStatus !== 'draft' && r.approvalStatus !== 'returned';
@@ -291,6 +409,19 @@ export class OvertimeRequestForm implements OnInit {
           compensationType: r.compensationType ?? 'compensatory',
           reason: r.reason,
         });
+        // requestKind 不觸發 valueChanges：否則 onKindChange 會多發一次資格查詢，
+        // 後到的回應把已存的起訖蓋成預填值（應下班 / 下班卡時間）。資格改由下方明確查一次。
+        this.form.patchValue({requestKind: r.requestKind ?? 'normal'}, {emitEvent: false});
+        if (this.isPostHoc && r.actualStartTime && r.actualEndTime) {
+          const d = r.overtimeDate.toString().slice(0, 10);
+          this.form.patchValue({
+            actualStartTime: r.actualStartTime.slice(11, 16),
+            actualEndTime:   r.actualEndTime.slice(11, 16),
+            endNextDay:      r.actualEndTime.slice(0, 10) > d,
+          });
+          this._keepLoadedTimes = true;
+        }
+        if (this.isPostHoc && !this.isReadOnly) this.loadPostHocContext();
         // 唯讀模式顯示核准當下寫入的快照，不重新試算（避免調薪後金額與已發放的不符）
         this.snapshotPayAmount    = r.overtimePayAmount ?? null;
         this.snapshotPayableHours = r.payableHours ?? null;
@@ -340,7 +471,7 @@ export class OvertimeRequestForm implements OnInit {
   /** 儲存（草稿或更新，不改變狀態） */
   save() {
     if (this.saving()) return;
-    if (this.form.invalid || this.isReadOnly || this.isBlocked) return;
+    if (this.form.invalid || this.isReadOnly || this.isBlocked || this.isPostHocBlocked) return;
     if (this.projectsArray.length === 0) {
       this.errorMsg.set('請至少新增一筆關聯專案。');
       return;
@@ -367,7 +498,7 @@ export class OvertimeRequestForm implements OnInit {
   /** 送出申請（先儲存再將狀態改為 pending） */
   submitForApproval() {
     if (this.saving()) return;
-    if (this.form.invalid || this.isReadOnly || this.isBlocked) return;
+    if (this.form.invalid || this.isReadOnly || this.isBlocked || this.isPostHocBlocked) return;
     if (this.projectsArray.length === 0) {
       this.errorMsg.set('請至少新增一筆關聯專案。');
       return;
@@ -412,7 +543,11 @@ export class OvertimeRequestForm implements OnInit {
   private _buildPayload(): OvertimeRequestPayload {
     const v = this.form.value;
     const reviewers = this._pickerPayload;
+    const actual = v.requestKind === 'post_hoc' ? this.composeActual() : null;
     return {
+      requestKind:         v.requestKind!,
+      actualStartTime:     actual?.start ?? null,
+      actualEndTime:       actual?.end ?? null,
       overtimeDate:        new Date(v.overtimeDate!),
       projects:            this.projectControls.map(g => ({
         projectId:      +g.get('projectId')!.value,

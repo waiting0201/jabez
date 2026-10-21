@@ -207,6 +207,8 @@ RefundDue = max(0, 前次已沖銷 + 本次沖銷 − 預支總額)
 - **驗證（400）**：金額不可為負；金額為 0 或空＝無繳回（四欄一併清空，並刪舊憑證 blob）；金額 > 0 時**繳回日期與憑證皆必填**（日期過 `RequestDateGuard`）；金額不得超過「預支總額 − 他單已核准核銷 − 本單核銷 − 他單已核准繳回」，訊息會列出上限。修改明細金額後上限即時重算，故驗證排在 `GrandTotal` 更新之後
 - **純匯回、不填明細（2026-10-17）**：費用明細與繳回**至少擇一**——同仁只是把用不完的預支款匯回時，明細可為 0 列（`GrandTotal` = 0、`RefundDue` = 0、不需差額分期），只填繳回金額＋日期＋憑證即可送出。過去明細至少一列，同仁只能塞假發票而使實際費用核銷金額錯誤。後端 `WriteOffRequestHandler.EnsureItemsOrReturned` 於 Create / Update（繳回驗證之後）與 Submit 三處檢查，前端 `hasContent` 控按鈕
 - **讀取**：`WriteOffRequestDto` / `WriteOffTaskDetailDto` 帶出四欄與 `AdvanceReturnedTotal`（同預支單**他單**已核准繳回合計，不含本單，前端據此算本單的尚未結清）；`writeOffHistory[]` 與 `by-advance` 彙總檢視同步帶出各次繳回
+- **沖銷大於預支且公司已補撥 → 「已結清」（2026-10-19）**：尚未結清金額為負（公司欠同仁）時，若「同預支單已核准 ∪ 本單沖銷的**已撥款**差額分期（`WriteOffInstallments.PaidAt` 非空）合計」≥ 欠額，視為已結清：沖銷資訊卡與預支詳情卡顯示「-N 已結清（最後撥款日 已撥匯）」綠色 badge，沖銷 PDF「結餘」列備註印「已結清」。後端以 `WriteOffRequestReadService.OverspendPaidSql` 帶出 `OverspendPaidTotal` / `OverspendLastPaidAt`（`WriteOffRequestDto` / `WriteOffTaskDetailDto`；`AdvanceRequestDto` 只計已核准沖銷）。仍為顯示用，不影響任何金額或結案
+- **繳回紀錄的呈現位置（2026-10-19 補齊）**：沖銷詳情頁 / 簽核頁（本單四欄 + 結清對帳）、沖銷彙總頁；**沖銷清單頁**金額欄下方小字「繳回 N」；**沖銷資訊卡歷程列**「繳回 N（日期）」（他單繳回也看得到日期，`WriteOffRoundDto.ReturnedAt`）；**預支單詳情頁**「沖銷與繳回紀錄」卡（一張沖銷一列：核銷 / 繳回 / 日期 / 證明，表尾已核准合計與尚未結清，資料為 `AdvanceRequestDto.WriteOffRecords[]` 的四個繳回欄位）；**預支沖銷表 PDF** 逐筆列出繳回（本單 + 他單已核准，各附沖銷單號與繳回日期，2 筆以上加「繳回合計」，結餘數字不變；歷程資料對不上時退回單列合計）；**預支申請表 PDF** 各次沖銷段的總計列後加「現金/匯款繳回（日期）」
 - **歷史補登**：已核准單前台不可編輯，由客戶提供「預支單號＋繳回金額＋繳回日期」後以 [`Api/Data/Scripts/18-backfill-write-off-returned-cash.sql`](../../Api/Data/Scripts/18-backfill-write-off-returned-cash.sql) 補登（`@Commit` 空跑開關、以 `RequestNo` 定位、寫在該預支單最後一張已核准沖銷單、不含憑證照片、冪等；閘門：單號不存在 / 無已核准沖銷 / 金額超過尚未結清 / 已有不同繳回資料 → 中止）
 - **出差預支沖銷不在本次範圍**（該表無附件結構，需另案）
 
@@ -344,6 +346,16 @@ RefundDue = max(0, 前次已沖銷 + 本次沖銷 − 預支總額)
   - 第 2 條**不限 `Status = 'pending'`**（待審核分支有限）：退回時該筆 designee 會被設為 `'returned'`，限 pending 會漏掉「自己被指定、然後這張單被退回」的情形。
 - **舊行為修正**：2026-08 之前 `StepMatchClause` 沒有 `returned` 分支，非 Superadmin 傳 `status=returned` 會 fall through 到待審核分支（寫死 `ApprovalStatus = 'pending'`），**靜默回傳完全不相干的待審清單**。現行 `status` 一律走 [ApprovalTaskHandler](../../Api/Handlers/ApprovalTaskHandler.cs) 的 `ValidListStatuses` 白名單正規化。
 - **列表為唯讀**：退回單的 `status` 不是 `pending`，操作欄自動顯示查看圖示；要重新簽核須等申請人修改後重送。
+
+## 簽核作業「已核准」頁籤：預計撥款欄位與匯出 Excel（2026-10-19 新增）
+
+財務 / 會計排款用。僅「已核准」頁籤且為**財務體系部門或 Superadmin**（與撥款子篩選同一判準 `canSeePaymentFilter` → `showPaymentPlan`）才出現，其他人的已核准清單欄位不變。
+
+- **預計撥款日 / 預計撥款額**：資料取自清單 API 本來就帶回的 `installments`（單一真相），**只列尚未撥款（`paidAt` 為空）的各期**：日期一期一行（多期時括號附該期金額），金額＝未撥各期合計。
+  - 已核准但財務尚未排任何一期 →「未排定」；各期皆已撥 →「已撥畢」；無撥款概念的類型（請假 / 加班 / 假日執行活動 / 出差預支沖銷等）→「—」。
+  - 預支沖銷取**本單超支差額分期**（公司補撥給同仁），未超支（`refundDue = 0`）→「—」；**不取**關聯預支單的分期（那筆屬預支單本身，會重複計）。
+  - 判定收斂在 `approval-task-list.ts` 的 `getPaymentPlan()`，畫面與 Excel 共用。
+- **匯出 Excel**：頁首「匯出 Excel」鈕，依目前篩選（類型 / 申請人 / 申請日期 / 撥款子篩選）一次取回全部（`GET /approval-tasks?status=approved&export=true`，上限 `ApprovalTaskHandler.ExportMaxPageSize = 5000`，超出以 toastr 明講「匯出不完整」），**一期一列**（同一張單有多期未撥款時拆成多列，類型 / 單號 / 申請人等欄位每列重複帶出，方便依預計撥款日排序篩選；未排定 / 已撥畢 / 無撥款概念者仍一張一列），欄位＝類型 / 單號 / 申請人 / 摘要 / 撥款狀態 / 申請日期 / 預計撥款日 / 預計撥款額，**末列為預計撥款額合計**（摘要的「共 N 筆」為單據張數，非列數）。預計撥款額為數值欄（無值留空），Excel 內可再加總。
 
 ## 簽核作業列表「申請人」篩選（2026-07 新增）
 

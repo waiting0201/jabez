@@ -196,6 +196,84 @@
       </div>
     </div>
 
+    <!-- 沖銷與繳回紀錄：該預支單底下各張沖銷單的核銷金額與同仁繳回（合計只計已核准）-->
+    @if (r.writeOffRecords?.length) {
+      <div class="card border-0 shadow-sm mb-6">
+        <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600">
+          <svg class="sa-icon text-primary" style="stroke: currentColor">
+            <use href="/assets/icons/sprite.svg#file-minus"></use>
+          </svg>
+          沖銷與繳回紀錄
+        </div>
+        <div class="card-body p-0">
+          <div class="table-responsive">
+            <table class="table table-sm mb-0">
+              <thead class="table-light">
+                <tr>
+                  <th style="min-width:100px">沖銷次別</th>
+                  <th style="min-width:140px">沖銷單號</th>
+                  <th style="min-width:90px">簽核狀態</th>
+                  <th class="text-right" style="min-width:110px">費用核銷</th>
+                  <th class="text-right" style="min-width:110px">同仁繳回</th>
+                  <th style="min-width:100px">繳回日期</th>
+                  <th style="min-width:120px">匯款證明</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (wo of r.writeOffRecords; track wo.id) {
+                  <tr [class.text-muted]="wo.approvalStatus !== 'approved'">
+                    <td class="small fw-500">第 {{ wo.writeOffNo }} 次沖銷</td>
+                    <td class="small font-monospace">{{ wo.requestNo || '—' }}</td>
+                    <td class="small">
+                      <span [class]="'badge ' + statusClass[wo.approvalStatus]">{{ statusLabel[wo.approvalStatus] }}</span>
+                    </td>
+                    <td class="text-right small">{{ wo.grandTotal | number:'1.0-0' }}</td>
+                    <td class="text-right small">{{ wo.returnedAmount ? (wo.returnedAmount | number:'1.0-0') : '—' }}</td>
+                    <td class="small">{{ wo.returnedAt ? (wo.returnedAt | date:'yyyy-MM-dd') : '—' }}</td>
+                    <td class="small">
+                      @if (wo.returnedProofUrl) {
+                        <button type="button" class="btn btn-sm btn-outline-secondary inline-flex items-center gap-1"
+                                (click)="openPreview(wo.returnedProofFileName || '匯款證明', wo.returnedProofUrl)">
+                          <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#eye"></use></svg>
+                          檢視
+                        </button>
+                      } @else {
+                        <span class="text-muted">—</span>
+                      }
+                    </td>
+                  </tr>
+                }
+              </tbody>
+              <tfoot>
+                <tr class="table-light">
+                  <td colspan="3" class="text-right fw-500 small">已核准合計</td>
+                  <td class="text-right fw-600">{{ approvedWrittenOffTotal(r) | number:'1.0-0' }}</td>
+                  <td class="text-right fw-600">{{ approvedReturnedTotal(r) | number:'1.0-0' }}</td>
+                  <td colspan="2"></td>
+                </tr>
+                <tr class="table-light">
+                  <td colspan="3" class="text-right fw-500 small">尚未結清（預支 − 核銷 − 繳回）</td>
+                  <td colspan="2" class="text-right fw-600"
+                      [class.text-warning]="unsettled(r) !== 0 && !overspendSettled(r)"
+                      [class.text-green]="unsettled(r) === 0 || overspendSettled(r)">
+                    {{ unsettled(r) | number:'1.0-0' }}
+                    @if (overspendSettled(r)) {
+                      <span class="badge bg-success-subtle text-success ml-1">
+                        已結清@if (r.overspendLastPaidAt) {（{{ r.overspendLastPaidAt | date:'yyyy-MM-dd' }} 已撥匯）}
+                      </span>
+                    } @else if (unsettled(r) !== 0) {
+                      <span class="badge bg-warning-subtle text-warning-emphasis ml-1">未結清</span>
+                    }
+                  </td>
+                  <td colspan="2"></td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        </div>
+      </div>
+    }
+
     <!-- 結案與退款資訊（共用元件 app-closure-info-card，欄位與簽核作業詳情頁一致）-->
     <app-closure-info-card
       [isClosed]="r.isClosed"
@@ -230,3 +308,6 @@
   }
 </div>
 
+@if (previewFile) {
+  <app-file-preview-modal [file]="previewFile" (closed)="closePreview()" />
+}

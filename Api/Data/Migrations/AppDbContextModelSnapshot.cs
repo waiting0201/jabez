@@ -3106,6 +3106,12 @@ namespace Jabez.Api.Data.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
+                    b.Property<DateTime?>("ActualEndTime")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("ActualStartTime")
+                        .HasColumnType("datetime2");
+
                     b.Property<int?>("ApprovalItemId")
                         .HasColumnType("int");
 
@@ -3165,6 +3171,13 @@ namespace Jabez.Api.Data.Migrations
                         .IsRequired()
                         .HasMaxLength(500)
                         .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("RequestKind")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)")
+                        .HasDefaultValue("normal");
 
                     b.Property<string>("RequestNo")
                         .HasMaxLength(50)
@@ -3857,7 +3870,7 @@ namespace Jabez.Api.Data.Migrations
                             Code = "attendances:read",
                             Description = "出勤打卡",
                             Module = "出勤打卡",
-                            Name = "瀏覽"
+                            Name = "打卡頁瀏覽"
                         },
                         new
                         {

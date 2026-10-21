@@ -12,7 +12,8 @@ namespace Jabez.Api.Handlers;
 
 /// <summary>
 /// 發票 OCR Handler：接收圖片並透過 Google Gemini API 辨識台灣統一發票 / 收據 / 交通票根。
-/// 同一張圖片或 PDF 可包含多張，回傳結果為陣列（每張一筆）。
+/// 一張圖片或 PDF 只辨識一張（2026-10-20 關閉一圖多張展開，多張請分開拍 / 上傳）；
+/// 回傳仍為陣列以維持 API 契約，但最多 1 筆。
 /// </summary>
 public sealed class InvoiceOcrHandler(IConfiguration config, ILogger<InvoiceOcrHandler> logger)
 {
@@ -37,7 +38,7 @@ public sealed class InvoiceOcrHandler(IConfiguration config, ILogger<InvoiceOcrH
     /// <summary>
     /// POST /invoice-ocr
     /// 接收 multipart/form-data（欄位 "file"），呼叫 Gemini API 辨識發票資訊。
-    /// 回傳 ApiResponse&lt;OcrResult[]&gt;（一張圖可辨識出多筆）。
+    /// 回傳 ApiResponse&lt;OcrResult[]&gt;（0 或 1 筆）。
     /// </summary>
     public async Task<IActionResult> RecognizeAsync(HttpRequest req)
     {
@@ -109,12 +110,12 @@ public sealed class InvoiceOcrHandler(IConfiguration config, ILogger<InvoiceOcrH
 
         // ── 5. 組建 Gemini API 請求 ──────────────────────────────────────────
         var prompt = """
-            請辨識這張圖片或 PDF，找出其中**所有**的發票 / 收據 / 交通票根（同一張圖片或 PDF 可能同時包含多張，請逐一辨識，不要遺漏）。
-            每一張各為以下其中一種：
+            請辨識這張圖片或 PDF 中的**一張**發票 / 收據 / 交通票根。若畫面中同時出現多張，只辨識最完整、最清楚的那一張，其餘忽略。
+            該張為以下其中一種：
             A. 台灣統一發票 / 收據
             B. 交通票根（高鐵、台鐵、捷運、客運、機票 / 登機證、計程車收據、停車費收據、ETC 通行費等）
 
-            請為每一張各提取欄位，組成一個 JSON 物件，所有物件放入一個 JSON 陣列回覆（不要加任何其他文字、不要 markdown）：
+            請提取以下欄位組成一個 JSON 物件，放入只含這一個物件的 JSON 陣列回覆（不要加任何其他文字、不要 markdown）：
 
             - docType：文件類型
               * 若為 A 類（統一發票 / 收據）：填 "invoice"
@@ -147,7 +148,7 @@ public sealed class InvoiceOcrHandler(IConfiguration config, ILogger<InvoiceOcrH
 
             找不到的欄位：字串欄位填空字串 ""、金額填 0。
             無法判別文件類型時：docType 填 "invoice"。
-            若整張圖片完全沒有任何發票 / 收據 / 票根，請回傳空陣列 []。
+            若整張圖片完全沒有任何發票 / 收據 / 票根，請回傳空陣列 []。陣列最多只能有 1 個元素。
 
             回覆格式（僅此一行 JSON 陣列，無任何多餘文字）：
             [{"docType": "invoice|ticket", "invoiceNo": "...", "amount": 0, "invoiceDate": "YYYY-MM-DD 或空字串", "buyerName": "買方抬頭或空字串", "buyerTaxId": "買方統編或空字串", "sellerTaxId": "賣方統編或空字串"}]
@@ -240,7 +241,8 @@ public sealed class InvoiceOcrHandler(IConfiguration config, ILogger<InvoiceOcrH
             ocrResults = FallbackExtract(rawText);
         }
 
-        ocrResults = [.. ocrResults.Select(NormalizeInvoiceNo)];
+        // 一圖一張：模型仍可能回多筆，只取第 1 筆
+        ocrResults = [.. ocrResults.Take(1).Select(NormalizeInvoiceNo)];
 
         return new OkObjectResult(ApiResponse.Ok(ocrResults, "發票辨識成功。"));
     }

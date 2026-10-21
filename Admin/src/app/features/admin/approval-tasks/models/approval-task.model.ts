@@ -243,8 +243,11 @@ export interface OvertimeTaskDetail {
   overtimeRequestId: number;
   requestNo?: string | null;   // OT-yyyyMMdd-NNN
   overtimeDate: Date;
-  /** 補加班（加班日期早於送簽日），後端推導 */
-  isBackfill?: boolean;
+  /** 申請類別：normal 正常申請 / post_hoc 事後申請 */
+  requestKind?: 'normal' | 'post_hoc';
+  /** 事後申請的實際加班起訖（本地 naive ISO）；正常申請為 null */
+  actualStartTime?: string | null;
+  actualEndTime?: string | null;
   /** 預估總時數（= projects 各列加總） */
   estimatedHours: number;
   reason: string;
@@ -357,6 +360,8 @@ export interface WriteOffRound {
   isCurrent: boolean;
   /** 該次沖銷附帶的同仁匯回預支餘額（無則 null） */
   returnedAmount?: number | null;
+  /** 該次繳回日期 */
+  returnedAt?: string | null;
 }
 
 /** 同仁匯回預支餘額（現金／匯款繳回）— 不計入沖銷金額；金額 > 0 時須附日期與匯款證明 */
@@ -367,6 +372,10 @@ export interface WriteOffReturnedCash {
   returnedProofUrl?: string | null;
   /** 同預支單「其他」已核准沖銷單的繳回加總（不含本單） */
   advanceReturnedTotal?: number;
+  /** 公司已補撥的超支差額合計（同預支單已核准 ∪ 本單的已撥款差額分期） */
+  overspendPaidTotal?: number;
+  /** 上述差額分期的最後撥款日 */
+  overspendLastPaidAt?: string | null;
 }
 
 export interface WriteOffTaskDetail extends WriteOffReturnedCash {
@@ -376,6 +385,8 @@ export interface WriteOffTaskDetail extends WriteOffReturnedCash {
   advanceRequestNo: string;
   projectCode: string;
   projectName: string;
+  /** 關聯預支單的活動名稱 */
+  activityName?: string;
   grandTotal: number;
   cashTotal: number;
   checkTotal: number;

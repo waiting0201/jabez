@@ -58,7 +58,10 @@ import {WriteOffRound} from '../../features/admin/approval-tasks/models/approval
                       [class.text-muted]="wo.approvalStatus !== 'approved' && !wo.isCurrent">
                     {{ wo.grandTotal | number:'1.0-0' }}
                     @if (wo.returnedAmount) {
-                      <div class="text-muted small fw-normal">繳回 {{ wo.returnedAmount | number:'1.0-0' }}</div>
+                      <div class="text-muted small fw-normal">
+                        繳回 {{ wo.returnedAmount | number:'1.0-0' }}
+                        @if (wo.returnedAt) { （{{ wo.returnedAt | date:'yyyy-MM-dd' }}） }
+                      </div>
                     }
                   </td>
                 </tr>
@@ -119,9 +122,14 @@ import {WriteOffRound} from '../../features/admin/approval-tasks/models/approval
           <tr>
             <td class="fw-600">尚未結清金額</td>
             <td class="text-right fw-600"
-                [class.text-warning]="unsettled() !== 0" [class.text-green]="unsettled() === 0">
+                [class.text-warning]="unsettled() !== 0 && !overspendSettled()"
+                [class.text-green]="unsettled() === 0 || overspendSettled()">
               {{ unsettled() | number:'1.0-0' }}
-              @if (unsettled() !== 0) {
+              @if (overspendSettled()) {
+                <span class="badge bg-success-subtle text-success ml-1">
+                  已結清@if (overspendLastPaidAt()) {（{{ overspendLastPaidAt() | date:'yyyy-MM-dd' }} 已撥匯）}
+                </span>
+              } @else if (unsettled() !== 0) {
                 <span class="badge bg-warning-subtle text-warning-emphasis ml-1">未結清</span>
               }
             </td>
@@ -143,6 +151,10 @@ export class WriteOffSummaryComponent {
   advanceReturnedTotal = input(0);
   /** 本單的繳回金額（編輯中 / 唯讀皆帶入；無則 0） */
   currentReturnedAmount = input<number | null | undefined>(0);
+  /** 公司已補撥的超支差額合計（後端 overspendPaidTotal：同預支單已核准 ∪ 本單的已撥款差額分期）*/
+  overspendPaidTotal = input<number | null | undefined>(0);
+  /** 上述差額分期的最後撥款日（「已結清（日期 已撥匯）」顯示用）*/
+  overspendLastPaidAt = input<string | null | undefined>(null);
 
   readonly roundLabel = roundLabel;
 
@@ -158,4 +170,8 @@ export class WriteOffSummaryComponent {
 
   /** 尚未結清 = 預支 − 費用核銷 − 繳回；≠ 0 以警示色標示（只警示不擋結案） */
   unsettled = computed(() => this.advanceTotal() - this.writtenOffTotal() - this.returnedTotal());
+
+  /** 沖銷大於預支（尚未結清為負）且公司已補撥足額 → 視為已結清 */
+  overspendSettled = computed(() =>
+    this.unsettled() < 0 && (this.overspendPaidTotal() ?? 0) >= -this.unsettled());
 }

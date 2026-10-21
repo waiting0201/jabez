@@ -104,6 +104,9 @@ export interface AdvanceRequest {
   refundedAt?: string;
   /** 沖銷紀錄含明細（僅 GetById 回傳，PDF 列印用） */
   writeOffRecords?: WriteOffRecord[];
+  /** 公司已補撥的超支差額（已核准沖銷的已撥款差額分期合計 / 最後撥款日） */
+  overspendPaidTotal?: number;
+  overspendLastPaidAt?: string | null;
   // 分期撥款（共用 InstallmentDto / PaymentInstallmentStatus 定義於 approval-tasks model）
   installments?: import('../../approval-tasks/models/approval-task.model').InstallmentDto[];
   paymentStatus?: import('../../approval-tasks/models/approval-task.model').PaymentInstallmentStatus;
@@ -150,6 +153,11 @@ export interface WriteOffRecord {
   submittedBy?: string;
   createdAt: string;
   items: WriteOffItem[];
+  /** 同仁繳回預支餘額（無則 null） */
+  returnedAmount?: number | null;
+  returnedAt?: string | null;
+  returnedProofFileName?: string | null;
+  returnedProofUrl?: string | null;
 }
 
 /** 常用分類選項（與 write-off-request.model.ts 的同名常數必須保持一致：沖銷表單會從母預支單複製 category） */

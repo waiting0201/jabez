@@ -29,6 +29,9 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
     private const int SeniorReviewerMaxLevel = 3;
     public  static readonly HashSet<string> ValidAppTypes = ["payment_request", "leave", "leave_revocation", "travel", "overtime", "advance", "write_off", "travel_write_off", "holiday_travel", "travel_payment", "pre_review", "shift_change"];
 
+    /// <summary>匯出模式（export=true）的 pageSize 上限，比照 OvertimeReportHandler.ExportMaxPageSize</summary>
+    public const int ExportMaxPageSize = 5000;
+
     public async Task<IActionResult> GetAllAsync(HttpRequest req)
     {
         // 依審核者職稱過濾，讓每個人只看到「當前步驟符合自己職稱」的待審申請
@@ -64,7 +67,9 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
         }
 
         int    page     = int.TryParse(req.Query["page"],     out var p)  ? Math.Max(1, p)         : 1;
-        int    pageSize = int.TryParse(req.Query["pageSize"], out var ps) ? Math.Clamp(ps, 1, 100) : 20;
+        // export=true（已核准頁籤匯出 Excel）放寬 pageSize 上限，比照 OvertimeReportHandler；一般列表仍為 100
+        bool   isExport = req.Query["export"] == "true";
+        int    pageSize = int.TryParse(req.Query["pageSize"], out var ps) ? Math.Clamp(ps, 1, isExport ? ExportMaxPageSize : 100) : 20;
         string? rawStatus = req.Query["status"].ToString() is { Length: > 0 } s  ? s  : null;
         string? scope     = req.Query["scope"].ToString()  is { Length: > 0 } sc ? sc : null;
 
@@ -646,6 +651,11 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
                 if (action == "approved" && ot.EmployeeId is { } otOwner)
                     await HolidayTravelParticipantGuard.EnsureNoOvertimeConflictAsync(db, calendarReader, otOwner, ot.OvertimeDate);
 
+                // 事後申請：核准前先確認當日出缺勤仍可寫入（送件後若被補了加班卡 → 400 請 HR 處理）。
+                // 放在任何狀態變更之前，批次核准遇到時不會留下髒的 tracked 變更。
+                if (action == "approved")
+                    await PostHocOvertimeService.EnsureCanApplyAsync(db, ot);
+
                 var otApplicant = ot.EmployeeId.HasValue
                     ? await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == ot.EmployeeId.Value)
                     : null;
@@ -668,6 +678,12 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
                 // 補休 lot：終局核准且補償方式為補休時開一筆（帶原始費率快照與到期日）；
                 // 其餘狀態收掉。ApplyAsync 內部自行判斷，故無條件呼叫。
                 await CompensatoryLotService.ApplyAsync(db, shiftSchedule, scheduleProvider, ot);
+
+                // 事後申請終局核准：把自填的實際起訖寫入當日出缺勤加班欄（不動上下班卡）+ 稽核 + 以起訖結算。
+                // 必須排在上面兩個 ApplyAsync 之後：它們走 ResolveFromDbAsync（AsNoTracking）讀不到尚未存檔的加班卡 → 結算 0，
+                // 這裡的 SyncFromPunchesAsync 直接以起訖重算，覆蓋成正確的 SettledHours / 加班費快照 / 補休 lot。
+                // 非事後申請 / 非終局核准時為 no-op。
+                await PostHocOvertimeService.ApplyOnApprovalAsync(db, shiftSchedule, scheduleProvider, ot, reviewerId);
 
                 await db.SaveChangesAsync();
                 break;

@@ -5,6 +5,7 @@ import {toSignal, toObservable} from '@angular/core/rxjs-interop';
 import {combineLatest, of} from 'rxjs';
 import {switchMap} from 'rxjs/operators';
 import {ToastrService} from 'ngx-toastr';
+import * as XLSX from 'xlsx';
 import {ApprovalTaskService, BatchApprovePending} from '../../services/approval-task.service';
 import {
   TASK_STATUS_LABELS, TASK_STATUS_CLASSES,
@@ -13,7 +14,7 @@ import {
   PAYMENT_STATE_LABELS, PAYMENT_STATE_CLASSES,
   PAYMENT_INSTALLMENT_STATUS_LABELS, PAYMENT_INSTALLMENT_STATUS_CLASSES,
   PaymentInstallmentStatus,
-  ApprovalTask, ApprovalTaskApplicant,
+  ApprovalTask, ApprovalTaskApplicant, InstallmentDto,
 } from '../../models/approval-task.model';
 import {ApplicationType} from '../../../approvals/models/approval.model';
 import {roundLabel} from '../../../advance-requests/models/advance-request.model';
@@ -59,6 +60,21 @@ const REVIEWED_SCOPE_APP_TYPES: ApplicationType[] = [
 const DIRECTOR_STATUSES: DirectorStatus[] = ['pending', 'approved', 'returned', 'rejected'];
 const PAYMENT_STATUSES: PaymentStatusFilter[] = ['paid', 'unpaid', 'partial', 'closed'];
 const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+/** 匯出 Excel 單次上限，須與後端 ApprovalTaskHandler.ExportMaxPageSize 同步 */
+const EXPORT_MAX_ROWS = 5000;
+
+/**
+ * 預計撥款（「已核准」頁籤的兩欄 + Excel 匯出共用）：
+ * - pending：尚未撥款（PaidAt 為空）的各期，依期別排序
+ * - amount ：pending 各期金額合計（＝這張單還要撥多少）
+ * - state  ：unscheduled＝已核准但財務尚未排定任何一期；done＝各期皆已撥款
+ */
+interface PaymentPlan {
+  pending: InstallmentDto[];
+  amount: number;
+  state: 'pending' | 'unscheduled' | 'done';
+}
 
 @Component({
   selector: 'app-approval-task-list',
@@ -107,6 +123,15 @@ export class ApprovalTaskList {
   canBatchApprove = computed(() =>
     this.auth.isSuperAdmin() || this.auth.hasPermission('approval-tasks:batch-approve')
   );
+
+  /**
+   * 「已核准」頁籤的預計撥款日 / 預計撥款額兩欄與匯出 Excel：僅財務體系（總監室 / 財務管理部 / 會計室）與 Superadmin，
+   * 與撥款子篩選同一判準。其他人的已核准清單維持原欄位。
+   */
+  showPaymentPlan = computed(() => this.activeTab() === 'approved' && this.canSeePaymentFilter());
+
+  /** 匯出 Excel 執行中 */
+  exporting = signal(false);
 
   readonly PAGE_SIZE = 20;
   activeTab = signal<ApprovalTab>(this.initialTab());
@@ -463,6 +488,102 @@ export class ApprovalTaskList {
     return false;
   }
 
+  /**
+   * 預計撥款：撥款類取該單自己的分期撥款（installments 單一真相）。
+   * - write_off 取「本次沖銷的超支差額」分期（公司補撥給同仁），未超支者無分期 → null
+   * - travel_write_off / holiday_travel / 請假 / 加班等無撥款概念 → null（畫面顯示「—」）
+   */
+  getPaymentPlan(t: ApprovalTask): PaymentPlan | null {
+    let inst: InstallmentDto[] | undefined;
+    switch (t.applicationType) {
+      case 'payment_request': inst = t.paymentDetail?.installments; break;
+      case 'advance':         inst = t.advanceDetail?.installments; break;
+      case 'travel':          inst = t.travelDetail?.installments; break;
+      case 'travel_payment':  inst = t.travelPaymentDetail?.installments; break;
+      case 'write_off':
+        if (!t.writeOffDetail || !(t.writeOffDetail.refundDue ?? 0)) return null;
+        inst = t.writeOffDetail.installments;
+        break;
+      default: return null;
+    }
+    const all = inst ?? [];
+    if (all.length === 0) return {pending: [], amount: 0, state: 'unscheduled'};
+    const pending = all.filter(i => !i.paidAt).sort((a, b) => a.installmentNo - b.installmentNo);
+    if (pending.length === 0) return {pending: [], amount: 0, state: 'done'};
+    return {pending, amount: pending.reduce((sum, i) => sum + i.amount, 0), state: 'pending'};
+  }
+
+  /** 'YYYY-MM-DD'（後端回 ISO 字串，直接截前 10 碼，不做時區換算） */
+  ymd(d?: string | Date | null): string { return d ? String(d).slice(0, 10) : ''; }
+
+  /**
+   * 匯出 Excel：以目前的篩選條件（類型 / 申請人 / 申請日期 / 撥款子篩選）一次取回全部，不受分頁影響；
+   * 一期一列（多期未撥款的單拆成多列），末列為預計撥款額合計。
+   */
+  exportExcel(): void {
+    if (this.exporting()) return;
+    this.exporting.set(true);
+    this.service.getPaged(1, EXPORT_MAX_ROWS, 'approved', this.paymentStatus() || undefined,
+                          this.applicationTypeFilter() || undefined, this.submittedByFilter() || undefined, undefined,
+                          this.dateFromFilter() || undefined, this.dateToFilter() || undefined, undefined, true)
+      .subscribe({
+        next: res => {
+          const items = res.items ?? [];
+          if (res.totalCount > items.length) {
+            this.toastr.warning(
+              `本次查詢共 ${res.totalCount} 筆，超出單次匯出上限 ${EXPORT_MAX_ROWS} 筆，僅匯出前 ${items.length} 筆。請縮小申請日期區間後分次匯出。`,
+              '匯出不完整');
+          }
+
+          let total = 0;
+          // 一期一列：同一張單有多期未撥款時拆成多列，單據欄位每列重複帶出，Excel 依日期排序 / 篩選才不會掉資料
+          const rows = items.flatMap(t => {
+            const plan = this.getPaymentPlan(t);
+            total += plan?.amount ?? 0;
+            const base = {
+              '類型': this.appTypeLabel[t.applicationType],
+              '單號': this.getRequestNo(t),
+              '申請人': t.submittedBy,
+              '摘要': this.getSummary(t),
+              '撥款狀態': this.getPaymentBadge(t)?.label ?? '',
+              '申請日期': this.ymd(t.submittedAt),
+            };
+            if (plan?.state === 'pending') {
+              // 數值欄留 number 型別，Excel 才能加總
+              return plan.pending.map(i => ({...base, '預計撥款日': this.ymd(i.expectedDate), '預計撥款額': i.amount as number | string}));
+            }
+            // 無撥款概念或已撥畢者金額留空
+            return [{...base,
+              '預計撥款日': !plan ? '' : plan.state === 'unscheduled' ? '未排定' : '已撥畢',
+              '預計撥款額': '' as number | string}];
+          });
+          rows.push({
+            '類型': '合計', '單號': '', '申請人': '', '摘要': `共 ${items.length} 筆`,
+            '撥款狀態': '', '申請日期': '', '預計撥款日': '', '預計撥款額': total,
+          });
+
+          const ws = XLSX.utils.json_to_sheet(rows);
+          ws['!cols'] = [{wch: 12}, {wch: 18}, {wch: 10}, {wch: 50}, {wch: 10}, {wch: 12}, {wch: 12}, {wch: 14}];
+          const wb = XLSX.utils.book_new();
+          XLSX.utils.book_append_sheet(wb, ws, '已核准');
+          XLSX.writeFile(wb, `簽核作業_已核准_${this.exportSuffix()}.xlsx`);
+          this.exporting.set(false);
+        },
+        error: () => {
+          this.toastr.error('匯出失敗，請稍後再試');
+          this.exporting.set(false);
+        },
+      });
+  }
+
+  /** 檔名後綴：有申請日期區間帶區間，否則帶匯出當天 */
+  private exportSuffix(): string {
+    const from = this.dateFromFilter(), to = this.dateToFilter();
+    if (from || to) return `${from || '起'}~${to || '今'}`;
+    const d = new Date();
+    return `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}`;
+  }
+
   getSummary(t: ApprovalTask): string {
     if (t.paymentDetail) {
       const d = t.paymentDetail;
@@ -499,7 +620,7 @@ export class ApprovalTaskList {
       const d = t.overtimeDetail;
       const dateStr = new Date(d.overtimeDate).toLocaleDateString('zh-TW');
       const projects = (d.projects ?? []).map(p => `${p.projectCode} ${p.estimatedHours}h`).join('、');
-      const prefix = d.isBackfill ? '補加班・' : '';
+      const prefix = d.requestKind === 'post_hoc' ? '事後申請・' : '';
       return projects
         ? `${prefix}${dateStr}・${d.estimatedHours} 小時（${projects}）・${d.reason}`
         : `${prefix}${dateStr}・${d.estimatedHours} 小時・${d.reason}`;

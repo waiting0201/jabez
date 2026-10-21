@@ -14,7 +14,8 @@ public sealed class OvertimeRequestReadService(IDbConnection db) : IOvertimeRequ
                o.ApprovalStatus, o.CreatedAt, o.SubmittedAt, o.ReviewedAt, o.ReviewNote,
                o.ApprovalItemId, o.CurrentStepOrder, o.ReviewedById,
                o.CompensationType, o.OvertimePayAmount, o.HourlyRateSnapshot,
-               o.PayableHours, o.IsHolidayOvertime, o.OvertimeDayType, o.SettledHours
+               o.PayableHours, o.IsHolidayOvertime, o.OvertimeDayType, o.SettledHours,
+               o.RequestKind, o.ActualStartTime, o.ActualEndTime
         FROM OvertimeRequests o
         LEFT JOIN Users u ON o.EmployeeId = u.Id
         """;
@@ -85,7 +86,9 @@ public sealed class OvertimeRequestReadService(IDbConnection db) : IOvertimeRequ
                                     (string?)row.OvertimeDayType, (bool?)row.IsHolidayOvertime),
             RequestNo:          (string?)row.RequestNo,
             SettledHours:       (decimal?)row.SettledHours,
-            IsBackfill:         OvertimeBackfill.IsBackfill((DateTime)row.OvertimeDate, (DateTime?)row.SubmittedAt));
+            RequestKind:        OvertimeRequestKinds.Normalize((string?)row.RequestKind),
+            ActualStartTime:    (DateTime?)row.ActualStartTime,
+            ActualEndTime:      (DateTime?)row.ActualEndTime);
     }
 
     public async Task<IEnumerable<OvertimeRequestDto>> GetAllAsync()
@@ -154,6 +157,10 @@ public sealed class OvertimeRequestReadService(IDbConnection db) : IOvertimeRequ
 
         if (employeeId.HasValue)
             conditions.Add("o.EmployeeId = @EmployeeId");
+
+        // 事後申請（post_hoc）核准後由系統自動寫入出缺勤，不走打卡：本篩選路徑唯一消費者是打卡頁的
+        // 「當日已核准加班單」下拉，故一律排除（2026-10）。列表頁走 GetPagedAsync，不受影響。
+        conditions.Add("o.RequestKind <> 'post_hoc'");
 
         var where = conditions.Count > 0
             ? " WHERE " + string.Join(" AND ", conditions)

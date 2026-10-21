@@ -94,6 +94,7 @@ public sealed class AdvanceRequestReadService(IDbConnection db, IInstallmentRead
             SELECT wo.Id, wo.RequestNo, wo.WriteOffNo, wo.CashTotal, wo.CheckTotal,
                    wo.GrandTotal, wo.ApprovalStatus, wo.Note,
                    sub.Name AS SubmittedBy, wo.CreatedAt,
+                   wo.ReturnedAmount, wo.ReturnedAt, wo.ReturnedProofFileName, wo.ReturnedProofUrl,
                    wi.Id AS ItemId, wi.Category, wi.SeqNo, wi.ItemName,
                    wi.UnitPrice, wi.Quantity, wi.TotalPrice,
                    wi.CashAmount AS ItemCash, wi.CheckAmount AS ItemCheck,
@@ -121,8 +122,19 @@ public sealed class AdvanceRequestReadService(IDbConnection db, IInstallmentRead
             """;
         var supRows = await db.QueryAsync<dynamic>(supSql, new { Id = id });
 
+        // 公司已補撥的超支差額（已核准沖銷的已撥款差額分期）
+        const string overspendSql = """
+            SELECT ISNULL(SUM(oi.Amount), 0) AS PaidTotal, MAX(oi.PaidAt) AS LastPaidAt
+            FROM WriteOffInstallments oi
+            JOIN WriteOffRecords ow ON ow.Id = oi.WriteOffRecordId
+            WHERE ow.AdvanceRequestId = @Id AND ow.ApprovalStatus = 'approved' AND oi.PaidAt IS NOT NULL
+            """;
+        var overspend = await db.QuerySingleAsync<dynamic>(overspendSql, new { Id = id });
+
         return dto with
         {
+            OverspendPaidTotal  = (decimal)overspend.PaidTotal,
+            OverspendLastPaidAt = (DateTime?)overspend.LastPaidAt,
             DesignatedReviewers = designatedReviewers.Length > 0 ? designatedReviewers : null,
             WriteOffRecords = writeOffRecords.Length > 0 ? writeOffRecords : null,
             Installments = instList.Count > 0 ? instList.ToArray() : null,
@@ -268,7 +280,11 @@ public sealed class AdvanceRequestReadService(IDbConnection db, IInstallmentRead
                 (string?)x.wo.Note,
                 (string?)x.wo.SubmittedBy,
                 (DateTime)x.wo.CreatedAt,
-                [.. x.items]))
+                [.. x.items],
+                ReturnedAmount:        (decimal?)x.wo.ReturnedAmount,
+                ReturnedAt:            (DateTime?)x.wo.ReturnedAt,
+                ReturnedProofFileName: (string?)x.wo.ReturnedProofFileName,
+                ReturnedProofUrl:      (string?)x.wo.ReturnedProofUrl))
             .ToArray();
     }
 

@@ -13,5 +13,5 @@ public sealed record OvertimeReportDto(
     decimal?  OvertimePayAmount = null,
     // 結算時數（給付基準，2026-10 防灌工時）；null ＝ 舊單（給付沿用 EstimatedHours）
     decimal?  SettledHours      = null,
-    // 補加班：加班日早於送簽日（見 OvertimeBackfill），報表「申請類別」欄用
-    bool      IsBackfill        = false);
+    // 申請類別（2026-10）：normal 正常申請 / post_hoc 事後申請，報表「申請類別」欄用
+    string    RequestKind       = "normal");

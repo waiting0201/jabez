@@ -1,23 +1,25 @@
 import {Component, inject, OnInit, signal} from '@angular/core';
 import {ActivatedRoute, RouterLink} from '@angular/router';
 import {DatePipe, DecimalPipe} from '@angular/common';
+import {DomSanitizer} from '@angular/platform-browser';
 import {ToastrService} from 'ngx-toastr';
 import {AdvanceRequestService} from '../../services/advance-request.service';
 import {AdvancePdfService} from '../../services/advance-pdf.service';
 import {ApprovalTaskService} from '../../../approval-tasks/services/approval-task.service';
 import {ApprovalTask} from '../../../approval-tasks/models/approval-task.model';
 import {
-  AdvanceRequest, AdvanceRound, roundLabel,
+  AdvanceRequest, AdvanceRound, WriteOffRecord, roundLabel,
   APPROVAL_STATUS_LABELS, APPROVAL_STATUS_CLASSES,
 } from '../../models/advance-request.model';
 import {ApprovalTimeline} from '../../../../../shared/components/approval-timeline';
 import {InstallmentsTable} from '../../../../../shared/components/installments-table';
 import {ClosureInfoCardComponent} from '../../../../../shared/components/closure-info-card';
+import {FilePreviewModal, PreviewFileData} from '../../../../../shared/components/file-preview-modal';
 
 @Component({
   selector: 'app-advance-detail',
   templateUrl: './advance-detail.html',
-  imports: [RouterLink, DecimalPipe, DatePipe, ApprovalTimeline, InstallmentsTable, ClosureInfoCardComponent],
+  imports: [RouterLink, DecimalPipe, DatePipe, ApprovalTimeline, InstallmentsTable, ClosureInfoCardComponent, FilePreviewModal],
 })
 export class AdvanceDetail implements OnInit {
   private service = inject(AdvanceRequestService);
@@ -25,6 +27,7 @@ export class AdvanceDetail implements OnInit {
   private taskService = inject(ApprovalTaskService);
   private route = inject(ActivatedRoute);
   private toastr = inject(ToastrService);
+  private sanitizer = inject(DomSanitizer);
 
   request = signal<AdvanceRequest | null>(null);
   approvalTask = signal<ApprovalTask | null>(null);
@@ -33,6 +36,12 @@ export class AdvanceDetail implements OnInit {
   readonly statusLabel = APPROVAL_STATUS_LABELS;
   readonly statusClass = APPROVAL_STATUS_CLASSES;
   readonly roundLabel = roundLabel;
+
+  previewFile: PreviewFileData | null = null;
+  openPreview(name: string, url: string) {
+    this.previewFile = {name, url, safeUrl: this.sanitizer.bypassSecurityTrustResourceUrl(url)};
+  }
+  closePreview() { this.previewFile = null; }
 
   ngOnInit() {
     this.load(+this.route.snapshot.paramMap.get('id')!);
@@ -44,6 +53,32 @@ export class AdvanceDetail implements OnInit {
     const r = this.request();
     const t = this.approvalTask();
     if (r) this.pdfService.printAdvanceRequest(r, r.submittedBy ?? '', t?.approvalRecords ?? [], t?.flow, t?.submittedBySignatureUrl);
+  }
+
+  // ── 沖銷與繳回紀錄 ──────────────────────────────────────────────────────
+
+  /** 沖銷與繳回只計已核准（與沖銷頁 write-off-summary 的結清對帳同基準）*/
+  private approvedWriteOffs(r: AdvanceRequest): WriteOffRecord[] {
+    return (r.writeOffRecords ?? []).filter(w => w.approvalStatus === 'approved');
+  }
+
+  approvedWrittenOffTotal(r: AdvanceRequest): number {
+    return this.approvedWriteOffs(r).reduce((s, w) => s + w.grandTotal, 0);
+  }
+
+  approvedReturnedTotal(r: AdvanceRequest): number {
+    return this.approvedWriteOffs(r).reduce((s, w) => s + (w.returnedAmount ?? 0), 0);
+  }
+
+  /** 尚未結清＝預支總額 − 已核准費用核銷 − 已核准同仁繳回 */
+  unsettled(r: AdvanceRequest): number {
+    return r.grandTotal - this.approvedWrittenOffTotal(r) - this.approvedReturnedTotal(r);
+  }
+
+  /** 沖銷大於預支（尚未結清為負）且公司已補撥足額 → 已結清（與 write-off-summary 同判準）*/
+  overspendSettled(r: AdvanceRequest): boolean {
+    const u = this.unsettled(r);
+    return u < 0 && (r.overspendPaidTotal ?? 0) >= -u;
   }
 
   // ── 追加預支 ──────────────────────────────────────────────────────────────

@@ -253,8 +253,10 @@ public sealed record OvertimeTaskDetailDto(
     // 結算時數（給付基準，2026-10 防灌工時）；null ＝ 舊單。審核者看到的 EstimatedHours 是「申請時數」，
     // 實際給付以打卡結算為準，兩者需分開呈現。
     decimal? SettledHours     = null,
-    // 補加班：加班日早於送簽日（見 OvertimeBackfill）
-    bool     IsBackfill       = false);
+    // 申請類別（2026-10）：normal / post_hoc；事後申請另列自填的實際起訖
+    string    RequestKind      = "normal",
+    DateTime? ActualStartTime  = null,
+    DateTime? ActualEndTime    = null);
 
 /// <summary>出差請款申請審核任務詳情 DTO</summary>
 public sealed record TravelPaymentTaskDetailDto(

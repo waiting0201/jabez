@@ -115,4 +115,17 @@ public static class WorkCalendarHelper
 
         return (await calendarReader.GetHolidayDatesAsync(d, d)).Count > 0;
     }
+
+    /// <summary>
+    /// 指定日「之後」的第一個公司工作日（行事曆 <c>IsHoliday</c> 優先，含國定假日 / 彈性休假日；該年度未匯入時退回六日）。
+    /// 依公司行事曆、不看個人排班。事後加班申請期限（加班日後一個工作日內提出）使用。上限 30 天防呆。
+    /// </summary>
+    public static async Task<DateTime> NextCompanyWorkingDayAsync(ICalendarDayReadService calendarReader, DateTime date)
+    {
+        const int MaxScanDays = 30;
+        var d = date.Date.AddDays(1);
+        for (var i = 1; i < MaxScanDays && await IsHolidayAsync(calendarReader, false, d); i++)
+            d = d.AddDays(1);
+        return d;
+    }
 }

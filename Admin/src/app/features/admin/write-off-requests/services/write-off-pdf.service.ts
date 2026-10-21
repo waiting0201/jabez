@@ -147,12 +147,39 @@ export class WriteOffPdfService {
         ]);
       }
       if (returnedTotal > 0) {
-        bodyRows.push([
-          { content: '現金/匯款繳回', colSpan: 6, styles: { halign: 'right' } },
-          { content: fmt(returnedTotal), colSpan: 2, styles: { halign: 'right' } },
-          '',
-          '',
-        ]);
+        // 逐筆列出繳回（與 returnedTotal 同計入範圍：本單 + 他單已核准），每筆附沖銷單號與繳回日期
+        const fmtReturnDate = (v?: string | null) => v ? new Date(v).toLocaleDateString('zh-TW', { year: 'numeric', month: '2-digit', day: '2-digit', timeZone: 'Asia/Taipei' }) : '日期未填';
+        const returns = (r.writeOffHistory ?? [])
+          .filter(w => (w.returnedAmount ?? 0) > 0 && (w.isCurrent || w.approvalStatus === 'approved'))
+          .map(w => w.isCurrent ? { ...w, returnedAmount: r.returnedAmount, returnedAt: r.returnedAt } : w);
+        const listedTotal = returns.reduce((sum, w) => sum + (w.returnedAmount ?? 0), 0);
+        if (returns.length > 0 && listedTotal === returnedTotal) {
+          for (const w of returns) {
+            const label = `現金/匯款繳回　第 ${w.writeOffNo} 次沖銷 ${w.requestNo || ''}${w.isCurrent ? '（本單）' : ''}　${fmtReturnDate(w.returnedAt)}`;
+            bodyRows.push([
+              { content: label, colSpan: 6, styles: { halign: 'right' } },
+              { content: fmt(w.returnedAmount ?? 0), colSpan: 2, styles: { halign: 'right' } },
+              '',
+              '',
+            ]);
+          }
+          if (returns.length > 1) {
+            bodyRows.push([
+              { content: '繳回合計', colSpan: 6, styles: { halign: 'right', fontStyle: 'bold' } },
+              { content: fmt(returnedTotal), colSpan: 2, styles: { fontStyle: 'bold', halign: 'right' } },
+              '',
+              '',
+            ]);
+          }
+        } else {
+          // 歷程資料缺漏或對不上時退回單列合計，避免印出與結餘不一致的明細
+          bodyRows.push([
+            { content: '現金/匯款繳回', colSpan: 6, styles: { halign: 'right' } },
+            { content: fmt(returnedTotal), colSpan: 2, styles: { halign: 'right' } },
+            '',
+            '',
+          ]);
+        }
       }
       if (refundedAmount > 0) {
         bodyRows.push([
@@ -166,7 +193,8 @@ export class WriteOffPdfService {
         { content: '結餘', colSpan: 6, styles: { halign: 'right', fontStyle: 'bold' } },
         { content: fmt(balance), colSpan: 2, styles: { fontStyle: 'bold', halign: 'right', textColor: balance < 0 ? [...CIS.red] : [...CIS.textPrimary] } },
         '',
-        '',
+        // 沖銷大於預支且公司已補撥足額 → 備註標「已結清」（與頁面 write-off-summary 同判準）
+        balance < 0 && (r.overspendPaidTotal ?? 0) >= -balance ? '已結清' : '',
       ]);
       // 差額撥款分期（沖銷超支時公司補撥給員工，可分多期）
       const fmtDate = (v?: string) => v ? new Date(v).toLocaleDateString('zh-TW', { year: 'numeric', month: '2-digit', day: '2-digit', timeZone: 'Asia/Taipei' }) : '尚未設定';

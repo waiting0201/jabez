@@ -75,6 +75,8 @@ export interface AttendanceRecordRow {
   /** 上下班跨度超過 LONG_WORKDAY_HOURS 小時 */
   isLongWorkday: boolean;
   overtimeStartTime: string;
+  /** 加班時段由事後申請核准寫入時為 'post_hoc'（下班卡與加班時段可能重疊的原因） */
+  overtimeRequestKind: string | null;
   overtimeEndTime: string;
   /** GPS 經緯度 */
   clockInLatitude: number | null;
@@ -305,6 +307,7 @@ export class AttendanceReport implements OnInit {
             clockOutReasonLabel: this.clockOutReasonLabel(r),
             workHours: this.computeWorkHours(r.clockInTime, r.clockOutTime),
             isLongWorkday: this.isLongWorkday(r.clockInTime, r.clockOutTime),
+            overtimeRequestKind: r.overtimeRequestKind ?? null,
             overtimeStartTime: r.overtimeStartTime ? new Date(r.overtimeStartTime).toLocaleTimeString('zh-TW', {hour: '2-digit', minute: '2-digit'}) : '',
             overtimeEndTime: r.overtimeEndTime ? new Date(r.overtimeEndTime).toLocaleTimeString('zh-TW', {hour: '2-digit', minute: '2-digit'}) : '',
             clockInLatitude: r.clockInLatitude ?? null,

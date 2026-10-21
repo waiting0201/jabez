@@ -21,8 +21,8 @@ export interface OvertimeReportRow {
   id: number;
   employeeName: string;
   overtimeDate: string;
-  /** 補加班（加班日期早於送簽日）；後端推導 */
-  isBackfill: boolean;
+  /** 申請類別：normal 正常申請 / post_hoc 事後申請 */
+  requestKind: 'normal' | 'post_hoc';
   projects: OvertimeReportProject[];
   estimatedHours: string;
   /** 結算時數（給付基準，2026-10 防灌工時）；null ＝ 舊單（給付沿用申請時數） */
@@ -205,8 +205,8 @@ export class OvertimeReport implements OnInit {
             id: r.id,
             employeeName: r.employeeName ?? '—',
             overtimeDate: r.overtimeDate ? new Date(r.overtimeDate).toLocaleDateString('zh-TW') : '',
-            // 申請類別：漏 map 時 undefined → 一律顯示「申請加班」，補加班看起來像一般加班
-            isBackfill: !!r.isBackfill,
+            // 申請類別：漏 map 時 undefined → 一律顯示「正常申請」，事後申請看起來像一般加班
+            requestKind: r.requestKind === 'post_hoc' ? 'post_hoc' : 'normal',
             projects: (r.projects ?? []).map((p: any) => ({
               projectCode: p.projectCode,
               projectName: p.projectName,
@@ -271,7 +271,7 @@ export class OvertimeReport implements OnInit {
           return {
             '員工姓名': r.employeeName ?? '—',
             '加班日期': r.overtimeDate ? new Date(r.overtimeDate).toLocaleDateString('zh-TW') : '',
-            '申請類別': r.isBackfill ? '補申請加班' : '申請加班',
+            '申請類別': r.requestKind === 'post_hoc' ? '事後申請' : '正常申請',
             '專案': projectText,
             '申請時數': r.estimatedHours != null ? Number(r.estimatedHours).toFixed(1) : '',
             // 舊單（settledHours 為 null）給付沿用申請時數，欄位留空

@@ -192,7 +192,8 @@
 
             @if (!isReadOnly) {
               <!-- Upload area -->
-              <label class="flex flex-col items-center justify-center rounded-3 py-4 px-4 mb-4 text-center"
+              <label [class.mb-4]="!webcamSupported" [class.mb-2]="webcamSupported"
+                     class="flex flex-col items-center justify-center rounded-3 py-4 px-4 text-center"
                      style="cursor:pointer; border: 2px dashed var(--bs-border-color);">
                 <svg class="sa-icon sa-icon-2x text-muted mb-2" style="stroke: currentColor">
                   <use href="/assets/icons/sprite.svg#upload"></use>
@@ -202,6 +203,14 @@
                 <input type="file" class="hidden" multiple accept="image/*,.heic,.heif,application/pdf"
                        (change)="onFilesSelected($event)">
               </label>
+              @if (webcamSupported) {
+                <div class="text-center mb-4">
+                  <button type="button" class="btn btn-sm btn-outline-primary inline-flex items-center gap-1" (click)="openWebcam()">
+                    <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#camera"></use></svg>
+                    用鏡頭拍攝
+                  </button>
+                </div>
+              }
 
               @if (showInvoiceError) {
                 <div class="alert alert-warning py-2 small mb-4">請至少上傳一張發票。</div>

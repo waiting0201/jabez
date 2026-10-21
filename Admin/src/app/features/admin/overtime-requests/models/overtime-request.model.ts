@@ -37,6 +37,24 @@ export interface DesignatedReviewer {
  */
 export type OvertimeCompensationType = 'compensatory' | 'pay';
 
+export type OvertimeRequestKind = 'normal' | 'post_hoc';
+export const REQUEST_KIND_LABELS: Record<OvertimeRequestKind, string> = {
+  normal: '正常申請',
+  post_hoc: '事後申請',
+};
+
+/** GET /overtime-requests/post-hoc-context 回應 */
+export interface PostHocContext {
+  eligible: boolean;
+  reason: string | null;
+  clockOutTime: string | null;
+  isClockOutAuto: boolean;
+  regularEnd: string | null;
+  hasOvertimePunch: boolean;
+  /** 事後申請期限＝加班日之後第一個公司工作日（當日 23:59 前）；加班日晚於今天時 null */
+  deadline?: string | null;
+}
+
 export const COMPENSATION_TYPE_LABELS: Record<OvertimeCompensationType, string> = {
   compensatory: '補休',
   pay:          '加班費',
@@ -114,8 +132,11 @@ export interface OvertimeRequest {
    * null / undefined ＝ 舊單（給付沿用申請時數），畫面不顯示此欄。
    */
   settledHours?: number | null;
-  /** 補加班（加班日期早於送簽日；草稿以今天判定）。由後端推導，前端唯讀 */
-  isBackfill?: boolean;
+  /** 申請類別：normal 正常申請 / post_hoc 事後申請（已打下班卡後補報實際加班起訖） */
+  requestKind?: OvertimeRequestKind;
+  /** 事後申請的實際加班起訖（本地 naive ISO "yyyy-MM-ddTHH:mm:ss"）；正常申請為 null */
+  actualStartTime?: string | null;
+  actualEndTime?: string | null;
   reason: string;
   approvalStatus: ApprovalStatus;
   /** 補償方式（補休 / 加班費，整單二擇一） */
@@ -141,5 +162,8 @@ export interface OvertimeRequestPayload {
   projects: {projectId: number; estimatedHours: number}[];
   reason: string;
   compensationType: OvertimeCompensationType;
+  requestKind: OvertimeRequestKind;
+  actualStartTime: string | null;
+  actualEndTime: string | null;
   designatedReviewers?: DesignatedReviewer[];
 }

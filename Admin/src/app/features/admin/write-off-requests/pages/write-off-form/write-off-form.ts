@@ -10,6 +10,7 @@ import {convertHeicIfNeeded, heicFailedMessage} from '@shared/utils/heic';
 import {ImageCompressionService} from '../../../../../shared/services/image-compression.service';
 import {NgbModal} from '@ng-bootstrap/ng-bootstrap';
 import {FilePreviewModal, PreviewFileData} from '../../../../../shared/components/file-preview-modal';
+import {isWebcamSupported, openWebcamCapture} from '../../../../../shared/components/webcam-capture-modal';
 import {AttachmentsUpload} from '../../../../../shared/components/attachments-upload';
 import {SubmitSuccessModal} from '../../../../../shared/components/submit-success-modal';
 import {AttachmentItem} from '../../../approval-tasks/models/approval-task.model';
@@ -55,6 +56,9 @@ export class WriteOffRequestForm implements OnInit {
   attachmentsUpload = viewChild(AttachmentsUpload);
   private sanitizer      = inject(DomSanitizer);
   private imageCompression = inject(ImageCompressionService);
+
+  /** 瀏覽器支援鏡頭擷取時才顯示「用鏡頭拍攝」按鈕 */
+  readonly webcamSupported = isWebcamSupported();
 
   /** 編輯模式回填的既有附件 */
   loadedAttachments: AttachmentItem[] = [];
@@ -377,12 +381,21 @@ export class WriteOffRequestForm implements OnInit {
   }
 
   /** 發票檔案上傳 — 自動新增行、OCR 辨識 */
-  async onFilesSelected(event: Event) {
+  onFilesSelected(event: Event) {
     const input = event.target as HTMLInputElement;
     if (!input.files?.length) return;
-
     const rawFiles = Array.from(input.files);
     input.value = '';
+    return this.processInvoiceFiles(rawFiles);
+  }
+
+  /** 用鏡頭拍攝發票：拍好的 JPEG 與選檔走同一條 HEIC 轉檔 / OCR 流程 */
+  async openWebcam() {
+    const files = await openWebcamCapture(this.modal);
+    if (files.length) await this.processInvoiceFiles(files);
+  }
+
+  async processInvoiceFiles(rawFiles: File[]) {
 
     const files = (await Promise.all(rawFiles.map(f => this._convertHeicIfNeeded(f))))
       .filter((f): f is File => f !== null);
@@ -397,12 +410,12 @@ export class WriteOffRequestForm implements OnInit {
       return {id, file};
     });
 
-    // OCR 辨識（並行；一張圖可辨識出多筆 → 展開多列）
+    // OCR 辨識（並行；一張圖只辨識一張發票 → 一列）
     await Promise.all(entries.map(async ({id, file}) => {
       try {
         const results = await firstValueFrom(this.paymentService.ocrInvoice(file));
         const idx = this.itemArray.controls.findIndex(c => c.get('id')?.value === id);
-        // 第 1 筆填入 placeholder 列；第 2..N 筆各新增一列（共用同一檔案，各存一份複本）
+        // 辨識結果填入 placeholder 列（多張發票請分開拍 / 上傳，2026-10-20 關閉一圖多列展開）
         if (results.length >= 1 && idx >= 0) {
           this.itemArray.controls[idx].patchValue({
             invoiceNo:   results[0].invoiceNo ?? '',
@@ -416,20 +429,6 @@ export class WriteOffRequestForm implements OnInit {
           // OCR 帶入的總價視為已確立，之後改現金 / 支票不反推總價
           if ((results[0].amount ?? 0) > 0) this._pinnedTotals.add(id);
           this._checkBuyer(id, results[0]);
-        }
-        for (const item of results.slice(1)) {
-          const newId      = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
-          const previewUrl = URL.createObjectURL(file);
-          const amount     = item.amount ?? 0;
-          this.fileMap.set(newId, file);
-          const group = this._itemGroup(
-            newId, file.name, 0, '', amount, '1式', amount, amount, 0,
-            item.docType === 'ticket' ? '票號' : '', this.itemArray.length, previewUrl,
-          );
-          group.patchValue({invoiceNo: item.invoiceNo ?? '', invoiceDate: item.invoiceDate ?? ''});
-          this.itemArray.push(group);
-          this._checkBuyer(newId, item);
-          this.itemArray.at(this.itemArray.length - 1).markAllAsTouched();
         }
       } catch {
         // OCR 失敗 — 保留空白欄位

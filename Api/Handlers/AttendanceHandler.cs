@@ -121,6 +121,14 @@ public sealed class AttendanceHandler(
 
         await EnsureNotOnLeaveAsync(userId, now, ctx.Flexible, forClockOut: false);
 
+        // 請假結束後不得再補打上班卡：EnsureNotOnLeaveAsync 只看「此刻」是否在假內，
+        // 全日請假 08:00–17:00 到了 20:30 就不在任何假單內而被放行（2026-10-19）。
+        var todayLeaves = await reader.GetLeavesOnDateAsync(userId, DateOnly.FromDateTime(now));
+        if (ComputeClockInNotAfter(today, todayLeaves, ctx.Schedule) is { } notAfter && now >= notAfter)
+            throw AppException.BadRequest(notAfter == today
+                ? "您今日已全日請假，無法打上班卡。"
+                : $"您今日有已核准的請假，應出勤時段已於 {notAfter:HH\\:mm} 結束，無法打上班卡。");
+
         // 遲到：超過準時界線（公司 09:30、自訂時段 S+2 分、上午請假者 13:05）須填遲到原因（2026-10-06）。
         // 出差只是出缺勤紀錄上的標記，不影響遲到判定與原因必填（2026-10-12）。
         if (ctx.Flexible
@@ -364,6 +372,8 @@ public sealed class AttendanceHandler(
             throw AppException.BadRequest("加班申請尚未核准。");
         if (otRequest.OvertimeDate.Date != today)
             throw AppException.BadRequest("加班申請日期與今日不符。");
+        if (otRequest.RequestKind == OvertimeRequestKinds.PostHoc)
+            throw AppException.BadRequest("事後申請的加班核准後由系統自動寫入出缺勤，不需（也不能）打加班開始卡。");
 
         // 2. 今日打卡紀錄（休假日可能尚未建立）
         var record = await db.AttendanceRecords
@@ -566,20 +576,8 @@ public sealed class AttendanceHandler(
             var modifierName = await db.Users.AsNoTracking()
                 .Where(u => u.Id == callerId).Select(u => u.Name).FirstOrDefaultAsync() ?? "—";
             var now = Clock.Now;
-            db.AttendanceAuditLogs.Add(new AttendanceAuditLog
-            {
-                AttendanceRecordId  = record.Id,
-                OwnerUserId         = record.UserId,
-                RecordDate          = record.RecordDate,
-                ModifiedById        = callerId,
-                ModifiedByName      = modifierName,
-                ModifiedAt          = now,
-                ClockInBefore       = record.ClockInTime,       ClockInAfter       = body.ClockInTime,
-                ClockOutBefore      = record.ClockOutTime,      ClockOutAfter      = body.ClockOutTime,
-                OvertimeStartBefore = record.OvertimeStartTime, OvertimeStartAfter = body.OvertimeStartTime,
-                OvertimeEndBefore   = record.OvertimeEndTime,   OvertimeEndAfter   = body.OvertimeEndTime,
-                RemarkBefore        = record.Remark,            RemarkAfter        = newRemark,
-            });
+            AttendanceAuditWriter.Add(db, record, callerId, modifierName, now,
+                body.ClockInTime, body.ClockOutTime, body.OvertimeStartTime, body.OvertimeEndTime, newRemark);
 
             // 「系統補卡」旗標**不再清除**：IsClockInAuto / IsClockOutAuto 記的是「這個值最初怎麼來的」，
             // 管理者改過另以 IsManuallyAdjusted 標示，報表兩個 badge 可並存（原本是系統補的、後來被誰改過）。
@@ -734,15 +732,31 @@ public sealed class AttendanceHandler(
     private static DateTime ComputeOvertimeNotBefore(
         DateTime today, DateTime? clockOutAt, IReadOnlyList<ActiveLeaveDto> todayLeaves, ClockContext otCtx)
     {
-        var leaveDays = todayLeaves.Select(l => new LeaveDay(
-            today, 0m, string.Empty,
-            l.StartDate.Date < today ? TimeOnly.MinValue : TimeOnly.FromDateTime(l.StartDate),
-            l.EndDate.Date   > today ? TimeOnly.MaxValue : TimeOnly.FromDateTime(l.EndDate))).ToList();
-        var window    = ExpectedWorkWindow.Compute(today, leaveDays, otCtx.Schedule);
+        var window    = ExpectedWorkWindow.Compute(today, ToLeaveDays(today, todayLeaves), otCtx.Schedule);
         var notBefore = window.End ?? today.Add(otCtx.Schedule.End.ToTimeSpan());
         if (clockOutAt is { } outAt && outAt > notBefore) notBefore = outAt;
         return notBefore;
     }
+
+    /// <summary>
+    /// 上班卡最晚可打的時間：當日有已核准請假時 ＝ 應出勤時段訖點（ExpectedWorkWindow，已避開請假）；
+    /// 整天被請假蓋滿則回當日 00:00（今日不開放）。無請假回 null —— 不設限，維持既有行為。
+    /// ClockInAsync 的擋件與 GET /attendances/today 的 ClockInNotAfter 共用此函式。
+    /// </summary>
+    private static DateTime? ComputeClockInNotAfter(
+        DateTime today, IReadOnlyList<ActiveLeaveDto> todayLeaves, WorkdaySchedule schedule)
+    {
+        if (todayLeaves.Count == 0) return null;
+        var window = ExpectedWorkWindow.Compute(today, ToLeaveDays(today, todayLeaves), schedule);
+        return window.End ?? today;
+    }
+
+    /// <summary>當日已核准請假 → ExpectedWorkWindow 吃的逐日時段（跨日假單裁到當日 00:00 / 23:59:59）</summary>
+    private static List<LeaveDay> ToLeaveDays(DateTime today, IReadOnlyList<ActiveLeaveDto> todayLeaves) =>
+        todayLeaves.Select(l => new LeaveDay(
+            today, 0m, string.Empty,
+            l.StartDate.Date < today ? TimeOnly.MinValue : TimeOnly.FromDateTime(l.StartDate),
+            l.EndDate.Date   > today ? TimeOnly.MaxValue : TimeOnly.FromDateTime(l.EndDate))).ToList();
 
     /// <summary>
     /// 今日是否「免下班卡即可打加班開始」：
@@ -823,6 +837,8 @@ public sealed class AttendanceHandler(
             overtimeNotBefore   = canStartOvertimeNow ? null : nb;
         }
 
+        DateTime? clockInNotAfter = ComputeClockInNotAfter(now.Date, leaves, ctx.Schedule);
+
         // 專案工時佔比：只帶「今天」的紀錄（跨日加班借用的前一天紀錄不顯示、也不可改）
         bool allocationRequired = allocationSchedule.IsActive(now);
         IReadOnlyList<ProjectAllocationDto> allocations = record is { Id: > 0 } rec && rec.RecordDate.Date == now.Date
@@ -862,7 +878,8 @@ public sealed class AttendanceHandler(
                 NormalClockOutUntil:  flexFields.NormalClockOutUntil,
                 LateAfter:            flexFields.LateAfter,
                 ProjectAllocations:   allocations,
-                ProjectAllocationRequired: allocationRequired)
+                ProjectAllocationRequired: allocationRequired,
+                ClockInNotAfter:      clockInNotAfter)
             : record with
             {
                 TodayLeaves = leaves,
@@ -879,6 +896,7 @@ public sealed class AttendanceHandler(
                 LateAfter            = flexFields.LateAfter,
                 ProjectAllocations   = allocations,
                 ProjectAllocationRequired = allocationRequired,
+                ClockInNotAfter      = clockInNotAfter,
             };
     }
 }

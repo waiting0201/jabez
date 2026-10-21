@@ -77,8 +77,11 @@ public sealed record OvertimeRequestDto(
     // 結算時數（給付基準，2026-10 防灌工時）＝ min(核准申請時數, 實際加班打卡時數)。
     // null ＝ 舊單（給付沿用 EstimatedHours）。前端以「申請時數」與「結算時數」分開呈現。
     decimal?  SettledHours         = null,
-    // 補加班：加班日早於申請日（已送簽比送簽日、草稿比今天）；推導值，見 OvertimeBackfill
-    bool      IsBackfill           = false);
+    // 申請類別（2026-10）：normal 正常申請 / post_hoc 事後申請（取代原推導的 isBackfill）
+    string    RequestKind          = "normal",
+    // 事後申請自填的實際加班起訖（台北 naive）；normal 與舊回填單為 null
+    DateTime? ActualStartTime      = null,
+    DateTime? ActualEndTime        = null);
 
 public sealed record CreateOvertimeRequestRequest(
     Guid?    EmployeeId,
@@ -86,11 +89,27 @@ public sealed record CreateOvertimeRequestRequest(
     OvertimeProjectRequest[]? Projects = null,   // 必填，至少 1 列（Handler 驗證）
     string   Reason               = "",
     DesignatedReviewerRequest[]? DesignatedReviewers = null,
-    string   CompensationType     = "compensatory");   // compensatory | pay，未知值一律正規化為 compensatory
+    string   CompensationType     = "compensatory",    // compensatory | pay，未知值一律正規化為 compensatory
+    string?  RequestKind          = null,              // normal | post_hoc；null / 未知＝normal
+    DateTime? ActualStartTime     = null,              // 僅 post_hoc 使用，normal 時忽略並清空
+    DateTime? ActualEndTime       = null);
 
 public sealed record UpdateOvertimeRequestRequest(
     DateTime? OvertimeDate,
     OvertimeProjectRequest[]? Projects,          // 必填，至少 1 列（整批替換，不支援省略）
     string?   Reason,
     DesignatedReviewerRequest[]? DesignatedReviewers = null,
-    string?   CompensationType   = null);        // null＝不變更
+    string?   CompensationType   = null,         // null＝不變更
+    string?   RequestKind        = null,         // null＝不變更
+    DateTime? ActualStartTime    = null,         // post_hoc 時整組以 body 為準（可為 null 讓驗證回報必填）
+    DateTime? ActualEndTime      = null);
+
+/// <summary>GET /overtime-requests/post-hoc-context 回應：表單判斷某日能否申請事後加班並預填起訖</summary>
+public sealed record OvertimePostHocContextDto(
+    bool      Eligible,
+    string?   Reason,              // 不符資格的中文原因；符合時 null
+    DateTime? ClockOutTime,
+    bool      IsClockOutAuto,
+    DateTime? RegularEnd,          // 該日應下班時間（預填「實際加班開始」用）；非工作日 null
+    bool      HasOvertimePunch,
+    DateTime? Deadline = null);    // 事後申請期限＝加班日之後第一個公司工作日（當日 23:59 前）；加班日晚於今天時 null

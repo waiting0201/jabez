@@ -19,6 +19,7 @@ namespace Jabez.Api.Handlers;
 /// DELETE /overtime-requests/{id}      → 刪除（僅 draft 才允許）
 /// PATCH  /overtime-requests/{id}/submit → 送出（draft → pending）
 /// GET    /overtime-requests/estimate    → 加班費即時試算（僅本人）
+/// GET    /overtime-requests/post-hoc-context?date= → 事後申請資格 / 預填資料（僅本人）
 /// </summary>
 public sealed class OvertimeRequestHandler(
     AppDbContext db,
@@ -100,7 +101,16 @@ public sealed class OvertimeRequestHandler(
         await GuardOvertimeHoursAsync(employeeId, body.OvertimeDate, projectRows.Sum(r => r.EstimatedHours));
 
         // 送件檢查：補登期限 / 同日唯一 / 有薪全日假 / 每月上限（見 OvertimeRequestGuard）
-        await GuardSubmissionRulesAsync(employeeId, body.OvertimeDate, projectRows.Sum(r => r.EstimatedHours), excludeId: null);
+        await GuardSubmissionRulesAsync(employeeId, body.OvertimeDate, projectRows.Sum(r => r.EstimatedHours), excludeId: null,
+            isPostHoc: OvertimeRequestKinds.Normalize(body.RequestKind) == OvertimeRequestKinds.PostHoc);
+
+        // 申請類別；事後申請另驗資格 / 起訖 / 專案時數（normal 時起訖一律清空）
+        var requestKind = OvertimeRequestKinds.Normalize(body.RequestKind);
+        var actualStart = requestKind == OvertimeRequestKinds.PostHoc ? body.ActualStartTime : null;
+        var actualEnd   = requestKind == OvertimeRequestKinds.PostHoc ? body.ActualEndTime   : null;
+        if (requestKind == OvertimeRequestKinds.PostHoc)
+            await OvertimeRequestGuard.EnsurePostHocAsync(db, calendarReader, shiftSchedule, scheduleProvider,
+                employeeId, body.OvertimeDate, actualStart, actualEnd, projectRows.Sum(r => r.EstimatedHours));
 
         // 指定審核者存在性驗證
         if (body.DesignatedReviewers is { Length: > 0 })
@@ -123,6 +133,9 @@ public sealed class OvertimeRequestHandler(
             // 補償方式二擇一；未知值正規化為補休（安全側，寧可少發現金也不可雙重給付）
             CompensationType = OvertimeCompensationService.Normalize(body.CompensationType),
             Reason         = body.Reason,
+            RequestKind    = requestKind,
+            ActualStartTime = actualStart,
+            ActualEndTime   = actualEnd,
             ApprovalStatus = "draft",
             CreatedAt      = Clock.Now,
             Projects       = projectRows,   // EF 一併插入並自動填 FK
@@ -197,11 +210,30 @@ public sealed class OvertimeRequestHandler(
         if (body.CompensationType is not null)
             item.CompensationType = OvertimeCompensationService.Normalize(body.CompensationType);
 
+        // 申請類別 / 事後申請起訖：kind 為 null＝不變更；事後申請起訖整組以 body 為準，normal 一律清空
+        if (body.RequestKind is not null)
+            item.RequestKind = OvertimeRequestKinds.Normalize(body.RequestKind);
+        if (item.RequestKind == OvertimeRequestKinds.PostHoc)
+        {
+            item.ActualStartTime = body.ActualStartTime;
+            item.ActualEndTime   = body.ActualEndTime;
+        }
+        else
+        {
+            item.ActualStartTime = null;
+            item.ActualEndTime   = null;
+        }
+
         // 超出加班上限一律於此擋下（見 GuardOvertimeHoursAsync）
         await GuardOvertimeHoursAsync(item.EmployeeId!.Value, item.OvertimeDate, item.EstimatedHours);
 
         // 送件檢查（編輯自己這張不算同日重複，故排除 item.Id）
-        await GuardSubmissionRulesAsync(item.EmployeeId!.Value, item.OvertimeDate, item.EstimatedHours, excludeId: item.Id);
+        await GuardSubmissionRulesAsync(item.EmployeeId!.Value, item.OvertimeDate, item.EstimatedHours, excludeId: item.Id,
+            isPostHoc: item.RequestKind == OvertimeRequestKinds.PostHoc);
+
+        if (item.RequestKind == OvertimeRequestKinds.PostHoc)
+            await OvertimeRequestGuard.EnsurePostHocAsync(db, calendarReader, shiftSchedule, scheduleProvider,
+                item.EmployeeId!.Value, item.OvertimeDate, item.ActualStartTime, item.ActualEndTime, item.EstimatedHours);
 
         // 日期 / 時數 / 補償方式任一可能已變動 → 舊的加班費快照必須失效，重新送簽時再算一次
         OvertimeCompensationService.ClearSnapshot(item);
@@ -274,7 +306,13 @@ public sealed class OvertimeRequestHandler(
 
         // 送件檢查：Create / Update 之後日期可能過期（草稿放了幾天）、同日可能已另有一張、請假或月上限可能已變動，
         // 這裡是最後一道防線。
-        await GuardSubmissionRulesAsync(item.EmployeeId!.Value, item.OvertimeDate, item.EstimatedHours, excludeId: item.Id);
+        await GuardSubmissionRulesAsync(item.EmployeeId!.Value, item.OvertimeDate, item.EstimatedHours, excludeId: item.Id,
+            isPostHoc: item.RequestKind == OvertimeRequestKinds.PostHoc);
+
+        // 事後申請：草稿放了幾天後可能已超過「加班日後一個工作日」期限、或當日已被補了加班卡，送簽時再驗一次
+        if (item.RequestKind == OvertimeRequestKinds.PostHoc)
+            await OvertimeRequestGuard.EnsurePostHocAsync(db, calendarReader, shiftSchedule, scheduleProvider,
+                item.EmployeeId!.Value, item.OvertimeDate, item.ActualStartTime, item.ActualEndTime, item.EstimatedHours);
 
         // 上線前建立的草稿 / 退回單（SettledHours 為 null）在此併入新制：它們還沒核准過、沒有任何給付歷史，
         // 併入不會改動歷史月份薪資；若留 null，同一個漏洞（只填申請單、不打卡也領錢）會一直開著。
@@ -332,6 +370,8 @@ public sealed class OvertimeRequestHandler(
             // 已改為 approved：以結算時數（新單為 0）重算加班費快照，覆蓋上面以申請時數算的送簽預估值
             await OvertimeCompensationService.ApplyAsync(db, shiftSchedule, scheduleProvider, item);
             await CompensatoryLotService.ApplyAsync(db, shiftSchedule, scheduleProvider, item);
+            // 事後申請：Superadmin 自動核准同樣要把起訖寫入出缺勤（終局核准出口之一）
+            await PostHocOvertimeService.ApplyOnApprovalAsync(db, shiftSchedule, scheduleProvider, item, userId);
             await db.SaveChangesAsync();
             var saDto = await reader.GetByIdAsync(item.Id);
             return new OkObjectResult(ApiResponse.Ok(saDto, "Overtime request auto-approved."));
@@ -373,6 +413,9 @@ public sealed class OvertimeRequestHandler(
         // 補休 lot：只有終局核准（此處為「全自審自動核准」出口）才開，pending 不開 ——
         // 未核准的加班時數還不是已賺得的補休。ApplyAsync 內部自行判斷狀態，故無條件呼叫。
         await CompensatoryLotService.ApplyAsync(db, shiftSchedule, scheduleProvider, item);
+
+        // 事後申請：全自審自動核准（終局核准出口之一）也要寫入出缺勤；非 approved 時為 no-op
+        await PostHocOvertimeService.ApplyOnApprovalAsync(db, shiftSchedule, scheduleProvider, item, userId);
 
         // 升級審核：記錄指派的審核者
         if (escalation is not null)
@@ -456,6 +499,39 @@ public sealed class OvertimeRequestHandler(
         return new OkObjectResult(ApiResponse.Ok(estimate with { HasHolidayTravelConflict = conflict }));
     }
 
+    /// <summary>
+    /// GET /overtime-requests/post-hoc-context?date=yyyy-MM-dd → 事後申請資格與預填資料（表單用，僅本人）。
+    /// eligible ＝ 今天未超過「加班日後一個工作日」（deadline）∧ 當日有紀錄 ∧ 已親自打下班卡（非系統補卡）∧ 尚無加班打卡。
+    /// 對象一律取 JWT sub，不接受 employeeId。regularEnd＝該日正常上班時段終點（預填「實際加班開始」用），非工作日為 null。
+    /// </summary>
+    public async Task<IActionResult> GetPostHocContextAsync(HttpRequest req)
+    {
+        var userId = await GetUserIdAsync(req);
+
+        if (!DateTime.TryParse(req.Query["date"], out var date))
+            return new BadRequestObjectResult(ApiResponse.Fail("請提供有效的加班日期。"));
+        var day = date.Date;
+
+        var (eligible, reason, record, deadline) = await OvertimeRequestGuard.EvaluatePostHocEligibilityAsync(db, calendarReader, userId, day);
+
+        DateTime? regularEnd = null;
+        if (record is not null)
+        {
+            var dayType  = await shiftSchedule.ResolveDayTypeAsync(userId, day);
+            var schedule = await scheduleProvider.ForAsync(day);
+            regularEnd   = OvertimeSettlement.RegularWindowFor(day, dayType, schedule)?.End;
+        }
+
+        return new OkObjectResult(ApiResponse.Ok(new OvertimePostHocContextDto(
+            eligible,
+            reason,
+            record?.ClockOutTime,
+            record?.IsClockOutAuto ?? false,
+            regularEnd,
+            record is not null && (record.OvertimeStartTime is not null || record.OvertimeEndTime is not null),
+            deadline)));
+    }
+
     // ── Helper ──────────────────────────────────────────────────────────────────
 
     /// <summary>
@@ -478,10 +554,12 @@ public sealed class OvertimeRequestHandler(
     /// 加班申請送件檢查（Create / Update / Submit 共用，2026-10 防灌工時）：
     /// 補登期限（7 天）→ 同日唯一 → 當日有薪全日假 → 每月上限。規則細節見 <see cref="OvertimeRequestGuard"/>。
     /// <paramref name="excludeId"/>＝編輯 / 送簽中的單自己（Create 為 null）。
+    /// <paramref name="isPostHoc"/>＝事後申請：不套 7 天補登期限，改由 <c>EnsurePostHocAsync</c> 的「加班日後一個工作日」期限把關
+    /// （春節等長假後的第一個工作日可能距加班日超過 7 天）。
     /// </summary>
-    private async Task GuardSubmissionRulesAsync(Guid ownerId, DateTime overtimeDate, decimal hours, int? excludeId)
+    private async Task GuardSubmissionRulesAsync(Guid ownerId, DateTime overtimeDate, decimal hours, int? excludeId, bool isPostHoc)
     {
-        OvertimeRequestGuard.EnsureBackdate(overtimeDate);
+        if (!isPostHoc) OvertimeRequestGuard.EnsureBackdate(overtimeDate);
         await OvertimeRequestGuard.EnsureNoDuplicateAsync(db, ownerId, overtimeDate, excludeId);
         await OvertimeRequestGuard.EnsureNotOnPaidFullDayLeaveAsync(db, workdaysFactory, ownerId, overtimeDate);
         await OvertimeRequestGuard.EnsureMonthlyLimitAsync(db, ownerId, overtimeDate, hours, excludeId);

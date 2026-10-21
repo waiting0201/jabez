@@ -790,6 +790,7 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
         var overtimeSql = $"""
             SELECT ot.Id, ot.RequestNo, ot.OvertimeDate, ot.EstimatedHours, ot.Reason,
                    ot.CompensationType, ot.PayableHours, ot.IsHolidayOvertime, ot.OvertimeDayType, ot.ExcessHours, ot.SettledHours,
+                   ot.RequestKind, ot.ActualStartTime, ot.ActualEndTime,
                    ot.ApprovalStatus, ot.ApprovalItemId, ot.CurrentStepOrder,
                    u.Name AS SubmittedBy, u.SignatureUrl AS SubmittedBySignatureUrl, ot.CreatedAt, ot.SubmittedAt, ot.ReviewedAt, ot.ReviewNote
             FROM OvertimeRequests ot
@@ -814,6 +815,7 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
 
         var writeOffSql = $"""
             SELECT wo.Id, wo.RequestNo, wo.AdvanceRequestId, arx.RequestNo AS AdvanceRequestNo,
+                   arx.ActivityName,
                    proj.Code AS ProjectCode, proj.Name AS ProjectName,
                    wo.GrandTotal, wo.CashTotal, wo.CheckTotal, wo.Note,
                    wo.ApprovalStatus, wo.ApprovalItemId, wo.CurrentStepOrder,
@@ -832,6 +834,7 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
                            WHERE w3.AdvanceRequestId = wo.AdvanceRequestId
                              AND w3.ApprovalStatus = 'approved'
                              AND w3.Id <> wo.Id), 0) AS AdvanceReturnedTotal,
+                   {WriteOffRequestReadService.OverspendPaidSql("wo")},
                    wo.ReturnedAmount, wo.ReturnedAt, wo.ReturnedProofFileName, wo.ReturnedProofUrl,
                    worefundby.SignatureUrl AS RefundedBySignatureUrl,
                    arx.IsClosed AS AdvanceIsClosed,
@@ -1700,7 +1703,9 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
                     HourTiers:         otHourTiers,
                     ExcessHours:       (decimal?)row.ExcessHours,
                     SettledHours:      (decimal?)row.SettledHours,
-                    IsBackfill:        OvertimeBackfill.IsBackfill((DateTime)row.OvertimeDate, (DateTime?)row.SubmittedAt)),
+                    RequestKind:       OvertimeRequestKinds.Normalize((string?)row.RequestKind),
+                    ActualStartTime:   (DateTime?)row.ActualStartTime,
+                    ActualEndTime:     (DateTime?)row.ActualEndTime),
                 null, null, null,
                 GetRecords("overtime", (int)row.Id),
                 GetDesignatedReviewers("overtime", (int)row.Id),
@@ -1816,7 +1821,10 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
                 (DateTime?)row.ReturnedAt,
                 (string?)row.ReturnedProofFileName,
                 (string?)row.ReturnedProofUrl,
-                (decimal)row.AdvanceReturnedTotal),
+                (decimal)row.AdvanceReturnedTotal,
+                (decimal)row.OverspendPaidTotal,
+                (DateTime?)row.OverspendLastPaidAt,
+                ActivityName: (string?)row.ActivityName ?? ""),
             null,
             GetRecords("write_off", (int)row.Id),
             GetDesignatedReviewers("write_off", (int)row.Id),

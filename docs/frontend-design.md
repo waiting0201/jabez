@@ -1265,7 +1265,7 @@ UI 行為規範（5 種申請類型一致）：
 
 Input：`advanceRounds` / `writeOffHistory` / `currentGrandTotal` / `refundDue` / `advanceReturnedTotal`（他單已核准繳回，後端帶回）/ `currentReturnedAmount`（本單繳回）。加總一律由陣列 `reduce` 推導，不吃任何快取欄位。
 
-**2026-10 底部新增「結清對帳」四行表**：原始預支金額 / 實際費用核銷 / 現金・匯款繳回 / **尚未結清金額**（= 預支 − 核銷 − 繳回，`unsettled()`）。≠ 0 以 `text-warning` + 「未結清」badge 警示（**只警示、不擋結案**）。已沖銷歷史列若該次有繳回，金額下方以小字「繳回 N」呈現。
+**2026-10 底部新增「結清對帳」四行表**：原始預支金額 / 實際費用核銷 / 現金・匯款繳回 / **尚未結清金額**（= 預支 − 核銷 − 繳回，`unsettled()`）。≠ 0 以 `text-warning` + 「未結清」badge 警示（**只警示、不擋結案**）。已沖銷歷史列若該次有繳回，金額下方以小字「繳回 N（yyyy-MM-dd）」呈現（日期取 `WriteOffRound.returnedAt`）。沖銷清單頁金額欄同樣以小字「繳回 N」標示（純匯回單金額為 0，不標會看不出有繳回）。**預支單詳情頁**於「結案與退款資訊」卡之前有「沖銷與繳回紀錄」卡：一張沖銷一列（次別 / 單號 / 狀態 badge / 費用核銷 / 同仁繳回 / 繳回日期 / 匯款證明 eye 鈕開 file-preview-modal），非已核准列 `text-muted`，表尾「已核准合計」與「尚未結清」（同 `unsettled()` 的警示樣式）。**尚未結清為負且公司已補撥足額**（`overspendSettled()`：`unsettled < 0 && overspendPaidTotal ≥ −unsettled`）時改為 `text-green` + `badge bg-success-subtle text-success`「已結清（yyyy-MM-dd 已撥匯）」，`write-off-summary`（inputs `overspendPaidTotal` / `overspendLastPaidAt`）與預支詳情卡同判準。
 
 **同仁匯回預支餘額（現金／匯款繳回）**：
 - 唯讀呈現統一用 [`<app-write-off-returned-info>`](../Admin/src/app/shared/components/write-off-returned-info.ts)（金額 / 日期 / 證明檔），詳情頁、彙總頁（每張沖銷單卡內）、簽核頁共用；`amount` 為空或 0 整塊不顯示，點證明檔 emit `(preview)` 由父層開 `file-preview-modal`。
@@ -2100,7 +2100,7 @@ async onFileSelected(event: Event) {
 - [`<app-attachments-upload>`](../Admin/src/app/shared/components/attachments-upload.ts)（可編輯）：`[existing]` 帶入既有附件、`[disabled]` 控制唯讀；內部自管新增 / 既有 / 刪除狀態，圖片以 `ImageCompressionService`（maxSize 1600）壓縮。父表單透過 `viewChild(AttachmentsUpload)` 取得實例，於 `_buildFormData()` 呼叫 `getMeta()`（JSON → `attachments` 欄位）與 `getNewFiles()`（檔案 → `attachmentFiles` 欄位）。請款兩種 type（vendor / general）皆帶附件。
 - [`<app-attachments-list>`](../Admin/src/app/shared/components/attachments-list.ts)（唯讀）：`[attachments]` 帶入；用於申請詳情頁與簽核審核頁，逐項顯示檔名 + 檢視。附件存於私有 `request-attachments` 容器，「檢視」透過 [`FilePreviewLoader`](../Admin/src/app/shared/services/file-preview-loader.ts) 走 JWT 代理抓 blob 後再交 `FilePreviewModal`（見 §12.4 鐵則）。
 
-### 12.5c 發票 OCR 上傳（一檔可展開多列）
+### 12.5c 發票 OCR 上傳（一檔一列）
 
 請款 / 預審申請 / 預支沖銷 / 出差請款 / 出差預支沖銷五個表單的明細，上傳發票 / 票根時走 OCR 自動辨識帶入欄位。共用 [`PaymentRequestService.ocrInvoice`](../Admin/src/app/features/admin/payment-requests/services/payment-request.service.ts)（`POST /invoice-ocr`，後端 Google Gemini；預審申請走 `QuoteOcrHandler` 的 `quoteOcr`）。
 
@@ -2115,8 +2115,8 @@ async onFileSelected(event: Event) {
    > 不包的話轉檔完成寫入 `heicUrl` 就會讓 effect 重跑、把剛轉好的圖清掉再轉 —— 無限循環、畫面永遠停在「轉換中」（2026-10 上線後實際踩到）。
    > 另有 60 秒逾時保險（`HEIC_PREVIEW_TIMEOUT_MS`），逾時改顯示「下載」。
 2. 每檔先 push **一列 loading placeholder**（`ocrLoadingIds.add(id)` + `fileMap.set(id, file)` + `URL.createObjectURL` 預覽），即時回饋。
-3. `Promise.all` 並行呼叫 `ocrInvoice`，**回傳為陣列**（一張圖可含多張發票/票根）：
-   - 第 1 筆 patch 進 placeholder 那列；第 2..N 筆**各 push 一新列**，新列產生新 `id`、`fileMap.set(newId, file)` **指向同一個 File 物件**（→ 存檔時各 append 一份複本，N 列各存一份檔案）。
+3. `Promise.all` 並行呼叫 `ocrInvoice`，回傳為陣列但**最多 1 筆**（一張圖只辨識一張發票/票根）：
+   - 第 1 筆 patch 進 placeholder 那列；**不再展開多列**（2026-10-20 關閉「一張照片放多張發票一起辨識」：準確度低且一檔多列會存多份複本。多張請分開拍或一次多選上傳多個檔，webcam 連拍亦可）。後端 prompt 只辨識最清楚的一張、並以 `Take(1)` 截斷。
    - 陣列為空（沒辨識到）→ placeholder 留空供手動輸入。
 4. `docType==='ticket'` 時各表單套用各自規則（`note='票號'`、出差請款另帶 `category='交通費'`）；金額帶入 `unitPrice/totalPrice`（+ 預支沖銷 `cashAmount`）、`quantity='1式'`。
 5. `isAnyOcrPending` 控制送出按鈕禁用，存檔組 FormData 的逐列 `fileMap.get(id)` → `append('files')` 迴圈不變。**OCR 呼叫務必加前端逾時**（`.pipe(timeout(45000))`，略大於後端 Gemini 30 秒上限），否則請求卡住時 `ocrLoadingIds` 永不清除、`isAnyOcrPending` 恆為 true，會把「送出 / 儲存」按鈕**永久鎖住**且畫面無提示。同時 OCR 進行中**須在按鈕區顯示「辨識中…請稍候」hint**（避免使用者誤以為按鈕壞掉）。
@@ -2125,7 +2125,7 @@ async onFileSelected(event: Event) {
 
 **警告列附「確認無誤」checkbox**：容錯規則沒接住的誤判（OCR 讀成完全不同的公司名、統編抄到他欄等）由使用者自行放行 —— 元件上另備 `invoiceConfirmed = new Set<string>()`（key 同為列 id），勾選後該列警告由 `text-danger` 轉 `text-muted` 並在訊息前加「已確認無誤：」。**確認狀態與警告一樣純顯示**：不阻擋送出（本來就不擋）、不進 FormControl、不寫 DB、重開草稿不重現。`_checkBuyer()` 開頭須 `invoiceConfirmed.delete(rowId)`（同一列重新 OCR → 舊確認失效）、`removeItem()` 須比照 `invoiceWarnings` 一併 `delete`。四個表單皆須套用，不可只修其中一個。
 
-> 多張擠在一張照片時辨識準確度較低，各列辨識後仍需人工核對（欄位皆可手動修改）。
+> 一張照片只辨識一張；畫面中若有多張，只帶入最清楚的那張，其餘須另外拍攝上傳。辨識結果仍需人工核對（欄位皆可手動修改）。
 
 #### 明細列下方警告列 pattern
 
@@ -2158,6 +2158,19 @@ async onFileSelected(event: Event) {
 ```
 
 > 只有買方警告列附 checkbox（人工放行有意義）；同檔的 `amountWarnings`（總價 ≠ 現金＋支票）維持純紅字列。
+
+### 12.5d 用鏡頭拍攝（webcam，2026-10）
+
+發票上傳區（請款 / 預支沖銷 / 出差請款 / 出差預支沖銷）與整單附件共用元件 `<app-attachments-upload>`（請款 / 預支沖銷 / 預審）的虛線上傳框下方，另有一顆 `btn btn-sm btn-outline-primary`「用鏡頭拍攝」（`camera` icon）。手機瀏覽器點上傳框本來就能選拍照，這顆按鈕主要讓**電腦**可以用 webcam 拍。
+
+- 共用元件 [`webcam-capture-modal.ts`](../Admin/src/app/shared/components/webcam-capture-modal.ts)：呼叫端一律用 `openWebcamCapture(this.modal)`（回傳 `File[]`，取消時回 `[]`、不會 reject），按鈕以 `isWebcamSupported()` 判斷要不要顯示（不支援 `mediaDevices.getUserMedia` 或非 HTTPS 時隱藏）
+- **連拍**：每張按「拍照」→ 縮圖列在下方（可逐張移除）→ 按「完成（N 張）」才一次交回；上限 20 張。拍出 `image/jpeg`（品質 0.92，盡量要 1920×1080），檔名 `webcam-yyyyMMdd-HHmmss-N.jpg`
+- **拍好的檔案必須走與選檔相同的處理入口**：表單把 `onFilesSelected(event)` 拆成「取出 `File[]`」＋ `processInvoiceFiles(files)`（附件元件為 `processFiles`），選檔與拍照都呼叫後者 —— HEIC 轉檔、placeholder 列、OCR、壓縮全部只有一份
+- ⚠ **鏡頭串流在完成 / 取消 / 換鏡頭 / destroy 時一律 `getTracks().forEach(t => t.stop())`**，等權限期間視窗已被關掉的話，拿到 stream 後也要立刻 stop。漏掉的話鏡頭指示燈會一直亮著，視訊會議等其他程式也拿不到鏡頭
+- 有多支鏡頭時（外接 webcam、文件攝影機）顯示下拉切換；`enumerateDevices()` 必須在取得權限**之後**呼叫才拿得到鏡頭名稱
+- 權限被拒 / 找不到鏡頭 / 鏡頭被占用的訊息顯示在 modal 內的 `alert-warning`，不用 toastr（使用者要看著說明去改設定）
+- CSP 不管鏡頭權限；`staticwebapp.config.json` 若日後加上 `Permissions-Policy`，必須放行 `camera=(self)`，否則這顆按鈕會全部變成「沒有鏡頭使用權限」
+- 筆電內建鏡頭多為 720p 定焦，辨識率比手機拍的差；拍不清楚時 OCR 失敗、欄位留空讓人手動填（與選檔相同）
 
 ### 12.5 外部 API 即時查詢欄位（blur 觸發 pattern）
 
@@ -2239,9 +2252,9 @@ onTaxIdBlur() {
 
 Excel 一律**在前端產生**：後端只回 JSON（不設 `Content-Disposition`、不引入 ClosedXML / EPPlus），前端 `import * as XLSX from 'xlsx'` 組表後 `XLSX.writeFile(wb, 檔名)`。已採用：出缺勤 / 加班 / 款項統計三張報表 + **人事薪資總表**。
 
-> **報表新增欄位三處同改（2026-10 加班報表「申請類別」為例）**：`OvertimeReportRow` 介面 + `fetchData()` 手動 map（漏 map 會靜默顯示預設值，`isBackfill` 為 undefined 時一律顯示「申請加班」）+ `exportExcel()` 的 `wsData`（Excel 文字「申請加班／補申請加班」）；空列 `colspan` 同步（`canSeeAmount ? 10 : 9`）。badge：補申請加班 `bg-warning-subtle text-warning-emphasis`、申請加班 `bg-secondary-subtle text-secondary`。
+> **報表新增欄位三處同改（2026-10 加班報表「申請類別」為例）**：`OvertimeReportRow` 介面 + `fetchData()` 手動 map（漏 map 會靜默顯示預設值，`requestKind` 為 undefined 時一律顯示「正常申請」）+ `exportExcel()` 的 `wsData`（Excel 文字「正常申請／事後申請」）；空列 `colspan` 同步（`canSeeAmount ? 10 : 9`）。badge：事後申請 `bg-warning-subtle text-warning-emphasis`、正常申請 `bg-secondary-subtle text-secondary`。
 >
-> **「補加班」badge（2026-10）**：後端 DTO `isBackfill` 為單一真相（加班日 < 送簽日；草稿以今天判定），表單標題單號旁、清單單號欄、簽核詳情單號旁皆掛 `badge bg-warning-subtle text-warning-emphasis`「補加班」，簽核清單摘要前綴「補加班・」。表單另在日期欄下以 `form-text` 即時提示（台北時區字串比較，`Intl.DateTimeFormat('en-CA', {timeZone:'Asia/Taipei'})`）。
+> **「事後申請」badge（2026-10-19，取代原依日期推導的「補加班」）**：後端 DTO `requestKind`（`normal` / `post_hoc`，落欄位）為單一真相，表單標題單號旁、清單單號欄、簽核詳情單號旁皆掛 `badge bg-warning-subtle text-warning-emphasis`「事後申請」，簽核清單摘要前綴「事後申請・」，出缺勤報表加班開始欄另掛小 badge（`overtimeRequestKind`）。表單頂端「申請類別」二選一；事後申請時日期限昨天～今天，依 `GET /overtime-requests/post-hoc-context` 判資格（不符顯示 alert 並擋送出），起訖預填「應下班～下班卡」可改，結束可勾「隔日」。
 
 ### 12.7.1 資料來源二選一
 

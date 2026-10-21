@@ -66,7 +66,9 @@ public sealed record AttendanceRecordDto(
     /// <summary>員工上班打卡時填寫的遲到原因</summary>
     string?   LateReason = null,
     /// <summary>員工下班打卡時填寫的早退／逾時原因（依 IsEarlyLeave 區分標籤）</summary>
-    string?   ClockOutReason = null);
+    string?   ClockOutReason = null,
+    /// <summary>連結的加班單申請類別（normal / post_hoc）；無連結加班單為 null。post_hoc 者加班欄由核准自動寫入，下班卡可能落在加班時段內（預期）。</summary>
+    string?   OvertimeRequestKind = null);
 
 /// <summary>出缺勤報表列中的單張請假資訊（當日份）</summary>
 public sealed record AttendanceLeaveDto(
@@ -153,7 +155,13 @@ public sealed record TodayAttendanceDto(
     /// 今天下班打卡是否須填專案佔比（＝ 已到專案工時上線日，見 IProjectAllocationSchedule）。
     /// false 時前端維持上線前的下班打卡流程、不顯示今日專案工時卡片。
     /// </summary>
-    bool ProjectAllocationRequired = false);
+    bool ProjectAllocationRequired = false,
+    /// <summary>
+    /// 上班卡最晚可打的時間（當日有已核准請假時才有值）＝ 避開請假後的應出勤時段訖點；
+    /// 整天被請假蓋滿時為當日 00:00（＝今日不開放上班打卡）。無請假為 null（不設限）。
+    /// 與 AttendanceHandler.ClockInAsync 共用 ComputeClockInNotAfter，前端據此停用按鈕。
+    /// </summary>
+    DateTime? ClockInNotAfter = null);
 
 /// <summary>
 /// 出缺勤報表合併用的原料列：區間內已核准的假單（尚未逐日展開）。
