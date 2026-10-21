@@ -1,7 +1,7 @@
 import {Component, computed, input} from '@angular/core';
 import {DatePipe, DecimalPipe} from '@angular/common';
 import {AdvanceRound, roundLabel} from '../../features/admin/advance-requests/models/advance-request.model';
-import {WriteOffRound} from '../../features/admin/approval-tasks/models/approval-task.model';
+import {WriteOffRound, writeOffRoundStatus} from '../../features/admin/approval-tasks/models/approval-task.model';
 
 /**
  * 共用「沖銷金額摘要」— 預支各批次金額 + 各次沖銷金額 + 待沖銷餘額 / 應撥差額。
@@ -52,6 +52,7 @@ import {WriteOffRound} from '../../features/admin/approval-tasks/models/approval
                   <td class="fw-500" style="width:110px">
                     第 {{ wo.writeOffNo }} 次沖銷
                     @if (wo.isCurrent) { <span class="badge bg-primary ml-1">本單</span> }
+                    <div><span class="badge" [class]="status(wo).cls">{{ status(wo).label }}</span></div>
                   </td>
                   <td class="text-muted font-monospace">{{ wo.requestNo || '—' }}</td>
                   <td class="text-right fw-500"
@@ -157,6 +158,7 @@ export class WriteOffSummaryComponent {
   overspendLastPaidAt = input<string | null | undefined>(null);
 
   readonly roundLabel = roundLabel;
+  readonly status = writeOffRoundStatus;
 
   advanceTotal = computed(() =>
     (this.advanceRounds() ?? []).reduce((acc, r) => acc + r.grandTotal, 0));

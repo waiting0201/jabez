@@ -128,6 +128,12 @@
       [paymentStatus]="r.advancePaymentStatus"
       [totalAmount]="r.advanceGrandTotal" />
 
+    <!-- 預支費用明細（唯讀對照）+ 前次沖銷紀錄 -->
+    @if (r.advanceItems && r.advanceItems.length > 0) {
+      <app-advance-items-readonly [items]="r.advanceItems" [rounds]="r.advanceRounds"/>
+    }
+    <app-prior-write-offs [history]="r.writeOffHistory"/>
+
     <!-- 沖銷明細 -->
     <div class="card border-0 shadow-sm mb-6">
       <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600">
@@ -206,6 +212,12 @@
             </tfoot>
           </table>
         </div>
+        @if (r.items.length > 0) {
+          <div class="px-4 pb-3">
+            <app-category-subtotals title="分類對照（預支 vs 沖銷）"
+              [advanceItems]="r.advanceItems ?? null" [priorHistory]="r.writeOffHistory" [currentItems]="r.items"/>
+          </div>
+        }
       </div>
     </div>
 

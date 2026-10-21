@@ -1135,13 +1135,16 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
     /// </summary>
     private async Task<Dictionary<int, List<WriteOffRoundDto>>> LoadWriteOffHistoryAsync()
     {
-        const string sql = """
-            SELECT Id, AdvanceRequestId, WriteOffNo, RequestNo, GrandTotal, ApprovalStatus, CreatedAt, ReturnedAmount
-            FROM WriteOffRecords
-            WHERE ApprovalStatus <> 'rejected'
-            ORDER BY AdvanceRequestId, WriteOffNo, Id
+        // 「是否過財務」判準與沖銷詳情共用同一份 SQL 片段（單一真相）
+        var sql = $"""
+            SELECT wo.Id, wo.AdvanceRequestId, wo.WriteOffNo, wo.RequestNo, wo.GrandTotal, wo.ApprovalStatus,
+                   wo.CreatedAt, wo.ReturnedAmount, wo.ReturnedAt,
+                   {WriteOffRequestReadService.FinancePassedSql("wo")}
+            FROM WriteOffRecords wo
+            WHERE wo.ApprovalStatus <> 'rejected'
+            ORDER BY wo.AdvanceRequestId, wo.WriteOffNo, wo.Id
             """;
-        var rows = await db.QueryAsync<dynamic>(sql);
+        var rows = await db.QueryAsync<dynamic>(sql, new { FinanceStepCodes = WriteOffRequestReadService.FinanceStepCodesParam });
         var dict = new Dictionary<int, List<WriteOffRoundDto>>();
         foreach (var r in rows)
         {
@@ -1149,7 +1152,8 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
             if (!dict.ContainsKey(advId)) dict[advId] = [];
             dict[advId].Add(new WriteOffRoundDto(
                 (int)r.Id, (int)r.WriteOffNo, (string?)r.RequestNo, (decimal)r.GrandTotal,
-                (string)r.ApprovalStatus, (DateTime)r.CreatedAt, false, (decimal?)r.ReturnedAmount));
+                (string)r.ApprovalStatus, (DateTime)r.CreatedAt, false, (decimal?)r.ReturnedAmount, (DateTime?)r.ReturnedAt,
+                (int)r.FinancePassed == 1));
         }
         return dict;
     }
@@ -1771,7 +1775,10 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
             woItemDict.TryGetValue(id, out var items) ? [.. items] : [];
 
         WriteOffRoundDto[] GetWriteOffHistory(int advanceRequestId, int currentId) =>
-            [.. writeOffHistoryRows.GetValueOrDefault(advanceRequestId, []).Select(r => r with { IsCurrent = r.Id == currentId })];
+            [.. writeOffHistoryRows.GetValueOrDefault(advanceRequestId, []).Select(r => r.Id == currentId
+                ? r with { IsCurrent = true }
+                // 前次沖銷明細：woItemDict 已載入全部沖銷明細，不另查
+                : r with { Items = GetWriteOffItems(r.Id) })];
 
         // Write-off requests
         var writeOffTasks = writeOffRows.Select(row => new ApprovalTaskDto(
@@ -1824,7 +1831,8 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
                 (decimal)row.AdvanceReturnedTotal,
                 (decimal)row.OverspendPaidTotal,
                 (DateTime?)row.OverspendLastPaidAt,
-                ActivityName: (string?)row.ActivityName ?? ""),
+                ActivityName: (string?)row.ActivityName ?? "",
+                AdvanceItems: GetAdvanceItems((int)row.AdvanceRequestId)),
             null,
             GetRecords("write_off", (int)row.Id),
             GetDesignatedReviewers("write_off", (int)row.Id),

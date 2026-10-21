@@ -385,6 +385,11 @@
                 }
               </table>
             </div>
+            @if (itemsSnap().length > 0) {
+              <div class="px-4 pb-3">
+                <app-category-subtotals [advanceItems]="itemsSnap()"/>
+              </div>
+            }
           </div>
         </div>
 

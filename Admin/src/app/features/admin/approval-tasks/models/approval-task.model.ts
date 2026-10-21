@@ -362,6 +362,57 @@ export interface WriteOffRound {
   returnedAmount?: number | null;
   /** 該次繳回日期 */
   returnedAt?: string | null;
+  /** 財務管理部關卡已核准（status=approved 時恆 true）；供「財務已審」badge */
+  financePassed?: boolean;
+  /** 前次沖銷的明細（本單列為 null / 不帶） */
+  items?: WriteOffRoundItem[] | null;
+}
+
+/** 前次沖銷明細列（結構同 WriteOffItem 的子集，避免與 write-off-request.model 循環匯入） */
+export interface WriteOffRoundItem {
+  id: number;
+  category: string;
+  seqNo: number;
+  itemName: string;
+  unitPrice: number;
+  quantity: string;
+  totalPrice: number;
+  cashAmount: number;
+  checkAmount: number;
+  note?: string;
+  invoiceNo?: string;
+  invoiceDate?: string;
+}
+
+/**
+ * 「已沖銷」各列狀態 badge 的單一真相（write-off-summary / prior-write-offs / PDF 共用）。
+ * approved→已核准；pending 且過財務→財務已審；pending→審核中；returned→退回修改；draft→草稿
+ */
+export function writeOffRoundStatus(
+  r: Pick<WriteOffRound, 'approvalStatus' | 'financePassed'>): {label: string; cls: string} {
+  switch (r.approvalStatus) {
+    case 'approved': return {label: '已核准', cls: 'bg-success-subtle text-success'};
+    case 'pending':
+      return r.financePassed
+        ? {label: '財務已審', cls: 'bg-info-subtle text-info-emphasis'}
+        : {label: '審核中', cls: 'bg-warning-subtle text-warning-emphasis'};
+    case 'returned': return {label: '退回修改', cls: 'bg-warning-subtle text-warning-emphasis'};
+    case 'draft':    return {label: '草稿', cls: 'bg-secondary-subtle text-secondary'};
+    default:         return {label: r.approvalStatus, cls: 'bg-secondary-subtle text-secondary'};
+  }
+}
+
+/**
+ * 「前次沖銷」單一真相：只取排在本單之前的沖銷（WriteOffNo 小於本單，同號再比 Id）。
+ * history 內沒有本單（新增表單 / available-advances）時，全部都算前次。
+ * 前次沖銷卡、分類對照表、沖銷 PDF 共用，避免檢視第 1 次沖銷時把較晚的第 2 次也列為「前次」。
+ */
+export function priorWriteOffRounds<T extends Pick<WriteOffRound, 'id' | 'writeOffNo' | 'isCurrent'>>(
+  history: readonly T[] | null | undefined): T[] {
+  const list = history ?? [];
+  const cur = list.find(w => w.isCurrent);
+  return list.filter(w => !w.isCurrent &&
+    (!cur || w.writeOffNo < cur.writeOffNo || (w.writeOffNo === cur.writeOffNo && w.id < cur.id)));
 }
 
 /** 同仁匯回預支餘額（現金／匯款繳回）— 不計入沖銷金額；金額 > 0 時須附日期與匯款證明 */
@@ -412,6 +463,8 @@ export interface WriteOffTaskDetail extends WriteOffReturnedCash {
   advanceRounds?: import('../../advance-requests/models/advance-request.model').AdvanceRound[];
   /** 同一預支單底下各次沖銷 */
   writeOffHistory?: WriteOffRound[];
+  /** 關聯預支單的全批次費用明細（簽核頁唯讀對照） */
+  advanceItems?: import('../../advance-requests/models/advance-request.model').AdvanceRequestItem[];
   /** 本次沖銷造成的超支增額 = 公司應補撥金額（後端 WriteOffRefundCalculator 算好帶回）*/
   refundDue?: number;
   /** 本沖銷單的差額撥款分期（SUM 須等於 refundDue）*/

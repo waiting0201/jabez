@@ -8,6 +8,7 @@ import {AdvanceRequestService} from '../../services/advance-request.service';
 import {ProjectService} from '../../../projects/services/project.service';
 import {Project} from '../../../projects/models/project.model';
 import {ApprovalStatus, APPROVAL_STATUS_LABELS, APPROVAL_STATUS_CLASSES, ITEM_CATEGORIES, DesignatedReviewer, AdvanceRound, roundLabel} from '../../models/advance-request.model';
+import {CategorySubtotalsComponent} from '../../../../../shared/components/category-subtotals';
 import {JobTitleService} from '../../../job-titles/services/job-title.service';
 import {UserService} from '../../../users/services/user.service';
 import {ApprovalService} from '../../../approvals/services/approval.service';
@@ -37,7 +38,7 @@ type AmountField = 'total' | 'cash' | 'check';
 @Component({
   selector: 'app-advance-form',
   templateUrl: './advance-form.html',
-  imports: [ReactiveFormsModule, FormsModule, RouterLink, DecimalPipe, DatePipe, ApprovalTimeline, FilePreviewModal, InstallmentsTable, DesignatedReviewersPicker, ScrollIntoViewDirective, ProjectTypeahead],
+  imports: [ReactiveFormsModule, FormsModule, RouterLink, DecimalPipe, DatePipe, ApprovalTimeline, FilePreviewModal, InstallmentsTable, DesignatedReviewersPicker, ScrollIntoViewDirective, ProjectTypeahead, CategorySubtotalsComponent],
 })
 export class AdvanceForm implements OnInit {
   private fb             = inject(FormBuilder);
@@ -165,7 +166,12 @@ export class AdvanceForm implements OnInit {
     return this.itemArray.controls.reduce((s, c) => s + (+(c.get('totalPrice')?.value) || 0), 0);
   }
 
+  /** 明細快照（供分類小計；由 form.valueChanges 更新，避免模板內即時 map 新陣列） */
+  itemsSnap = signal<{category: string; totalPrice: number}[]>([]);
+
   ngOnInit() {
+    this.form.valueChanges.subscribe(() => this.itemsSnap.set(
+      this.itemArray.controls.map(c => ({category: c.get('category')?.value ?? '', totalPrice: +(c.get('totalPrice')?.value) || 0}))));
     // 檢查簽核流程是否有「申請人指定審核」步驟（呼叫輕量端點，免 approvals:read 權限）
     this.approvalSvc.getActiveByType('advance').subscribe(flow => {
       const designated = (flow?.steps ?? []).filter(s => s.useApplicantDesignated);

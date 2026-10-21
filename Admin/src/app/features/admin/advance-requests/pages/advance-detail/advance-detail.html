@@ -193,6 +193,11 @@
             </tfoot>
           </table>
         </div>
+        @if (r.items.length > 0) {
+          <div class="px-4 pb-3">
+            <app-category-subtotals [advanceItems]="r.items"/>
+          </div>
+        }
       </div>
     </div>
 

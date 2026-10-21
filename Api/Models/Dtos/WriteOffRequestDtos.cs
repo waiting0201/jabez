@@ -50,7 +50,8 @@ public sealed record WriteOffRequestDto(
     decimal                   AdvanceReturnedTotal = 0,    // 同預支單「他單」已核准繳回合計（不含本單）
     // ── 公司已補撥的超支差額（尚未結清為負時判定「已結清」用）──
     decimal                   OverspendPaidTotal = 0,      // 同預支單已核准 ∪ 本單沖銷的已撥款差額分期合計
-    DateTime?                 OverspendLastPaidAt = null); // 上述分期的最後撥款日
+    DateTime?                 OverspendLastPaidAt = null, // 上述分期的最後撥款日
+    AdvanceRequestItemDto[]?  AdvanceItems = null);       // 關聯預支單全批次明細（依 RoundNo, SortOrder, Id；僅 GET /write-off-requests/{id} 填入）
 
 /// <summary>同一張預支單底下的各次沖銷（供沖銷資訊卡列出第 N 次沖銷金額）</summary>
 public sealed record WriteOffRoundDto(
@@ -62,7 +63,9 @@ public sealed record WriteOffRoundDto(
     DateTime CreatedAt,
     bool     IsCurrent,
     decimal? ReturnedAmount = null,    // 該次沖銷的同仁繳回金額（歷程列顯示用）
-    DateTime? ReturnedAt = null);      // 該次繳回日期（歷程列 / 沖銷 PDF 逐筆列出用）
+    DateTime? ReturnedAt = null,       // 該次繳回日期（歷程列 / 沖銷 PDF 逐筆列出用）
+    bool      FinancePassed = false,   // 財務管理部關卡已核准（ApprovalStatus=approved 時恆 true）；判準見 WriteOffRequestReadService.FinancePassedSql
+    WriteOffItemDto[]? Items = null);  // 前次沖銷明細（只在非本單列填；本單列為 null，本單明細在主 DTO 的 Items）
 
 // ── 依預支單彙總檢視 DTO ─────────────────────────────────────────────────────
 
@@ -93,7 +96,8 @@ public sealed record AvailableAdvanceDto(
     decimal                 WrittenOffTotal,       // 只計已核准，與詳情頁 / 差額撥款同基準
     decimal                 PendingWriteOffTotal,  // 草稿 / 簽核中 / 已退回的沖銷金額（表單提示用，不計入餘額）
     AdvanceRoundDto[]       Rounds,            // 含 Round 1；Round ≥2 來自 AdvanceRequestSupplements
-    AdvanceRequestItemDto[] Items);            // 全批次明細，已依 RoundNo, SortOrder, Id 排序
+    AdvanceRequestItemDto[] Items,             // 全批次明細，已依 RoundNo, SortOrder, Id 排序
+    WriteOffRoundDto[]      WriteOffHistory);  // 該預支單既有的沖銷（非 rejected，含 FinancePassed + Items；IsCurrent 恆 false）
 
 // ── Request DTOs ──────────────────────────────────────────────────────────────
 
@@ -150,7 +154,8 @@ public sealed record WriteOffTaskDetailDto(
     decimal             AdvanceReturnedTotal = 0,     // 同預支單「他單」已核准繳回合計（不含本單）
     decimal             OverspendPaidTotal = 0,       // 同預支單已核准 ∪ 本單沖銷的已撥款差額分期合計
     DateTime?           OverspendLastPaidAt = null,   // 上述分期的最後撥款日
-    string              ActivityName = "");           // 關聯預支單的活動名稱
+    string              ActivityName = "",            // 關聯預支單的活動名稱
+    AdvanceRequestItemDto[]? AdvanceItems = null);    // 關聯預支單全批次明細（簽核頁唯讀對照；恆填，無明細時為空陣列）
 
 // ── 支票已支付註記 ────────────────────────────────────────────────────────────
 

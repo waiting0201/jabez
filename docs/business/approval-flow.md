@@ -115,6 +115,15 @@ draft → pending → approved / returned / rejected
   - 出差沖銷（travel_write_off）退款仍以父表 `RefundedAt` 兩態判斷；遇 `paymentStatus=partial` 或 `closed` 時整批 `1=0` 短路。**預支沖銷（write_off）自 2026-07 起改走分期**，列表 filter 尚未接上分期三態（另案）
 - **PDF 出納簽名章**：取 `installments[]` 中最後一期已撥款者的 `PaidBySignatureUrl` + `PaidAt`
 
+### 沖銷狀態四態、簽核頁預支明細與前次沖銷（2026-10 新增）
+
+為讓申請人與審核者快速比對預支與沖銷差異：
+
+- **沖銷單狀態（沖銷資訊卡「已沖銷」各列 badge，加總算法不變、仍全部加總）**：`draft` 草稿 → `pending` 且未過財務＝審核中 → `pending` 且財務關卡已核准＝**財務已審** → `returned` 退回修改 → `approved` 已核准。「財務已審」由後端 `financePassed` 提供（財務管理部關卡 `DepartmentCodes.FinanceStep` 已有 approved 簽核紀錄；`approved` 恆 true），判準與可信原因見 [backend-design.md §13.5](../backend-design.md)。
+- **簽核頁（write_off）顯示關聯預支單的全批次費用明細**（`writeOffDetail.advanceItems`，含追加批次），位於沖銷資訊與本次沖銷明細之間。
+- **前次沖銷明細**：`writeOffHistory[]` 非本單列帶 `items[]`（簽核頁、沖銷詳情 / 編輯、新增表單選定預支單後的 `available-advances.writeOffHistory` 皆有），供摘要＋逐筆明細展開與分類對照、列印 PDF。
+- 沖銷詳情 GET 同步帶 `advanceItems[]`。
+
 ### 預支沖銷差額分期撥款（2026-07 新增）
 
 沖銷金額累計超過預支總額時，公司需補撥差額給員工。原本只有 `AdvanceRequest` 上單一組 `EstimatedRefundDate / RefundedAt`，**無法分次撥款**；改為第 5 種分期子表 `WriteOffInstallment`（FK → `WriteOffRecord`）。

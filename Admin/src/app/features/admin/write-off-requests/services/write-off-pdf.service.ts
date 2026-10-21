@@ -1,6 +1,7 @@
 import { Injectable, inject, signal } from '@angular/core';
 import { WriteOffRequest } from '../models/write-off-request.model';
-import { ApprovalRecord, ApprovalFlow } from '../../approval-tasks/models/approval-task.model';
+import { ApprovalRecord, ApprovalFlow, writeOffRoundStatus, priorWriteOffRounds } from '../../approval-tasks/models/approval-task.model';
+import { drawWriteOffTable } from '../../../../shared/services/pdf-write-off-table';
 import { PdfCoreService, SignBlock, CIS, FONT_FAMILY, fmtDT, fmt, buildDynamicSignBlocks, designatedStepOrdersOf } from '../../../../shared/services/pdf-core.service';
 
 @Injectable({ providedIn: 'root' })
@@ -78,6 +79,42 @@ export class WriteOffPdfService {
       lv('活動名稱：', r.activityName, mx, y);
       y += 6;
       lv('活動期間：', r.activityPeriod, mx, y);
+
+      // ── 前次沖銷紀錄（同預支單其他沖銷，含狀態與明細，供審核 / 存檔對照）──
+      const priorRounds = priorWriteOffRounds(r.writeOffHistory)
+        .filter(w => w.approvalStatus !== 'rejected');
+      if (priorRounds.length > 0) {
+        if (y + 40 > ph - 15) { doc.addPage(); y = 20; }
+        y += 8;
+        doc.setFont(F, 'bold');
+        doc.setFontSize(10.5);
+        doc.setTextColor(...CIS.textPrimary);
+        doc.text('前次沖銷紀錄', mx, y);
+        for (const w of priorRounds) {
+          const wItems = w.items ?? [];
+          y = drawWriteOffTable(doc, autoTable, {
+            writeOffNo: w.writeOffNo,
+            requestNo: w.requestNo,
+            statusLabel: writeOffRoundStatus(w).label,
+            items: wItems,
+            cashTotal: wItems.reduce((a, i) => a + i.cashAmount, 0),
+            checkTotal: wItems.reduce((a, i) => a + i.checkAmount, 0),
+            grandTotal: w.grandTotal,
+            returnedAmount: w.returnedAmount,
+            returnedAt: w.returnedAt,
+          }, { mx, cw, ph, y });
+        }
+        // 本次明細小標題，與上方前次沖銷區隔
+        if (y + 30 > ph - 15) { doc.addPage(); y = 20; }
+        y += 4;
+        doc.setFont(F, 'bold');
+        doc.setFontSize(10.5);
+        doc.setTextColor(...CIS.textPrimary);
+        doc.text('本次沖銷明細', mx, y);
+        doc.setFont(F, 'normal');
+        doc.setFontSize(9.5);
+        y -= 4;
+      }
 
       // ── 明細表格 ──
       y += 8;
