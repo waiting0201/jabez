@@ -1841,7 +1841,7 @@
                   [statusClass]="getPaymentStatus(task) ? getStatusBadgeClass(getPaymentStatus(task)!) : ''"
                   [message]="installmentsMsg()"
                   [error]="installmentsError()"
-                  hint="已填入實際撥款日的列會自動鎖定金額與日期，且觸發 LINE/Email「已撥款（第 N/M 期）」通知；備註隨時可改。"
+                  hint="已填入實際撥款日的列會自動鎖定金額與日期，且觸發 LINE/Email「已撥款（第 N/M 期）」通知；實際撥款日填錯時可按該列「編輯」更正，儲存後會重新發送通知。"
                   (save)="submitInstallments(task, $event)" />
               }
 

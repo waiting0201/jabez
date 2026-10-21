@@ -8,10 +8,12 @@ import {InstallmentDto, InstallmentInput} from '../../features/admin/approval-ta
  *
  * 兩種模式：
  * - `review`：財務簽核當下填預計撥款日 + 各期金額（無實際撥款日欄、無儲存鈕，由外層表單一起送出）
- * - `manage`：核准後管理（多實際撥款日欄與「儲存撥款明細」按鈕，已撥款列鎖定）
+ * - `manage`：核准後管理（多實際撥款日欄與「儲存撥款明細」按鈕，已撥款列鎖定；
+ *   已撥款列另有「編輯」鈕，只解鎖該列的實際撥款日供財務更正輸入錯誤，儲存後照發已撥款通知）
  *
  * 一頁可放多個實例（例如沖銷簽核頁同時維護「本單差額撥款」與「關聯預支單撥款」）。
- * 規則（與後端 InstallmentValidator 對齊）：序號 1-based 連續、SUM == 應撥總額、已撥款列不可改不可刪。
+ * 規則（與後端 InstallmentValidator 對齊）：序號 1-based 連續、SUM == 應撥總額、
+ * 已撥款列不可刪、只有實際撥款日可更正（不可清空）。
  */
 @Component({
   selector: 'app-installments-editor',
@@ -61,8 +63,9 @@ import {InstallmentDto, InstallmentInput} from '../../features/admin/approval-ta
                 @if (mode() === 'manage') {
                   <td>
                     <input type="date" class="form-control form-control-sm" formControlName="paidAt"
-                           [attr.readonly]="isLocked(row) ? true : null"
-                           [class.bg-light]="isLocked(row)">
+                           [attr.readonly]="isLocked(row) && !isEditingPaidAt(row) ? true : null"
+                           [class.bg-light]="isLocked(row) && !isEditingPaidAt(row)"
+                           [class.is-invalid]="isEditingPaidAt(row) && !row.get('paidAt')?.value">
                   </td>
                 }
                 <td>
@@ -79,6 +82,13 @@ import {InstallmentDto, InstallmentInput} from '../../features/admin/approval-ta
                 <td class="text-center align-middle">
                   @if (!isLocked(row) && form.controls.length > 1) {
                     <button type="button" class="btn btn-sm btn-link text-danger p-0" (click)="removeRow(i)" title="刪除此期">⨯</button>
+                  }
+                  @if (mode() === 'manage' && isLocked(row)) {
+                    @if (isEditingPaidAt(row)) {
+                      <button type="button" class="btn btn-sm btn-link p-0" (click)="cancelEditPaidAt(row)" title="取消更正">取消</button>
+                    } @else {
+                      <button type="button" class="btn btn-sm btn-link p-0" (click)="editPaidAt(row)" title="更正實際撥款日">編輯</button>
+                    }
                   }
                 </td>
               </tr>
@@ -109,9 +119,13 @@ import {InstallmentDto, InstallmentInput} from '../../features/admin/approval-ta
       @if (mode() === 'manage') {
         <div class="mt-3 flex gap-2">
           <button type="button" class="btn btn-sm btn-primary"
-                  [disabled]="!sumValid() || saving()"
+                  [disabled]="!sumValid() || saving() || !editingPaidAtValid()"
                   (click)="emitSave()">儲存撥款明細</button>
         </div>
+      }
+
+      @if (editingIds().size > 0) {
+        <div class="text-warning small mt-2">已撥款列的實際撥款日更正後須按「儲存撥款明細」；儲存後會重新發送 LINE / Email「已撥款」通知給申請人。</div>
       }
 
       @if (message()) {
@@ -148,6 +162,8 @@ export class InstallmentsEditorComponent {
   /** form 值變動的觸發器 — FormArray 非 signal，靠 valueChanges 推動 computed 重算 */
   private revision = signal(0);
   private lockedIds = new Set<number>();
+  /** 已撥款列中正在更正實際撥款日者（id → 原日期，供「取消」還原）*/
+  editingIds = signal(new Map<number, string>());
 
   constructor() {
     this.form.valueChanges.subscribe(() => this.revision.update(v => v + 1));
@@ -193,6 +209,30 @@ export class InstallmentsEditorComponent {
     return id != null && this.lockedIds.has(id);
   }
 
+  isEditingPaidAt(row: FormGroup): boolean {
+    const id = row.get('id')?.value as number | null;
+    return id != null && this.editingIds().has(id);
+  }
+
+  /** 更正中的已撥款列不可清空實際撥款日（後端同樣拒絕）*/
+  editingPaidAtValid = computed(() => {
+    this.revision();
+    return this.form.controls.every(c => !this.isEditingPaidAt(c) || !!c.get('paidAt')?.value);
+  });
+
+  editPaidAt(row: FormGroup): void {
+    const id = row.get('id')?.value as number | null;
+    if (id == null || !this.lockedIds.has(id)) return;
+    this.editingIds.update(m => new Map(m).set(id, row.get('paidAt')?.value ?? ''));
+  }
+
+  cancelEditPaidAt(row: FormGroup): void {
+    const id = row.get('id')?.value as number | null;
+    if (id == null) return;
+    row.get('paidAt')?.setValue(this.editingIds().get(id) ?? '');
+    this.editingIds.update(m => { const next = new Map(m); next.delete(id); return next; });
+  }
+
   /** 該列可填的上限 = 應撥總額 − 其他列已填金額 */
   rowMax(index: number): number {
     this.revision();
@@ -230,6 +270,7 @@ export class InstallmentsEditorComponent {
   private rebuild(list: InstallmentDto[] | undefined, total: number): void {
     this.form.clear({emitEvent: false});
     this.lockedIds.clear();
+    this.editingIds.set(new Map());
 
     if (list && list.length > 0) {
       for (const ins of list) {
