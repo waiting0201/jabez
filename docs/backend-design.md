@@ -525,7 +525,7 @@ RequestDateGuard.EnsurePastWithin(body.ChildBirthDate, "子女出生日期",
 | 已撥款鎖定 | 各申請 Handler 的 Update / Delete | 任一期 `PaidAt` 非空的單據即使被退回也不可修改 / 刪除（Superadmin 亦同），請洽財務 |
 | 輕量端點最小揭露 | `ProjectLookupDto`（`/projects/active`）、`VendorReadService`（`/vendors/lookup`）、AppRouter 權限表（`/files/vendor-passbooks`） | `/projects/active` 只回 Id / Code / Name / Status / DepartmentId / DepartmentName，**不含任何金額與 Drive 連結**；`/vendors/lookup` 的個人 `IdNumber` 遮罩（前 1 後 3）；`/files/vendor-passbooks/*` 須 `vendors:read`（檔名 `{vendorId}{ext}` 可列舉） |
 | 寫入回應薪資遮罩 | `EmployeeProfileHandler`（`PUT /users/{id}/profile`） | 寫入回應與 GET 走同一道 `PayrollFieldAccess.Mask`，無 `users:salary-read` 者存檔後不可拿到薪資調整歷史 |
-| 活動日預定人力 | `ActivityDayHandler.EnsureAssigneesValidAsync` | 非 Superadmin：人員部門須在 `ProjectAccessScope` 內、不得把自己列為預定人力；更新時只驗「新增」的人力（既有名單不重驗） |
+| 活動日預定人力 | `ActivityDayHandler.EnsureAssigneesValidAsync` | 非 Superadmin：人員部門須在 `ProjectAccessScope` 內、不得把自己列為預定人力（**職稱為「協理 / 經理 / 執行長」者除外**，2026-10-21 業務決議，以職稱名稱比對、常數 `SelfAssignableJobTitles`）；更新時只驗「新增」的人力（既有名單不重驗） |
 | 前端 URL / Token 防線 | `Admin/src/app/shared/utils/safe-url.ts`、`auth.interceptor.ts`、`Admin/public/staticwebapp.config.json` | 預覽 iframe 的 URL 只認白名單（`safe-url.ts`）；`Authorization: Bearer` 只附加給自家 API；SWA 設定加 CSP 與 `X-Content-Type-Options: nosniff` |
 
 稽核表若需指向 Users、又掛在 Users 的 Cascade 鏈下（例：`AttendanceAuditLogs` → AttendanceRecords → Users），**該 Users 欄位不設 FK、改存姓名快照**，避免 SQL Server 1785 multiple cascade paths，也不必加進 UserHandler 的刪除清洗清單。
