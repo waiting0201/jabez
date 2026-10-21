@@ -83,7 +83,7 @@ export const WORKING_DAY_LEAVE_TYPES: LeaveType[] =
    'parental_leave_daily'];
 
 /**
- * 工作日標準時段（與 half_day 的 am 08:00–12:00 / pm 13:00–17:00 一致，全日 8 小時）。
+ * 工作日標準時段（08:00–17:00，全日 8 小時；half_day 上午的代表時刻另見 halfDayAmStartHour）。
  * 供 hour 單位跨日請假的逐日累加使用；須與後端 LeaveRequestHandler 的同名常數保持同步。
  */
 export const WORKDAY_START_HOUR = 8;
@@ -95,21 +95,22 @@ export const LUNCH_END_HOUR   = 13;
 
 /**
  * 半天型假別（特休 / 補休 / 高階主管假）「上午」時段的起訖時刻。
- * 標準工作日為 08:00–12:00，唯獨**補休為 09:00–13:00**（業務規定）；下午一律 13:00–17:00。
+ * 2026-10-21 起一律為**上午 09:00–13:00、下午 13:00–17:00**（原本僅補休為 09:00–13:00，其餘 08:00–12:00）。
+ * 之前送出的舊單仍存 08:00–12:00、不遷移，編輯時由 `_inferHalfDaySlots` 照常反推為上午。
  *
  * 只影響存進 StartDate / EndDate 的代表性時刻與畫面顯示，**不影響時數**：半天恆為 4 小時、
  * 全日恆為 8 小時。後端以「起 < 13:00 ＝上午」「訖 > 13:00 ＝下午」分類時段（非時間差），
- * 故 09:00–13:00 仍判為上午半天 4 小時；請假時數本身則走「HalfDay 信任 client」。
+ * 故 09:00–13:00 仍判為上午半天 4 小時。
  *
- * 送出 payload 與時段下拉標籤共用這兩個函式，勿在別處另行硬編碼 08 / 12。
+ * 送出 payload 與時段下拉標籤共用這兩個函式，勿在別處另行硬編碼 09 / 13。
  */
-export function halfDayAmStartHour(leaveType: LeaveType): number {
-  return leaveType === 'compensatory' ? 9 : WORKDAY_START_HOUR;
+export function halfDayAmStartHour(_leaveType: LeaveType): number {
+  return 9;
 }
 
-/** 半天型假別「上午」時段的訖點時刻（補休 13:00、其餘 12:00，見 halfDayAmStartHour） */
-export function halfDayAmEndHour(leaveType: LeaveType): number {
-  return leaveType === 'compensatory' ? LUNCH_END_HOUR : LUNCH_START_HOUR;
+/** 半天型假別「上午」時段的訖點時刻（一律 13:00，見 halfDayAmStartHour） */
+export function halfDayAmEndHour(_leaveType: LeaveType): number {
+  return LUNCH_END_HOUR;
 }
 
 /** 格式化時數顯示（依單位） */
