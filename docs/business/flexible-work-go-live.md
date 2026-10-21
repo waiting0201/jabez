@@ -11,8 +11,8 @@
 | 日期 | 事項 | 誰做 |
 |---|---|---|
 | 隨時（建議 10/21 前） | ① 建改班簽核流程（Script 14）② 匯入 2027 行事曆 ③ 放寬打卡提醒 cron | Superadmin / DB |
-| 10 月中旬 | ④ 開活動日權限給主管（Script 13a），各部門建未來 3 個月活動日 | DB → 主管 |
-| 10/21 教育訓練後 | ⑤ 開個人排班權限給全員（Script 13b） | DB |
+| 10 月中旬 | ④ 開活動日權限給主管（**客戶自行**於角色管理勾選），各部門建未來 3 個月活動日 | 客戶 Superadmin → 主管 |
+| 10/21 教育訓練後 | ⑤ 開個人排班權限給全員（**客戶自行**於角色管理勾選） | 客戶 Superadmin |
 | 10/25 23:59 | 11 月份排班截止（系統自動鎖定，見下方「⚠ 11 月份沒排完的人」） | 各部門催排 |
 | 10/31 晚上 | ⑥ 期初補休（Script 12）＋ ⑦ 設定切換日 —— **同一次操作連續做完** | DB → Superadmin |
 | 11/1 | 新制生效，⑧ 上線後檢查 | — |
@@ -53,7 +53,7 @@
   漏了營運管理及發展部、品牌事業部（「申請人部門」型關卡被誤判為缺部門）。腳本修正後已重跑補建，
   ✅ **6 條全數建立**（營運管理及發展部 4 關、品牌事業部 3 關、數位研發部 2 關、行政財務管理部 2 關、總監室專案部門 1 關、總監室 1 關）。
   部門協理 0 人的部門仍待客戶回覆。
-- **必須在 ⑤（13b）之前完成**：13b 跑完同仁就能送改班申請。
+- **必須在 ⑤ 之前完成**：排班權限一開，同仁就能送改班申請。
 
 ## ② 匯入 2027 年公司行事曆
 
@@ -74,22 +74,24 @@ az functionapp config appsettings set -n jabez-api -g WeyproUS \
 - 改 App Setting 會讓 Function App 重啟一次（數秒）。
 - **執行狀態**：✅ 2026-10-11 已改為 `0 */1 23,0-13 * * *`。
 
-## ④ 開活動日權限給主管 —— Script 13a（10 月中旬）
+## ④ 開活動日權限給主管（10 月中旬）
 
-- 檔案：[13a-grant-activity-days-permissions.sql](../../Api/Data/Scripts/13a-grant-activity-days-permissions.sql)
-- 給主管層 5 個角色 `activity-days:read` / `:write`：協理、總監室總監、營運管理部執行長、數位研發部經理、經理副理主管。
-- 空跑時看「⚠ 查無此角色」—— 正式站角色名稱若不同，要先改腳本裡的名稱。
-- 跑完請這些主管**重新登入**（權限在登入憑證裡）。
+> **2026-10-21 決議：權限由客戶自行到〈角色管理〉開啟，我方不執行 Script 13a / 13b。**
+> 腳本保留在 `Api/Data/Scripts/` 備用；下方內容改作為「要勾哪些權限給哪些角色」的參考，可用文末「確認用 SQL」查客戶開了沒。
+
+
+- 參考腳本（不執行）：[13a-grant-activity-days-permissions.sql](../../Api/Data/Scripts/13a-grant-activity-days-permissions.sql)
+- 建議給主管層 5 個角色 `activity-days:read` / `:write`：協理、總監室總監、營運管理部執行長、數位研發部經理、經理副理主管。
+- 勾選後請這些主管**重新登入**（權限在登入憑證裡）。
 - 若改由 Superadmin 代建活動日，這步可跳過。
 
-## ⑤ 開個人排班權限給全員 —— Script 13b（10/21 教育訓練後）
+## ⑤ 開個人排班權限給全員（10/21 教育訓練後，客戶自行開啟）
 
-- 檔案：[13b-grant-shift-schedule-self-permissions.sql](../../Api/Data/Scripts/13b-grant-shift-schedule-self-permissions.sql)
-- 給全部角色 `shift-schedule:read` / `:write`。
+- 參考腳本（不執行）：[13b-grant-shift-schedule-self-permissions.sql](../../Api/Data/Scripts/13b-grant-shift-schedule-self-permissions.sql)
+- 建議給全部角色 `shift-schedule:read` / `:write`。
 - 前置：① 已完成。
-- 跑完請**全員重新登入**。
-- 出勤排休總覽表（`reports-shift-schedule:read`）與跨部門檢視（`shift-schedule:view-all`）兩支都不給；
-  要開時跑完整版 [13-grant-shift-schedule-permissions.sql](../../Api/Data/Scripts/13-grant-shift-schedule-permissions.sql)（已指派者跳過）。
+- 勾選後請**全員重新登入**（權限在登入憑證裡）。
+- 出勤排休總覽表（`reports-shift-schedule:read`）與跨部門檢視（`shift-schedule:view-all`）兩支建議先不給，同樣由客戶視需要自行開啟。
 
 ## ⑥ 期初補休 —— Script 12（10/31 晚上）
 
