@@ -1271,6 +1271,26 @@ Input：`advanceRounds` / `writeOffHistory` / `currentGrandTotal` / `refundDue` 
 - 唯讀呈現統一用 [`<app-write-off-returned-info>`](../Admin/src/app/shared/components/write-off-returned-info.ts)（金額 / 日期 / 證明檔），詳情頁、彙總頁（每張沖銷單卡內）、簽核頁共用；`amount` 為空或 0 整塊不顯示，點證明檔 emit `(preview)` 由父層開 `file-preview-modal`。
 - 表單（write-off-form）在「附件」卡上方有獨立卡片「同仁匯回預支餘額」：金額（min 0）+ 匯款／繳回日期（`min`/`max` 取 `date-bounds`）+ **單張證明上傳**（見 §12.1b）。**繳回金額不計入沖銷金額**；金額 > 0 時前端先擋「需日期與證明」，後端再驗一次。**費用明細與繳回至少擇一**（getter `hasContent` 控儲存／送出按鈕）：純匯回時明細可為 0 列，明細空列提示會說明；詳情頁明細表 `@empty` 顯示「無費用明細（僅匯回預支餘額）」。
 
+### 7.7.1 分類小計 / 預支 vs 沖銷對照表（2026-10-21）
+
+客戶要「快速比對預支與沖銷差異」，預支 / 預支沖銷的明細下方一律掛 [`<app-category-subtotals>`](../Admin/src/app/shared/components/category-subtotals.ts)（加總純函式 [`sumByCategory()`](../Admin/src/app/shared/utils/category-subtotals.ts)：依 `ITEM_CATEGORIES` 排序、未知分類其後、空白併為「未分類」置末）。
+
+| 模式 | 條件 | 呈現 |
+|---|---|---|
+| 單欄 | 只給 `advanceItems` **或** 只給 `currentItems` | 分類｜小計＋合計（預支表單 / 詳情 / 簽核頁；尚未選預支單的沖銷表單） |
+| 對照 | `advanceItems` 與 `currentItems` 都給 | 分類｜預支｜前次沖銷（有前次才顯示）｜本次沖銷｜差額＋合計；差額 = 預支 − 前次 − 本次，>0 `text-green`、<0 `text-red` |
+
+- 前次沖銷以 `priorHistory`（整份 `writeOffHistory`）傳入，**不要**在模板內即時 `map` 出新陣列（Angular 會因每輪產生新參照而報 NG0100）。
+- **「前次」的定義單一真相為 `priorWriteOffRounds()`**（approval-task.model.ts）：只取 `writeOffNo` 排在本單之前者（同號比 Id）；history 無本單（新增表單）時全部算前次。前次沖銷卡、分類對照表、沖銷 PDF 三處共用 —— 只排除 `isCurrent` 會在檢視第 1 次沖銷時把較晚的第 2 次也列為「前次」。狀態文字一律走 `writeOffRoundStatus()`（含預支 PDF 的逐張沖銷表）。
+- 表單端的「本次」資料由 `form.valueChanges` 寫入 signal 快照（`itemsSnap` / `currentItemsSnap`），輸入即時更新。
+- 樣式比照 `write-off-summary`：`border rounded overflow-x-auto` + `table table-sm small`，對照表加 `min-w-[420px]` 讓手機橫向捲動。
+
+相關共用元件：
+- [`<app-advance-items-readonly>`](../Admin/src/app/shared/components/advance-items-readonly.ts)（`items` / `rounds` / `title`）：預支費用明細唯讀表（批次欄 + `isFirstOfRound` 留白 + 含追加 badge + 合計），沖銷表單 / 沖銷詳情 / 簽核頁（write_off）共用。
+- [`<app-prior-write-offs>`](../Admin/src/app/shared/components/prior-write-offs.ts)（`history`）：「前次沖銷紀錄」卡，一張沖銷一列（次別｜單號｜狀態 badge｜金額｜繳回），點列展開明細（發票號碼 / 分類 / 項目 / 總價 / 現金 / 支票）；無前次沖銷整張卡不顯示。
+- **沖銷狀態 badge 單一真相** `writeOffRoundStatus(round)`（[approval-task.model.ts](../Admin/src/app/features/admin/approval-tasks/models/approval-task.model.ts)）：approved→已核准（success-subtle）／pending 且 `financePassed`→財務已審（info-subtle）／pending→審核中（warning-subtle）／returned→退回修改（warning-subtle）／draft→草稿（secondary-subtle）。`write-off-summary` 已沖銷列、`prior-write-offs`、沖銷 PDF 狀態文字共用；badge 僅標示，**不改變已沖銷加總**。
+- 沖銷 PDF 於本次明細前列「前次沖銷紀錄」；逐張沖銷明細表畫法抽成 [`drawWriteOffTable()`](../Admin/src/app/shared/services/pdf-write-off-table.ts)，預支 PDF 與沖銷 PDF 共用。
+
 ### 7.8 支票已支付欄（預支沖銷明細）
 
 支票由公司**直接付給廠商**，不是撥給員工的錢，因此不進撥款分期，改以沖銷明細的勾選註記。

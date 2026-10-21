@@ -158,6 +158,8 @@ export interface WriteOffRecord {
   returnedAt?: string | null;
   returnedProofFileName?: string | null;
   returnedProofUrl?: string | null;
+  /** 財務管理部關卡已核准（approved 恆 true；狀態文字走 writeOffRoundStatus） */
+  financePassed?: boolean;
 }
 
 /** 常用分類選項（與 write-off-request.model.ts 的同名常數必須保持一致：沖銷表單會從母預支單複製 category） */

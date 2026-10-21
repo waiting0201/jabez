@@ -949,6 +949,9 @@
                         </tfoot>
                       </table>
                     </div>
+                    <div class="px-4 pb-3">
+                      <app-category-subtotals [advanceItems]="d.items"/>
+                    </div>
                   </div>
                 </div>
               }
@@ -1010,6 +1013,16 @@
                     <div class="text-muted small mt-4 mb-0">備註：{{ d.note }}</div>
                   }
                 </div>
+              </div>
+
+              <!-- 預支費用明細（唯讀對照）+ 前次沖銷紀錄 -->
+              @if (d.advanceItems && d.advanceItems.length > 0) {
+                <div class="mt-6">
+                  <app-advance-items-readonly [items]="d.advanceItems" [rounds]="d.advanceRounds"/>
+                </div>
+              }
+              <div class="mt-6">
+                <app-prior-write-offs [history]="d.writeOffHistory"/>
               </div>
 
               <!-- 沖銷明細 -->
@@ -1086,6 +1099,10 @@
                           </tr>
                         </tfoot>
                       </table>
+                    </div>
+                    <div class="px-4 pb-3">
+                      <app-category-subtotals title="分類對照（預支 vs 沖銷）"
+                        [advanceItems]="d.advanceItems ?? null" [priorHistory]="d.writeOffHistory" [currentItems]="d.items"/>
                     </div>
                   </div>
                 </div>

@@ -90,9 +90,10 @@ public sealed class AdvanceRequestReadService(IDbConnection db, IInstallmentRead
             (string?)r.Comment)).ToArray();
 
         // 查詢沖銷紀錄含明細（PDF 列印用）
-        const string woDetailSql = """
+        var woDetailSql = $"""
             SELECT wo.Id, wo.RequestNo, wo.WriteOffNo, wo.CashTotal, wo.CheckTotal,
                    wo.GrandTotal, wo.ApprovalStatus, wo.Note,
+                   {WriteOffRequestReadService.FinancePassedSql("wo")},
                    sub.Name AS SubmittedBy, wo.CreatedAt,
                    wo.ReturnedAmount, wo.ReturnedAt, wo.ReturnedProofFileName, wo.ReturnedProofUrl,
                    wi.Id AS ItemId, wi.Category, wi.SeqNo, wi.ItemName,
@@ -106,7 +107,8 @@ public sealed class AdvanceRequestReadService(IDbConnection db, IInstallmentRead
             WHERE wo.AdvanceRequestId = @Id
             ORDER BY wo.WriteOffNo, wi.SortOrder, wi.Id
             """;
-        var woDetailRows = await db.QueryAsync<dynamic>(woDetailSql, new { Id = id });
+        var woDetailRows = await db.QueryAsync<dynamic>(woDetailSql,
+            new { Id = id, FinanceStepCodes = WriteOffRequestReadService.FinanceStepCodesParam });
         var writeOffRecords = GroupToWriteOffRecords(woDetailRows);
 
         // 載入分期撥款明細
@@ -284,7 +286,8 @@ public sealed class AdvanceRequestReadService(IDbConnection db, IInstallmentRead
                 ReturnedAmount:        (decimal?)x.wo.ReturnedAmount,
                 ReturnedAt:            (DateTime?)x.wo.ReturnedAt,
                 ReturnedProofFileName: (string?)x.wo.ReturnedProofFileName,
-                ReturnedProofUrl:      (string?)x.wo.ReturnedProofUrl))
+                ReturnedProofUrl:      (string?)x.wo.ReturnedProofUrl,
+                FinancePassed:         (int)x.wo.FinancePassed == 1))
             .ToArray();
     }
 

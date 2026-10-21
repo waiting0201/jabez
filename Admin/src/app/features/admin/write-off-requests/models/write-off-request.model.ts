@@ -108,6 +108,8 @@ export interface WriteOffRequest extends WriteOffReturnedCash {
   advanceRounds?: AdvanceRound[];
   /** 同一預支單底下各次沖銷 */
   writeOffHistory?: WriteOffRound[];
+  /** 關聯預支單的全批次費用明細（分類對照 / 預支明細唯讀卡） */
+  advanceItems?: AdvanceRequestItem[];
   /** 本次沖銷造成的超支增額 = 公司應補撥金額 */
   refundDue?: number;
   /** 本沖銷單的差額撥款分期（SUM 須等於 refundDue）*/
@@ -151,6 +153,8 @@ export interface AdvanceSummary {
   rounds: AdvanceRound[];
   /** 全批次費用明細，已依 roundNo, sortOrder 排序 */
   items: AdvanceRequestItem[];
+  /** 非已拒絕的前次沖銷（含明細、financePassed），供選定預支單後顯示前次沖銷紀錄 */
+  writeOffHistory?: WriteOffRound[];
 }
 
 /** 常用分類選項（與 advance-request.model.ts 的同名常數必須保持一致：沖銷表單會從母預支單複製 category） */

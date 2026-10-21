@@ -25,6 +25,29 @@ public sealed class WriteOffRequestReadService(IDbConnection db, IInstallmentRea
                   AND oi.PaidAt IS NOT NULL) AS OverspendLastPaidAt
         """;
 
+    /// <summary>
+    /// 「沖銷單是否已過財務管理部關卡」的單一真相（供沖銷狀態 badge：審核中 / 財務已審 / 已核准）。
+    /// 判準：整單 approved，或存在「關卡部門 Code ∈ FinanceStep」且 Action='approved' 的簽核紀錄。
+    /// 為何可信：送簽（draft / returned 皆然）一律清空舊 ApprovalRecords（WriteOffRequestHandler.SubmitAsync），
+    /// 退回 / 拒絕後重送也從零開始，故存活的 approved 紀錄必屬本輪簽核；write_off 不走追加批次，RoundNo 恆為 1，不必過濾。
+    /// 呼叫端須帶參數 <c>@FinanceStepCodes</c>（<see cref="FinanceStepCodesParam"/>），禁止硬編碼部門 Code。
+    /// <paramref name="woAlias"/> 為外層 WriteOffRecords 別名；輸出欄位 FinancePassed（0 / 1）。
+    /// </summary>
+    internal static string FinancePassedSql(string woAlias) => $"""
+        CASE WHEN {woAlias}.ApprovalStatus = 'approved' OR EXISTS (
+                SELECT 1 FROM ApprovalRecords fpr
+                JOIN ApprovalSteps fps ON fps.ApprovalItemId = {woAlias}.ApprovalItemId AND fps.StepOrder = fpr.StepOrder
+                JOIN Departments fpd   ON fpd.Id = fps.DepartmentId
+                WHERE fpr.ApplicationType = 'write_off'
+                  AND fpr.ApplicationId   = {woAlias}.Id
+                  AND fpr.Action          = 'approved'
+                  AND fpd.Code IN @FinanceStepCodes)
+             THEN 1 ELSE 0 END AS FinancePassed
+        """;
+
+    /// <summary><see cref="FinancePassedSql"/> 的 @FinanceStepCodes 參數值。</summary>
+    internal static string[] FinanceStepCodesParam => [.. DepartmentCodes.FinanceStep];
+
     // 預支沖銷申請主查詢：WriteOffRecords 關聯 AdvanceRequests、Projects、Users、WriteOffItems
     private static readonly string BaseSql = $$"""
         SELECT wo.Id, wo.RequestNo, wo.AdvanceRequestId, ar.RequestNo AS AdvanceRequestNo,
@@ -134,7 +157,7 @@ public sealed class WriteOffRequestReadService(IDbConnection db, IInstallmentRea
         var attachments = attRows.Select(r => new AttachmentDto((int)r.Id, (string)r.FileName, (string?)r.FileUrl)).ToArray();
 
         // 預支批次 + 各次沖銷 + 分期撥款（獨立查詢，避免與 items JOIN 造成笛卡兒相乘）
-        var advanceRounds   = await GetAdvanceRoundsAsync(dto.AdvanceRequestId);
+        var (advanceRounds, advanceItems) = await GetAdvanceRoundsAsync(dto.AdvanceRequestId);
         var writeOffHistory = await GetWriteOffHistoryAsync(dto.AdvanceRequestId, id);
         var refundDue       = WriteOffRefundCalculator.Calculate(
             dto.AdvanceGrandTotal, dto.AdvanceWrittenOffTotal, dto.GrandTotal);
@@ -150,6 +173,7 @@ public sealed class WriteOffRequestReadService(IDbConnection db, IInstallmentRea
             Attachments          = attachments.Length > 0 ? attachments : null,
             AdvanceRounds        = advanceRounds,
             WriteOffHistory      = writeOffHistory,
+            AdvanceItems         = advanceItems,
             RefundDue            = refundDue,
             Installments         = ownInst.Count > 0 ? [.. ownInst] : null,
             PaymentStatus        = installments.ComputeStatus(ownInst),
@@ -222,11 +246,11 @@ public sealed class WriteOffRequestReadService(IDbConnection db, IInstallmentRea
     // ── 批次金額檢視 helpers ─────────────────────────────────────────────────
 
     /// <summary>關聯預支單的各預支批次（含追加）；批次組裝規則與 GET /advance-requests/{id} 共用同一份實作。</summary>
-    private async Task<AdvanceRoundDto[]> GetAdvanceRoundsAsync(int advanceRequestId)
+    private async Task<(AdvanceRoundDto[] Rounds, AdvanceRequestItemDto[] Items)> GetAdvanceRoundsAsync(int advanceRequestId)
     {
         const string headSql = "SELECT AdvanceDate, AdvanceNeededDate FROM AdvanceRequests WHERE Id = @Id";
         var head = await db.QuerySingleOrDefaultAsync<dynamic>(headSql, new { Id = advanceRequestId });
-        if (head is null) return [];
+        if (head is null) return ([], []);
         var advanceDate       = (DateTime)head.AdvanceDate;
         var advanceNeededDate = (DateTime?)head.AdvanceNeededDate;
 
@@ -252,29 +276,81 @@ public sealed class WriteOffRequestReadService(IDbConnection db, IInstallmentRea
             """;
         var supRows = await db.QueryAsync<dynamic>(supSql, new { Id = advanceRequestId });
 
-        return AdvanceRequestReadService.BuildRounds(advanceDate, advanceNeededDate, supRows, items);
+        return (AdvanceRequestReadService.BuildRounds(advanceDate, advanceNeededDate, supRows, items), [.. items]);
     }
 
-    /// <summary>同一張預支單底下的各次沖銷（含本單；已拒絕的不列入）。</summary>
+    /// <summary>
+    /// 同一張預支單底下的各次沖銷（含本單；已拒絕的不列入），附「是否過財務」；
+    /// 非本單列另帶前次沖銷明細 Items（本單明細已在主 DTO，不重複）。
+    /// </summary>
     private async Task<WriteOffRoundDto[]> GetWriteOffHistoryAsync(int advanceRequestId, int currentId)
     {
-        const string sql = """
-            SELECT Id, WriteOffNo, RequestNo, GrandTotal, ApprovalStatus, CreatedAt, ReturnedAmount, ReturnedAt
-            FROM WriteOffRecords
-            WHERE AdvanceRequestId = @AdvanceRequestId AND ApprovalStatus <> 'rejected'
-            ORDER BY WriteOffNo, Id
+        var dict = await GetHistoryForAdvancesAsync([advanceRequestId], currentId);
+        return dict.GetValueOrDefault(advanceRequestId, []);
+    }
+
+    /// <summary>
+    /// 批次版沖銷歷程（依預支單 Id 分組；已拒絕不列入）。<paramref name="currentId"/> 為本單 Id（無則 null → 全部 IsCurrent=false），
+    /// 本單列 Items 留 null、其餘列填明細（單次 WriteOffItems 查詢）。available-advances 與沖銷詳情共用。
+    /// </summary>
+    public async Task<Dictionary<int, WriteOffRoundDto[]>> GetHistoryForAdvancesAsync(
+        IEnumerable<int> advanceRequestIds, int? currentId = null)
+    {
+        var advIds = advanceRequestIds.Distinct().ToArray();
+        if (advIds.Length == 0) return [];
+
+        var sql = $"""
+            SELECT wo.Id, wo.AdvanceRequestId, wo.WriteOffNo, wo.RequestNo, wo.GrandTotal, wo.ApprovalStatus,
+                   wo.CreatedAt, wo.ReturnedAmount, wo.ReturnedAt,
+                   {FinancePassedSql("wo")}
+            FROM WriteOffRecords wo
+            WHERE wo.AdvanceRequestId IN @AdvIds AND wo.ApprovalStatus <> 'rejected'
+            ORDER BY wo.AdvanceRequestId, wo.WriteOffNo, wo.Id
             """;
-        var rows = await db.QueryAsync<dynamic>(sql, new { AdvanceRequestId = advanceRequestId });
-        return [.. rows.Select(r => new WriteOffRoundDto(
-            (int)r.Id,
-            (int)r.WriteOffNo,
-            (string?)r.RequestNo,
-            (decimal)r.GrandTotal,
-            (string)r.ApprovalStatus,
-            (DateTime)r.CreatedAt,
-            (int)r.Id == currentId,
-            (decimal?)r.ReturnedAmount,
-            (DateTime?)r.ReturnedAt))];
+        var rows = (await db.QueryAsync<dynamic>(sql, new { AdvIds = advIds, FinanceStepCodes = FinanceStepCodesParam })).ToList();
+
+        var itemLookup = await LoadItemsAsync(
+            rows.Where(r => (int)r.Id != currentId).Select(r => (int)r.Id));
+
+        return rows.GroupBy(r => (int)r.AdvanceRequestId).ToDictionary(
+            g => g.Key,
+            g => g.Select(r =>
+            {
+                int id = (int)r.Id;
+                bool isCurrent = id == currentId;
+                return new WriteOffRoundDto(
+                    id, (int)r.WriteOffNo, (string?)r.RequestNo, (decimal)r.GrandTotal,
+                    (string)r.ApprovalStatus, (DateTime)r.CreatedAt, isCurrent,
+                    (decimal?)r.ReturnedAmount, (DateTime?)r.ReturnedAt,
+                    (int)r.FinancePassed == 1,
+                    isCurrent ? null : [.. itemLookup[id]]);
+            }).ToArray());
+    }
+
+    /// <summary>以 WriteOffRecordId 批次載入沖銷明細（WriteOffItemDto 欄位對應與簽核頁相同）。</summary>
+    private async Task<ILookup<int, WriteOffItemDto>> LoadItemsAsync(IEnumerable<int> woIds)
+    {
+        var ids = woIds.Distinct().ToArray();
+        if (ids.Length == 0) return Enumerable.Empty<WriteOffItemDto>().ToLookup(_ => 0);
+        const string sql = """
+            SELECT wi.Id, wi.WriteOffRecordId, wi.Category, wi.SeqNo, wi.ItemName,
+                   wi.UnitPrice, wi.Quantity, wi.TotalPrice, wi.CashAmount, wi.CheckAmount,
+                   wi.Note, wi.InvoiceNo, wi.FileName, wi.FileUrl, wi.SortOrder, wi.InvoiceDate,
+                   wi.CheckPaid, wi.CheckPaidAt, cpb.Name AS CheckPaidBy
+            FROM WriteOffItems wi
+            LEFT JOIN Users cpb ON wi.CheckPaidById = cpb.Id
+            WHERE wi.WriteOffRecordId IN @Ids
+            ORDER BY wi.WriteOffRecordId, wi.SortOrder, wi.Id
+            """;
+        var rows = await db.QueryAsync<dynamic>(sql, new { Ids = ids });
+        return rows.ToLookup(r => (int)r.WriteOffRecordId, r => new WriteOffItemDto(
+            (int)r.Id, (string)r.Category, (int)r.SeqNo, (string)r.ItemName,
+            (decimal)r.UnitPrice, (string)r.Quantity, (decimal)r.TotalPrice,
+            (decimal)r.CashAmount, (decimal)r.CheckAmount,
+            (string?)r.Note, (string?)r.InvoiceNo,
+            (string?)r.FileName, (string?)r.FileUrl, (int)r.SortOrder,
+            (DateTime?)r.InvoiceDate,
+            (bool)r.CheckPaid, (DateTime?)r.CheckPaidAt, (string?)r.CheckPaidBy));
     }
 
     // ── Grouping helpers ─────────────────────────────────────────────────────

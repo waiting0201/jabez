@@ -136,7 +136,8 @@ public sealed record WriteOffRecordDto(
     decimal?          ReturnedAmount        = null,
     DateTime?         ReturnedAt            = null,
     string?           ReturnedProofFileName = null,
-    string?           ReturnedProofUrl      = null);
+    string?           ReturnedProofUrl      = null,
+    bool              FinancePassed         = false);  // 財務管理部關卡已核准（判準同 WriteOffRequestReadService.FinancePassedSql）
 
 /// <summary>沖銷摘要（用於預支申請列表顯示）</summary>
 public sealed record WriteOffSummaryDto(

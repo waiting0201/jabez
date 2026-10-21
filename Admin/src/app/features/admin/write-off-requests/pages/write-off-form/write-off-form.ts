@@ -1,7 +1,7 @@
 import {ChangeDetectorRef, Component, inject, OnInit, signal, viewChild} from '@angular/core';
 import {ActivatedRoute, Router, RouterLink} from '@angular/router';
 import {AbstractControl, FormArray, FormBuilder, FormsModule, ReactiveFormsModule, Validators} from '@angular/forms';
-import {DatePipe, DecimalPipe} from '@angular/common';
+import {DecimalPipe} from '@angular/common';
 import {DomSanitizer} from '@angular/platform-browser';
 import {HttpErrorResponse} from '@angular/common/http';
 import {firstValueFrom} from 'rxjs';
@@ -18,7 +18,11 @@ import {WriteOffRequestService} from '../../services/write-off-request.service';
 import {PaymentRequestService, OcrItem} from '../../../payment-requests/services/payment-request.service';
 import {validateInvoiceBuyer} from '../../../../../shared/utils/invoice-buyer-validator';
 import {AdvanceSummary, ITEM_CATEGORIES, DesignatedReviewer} from '../../models/write-off-request.model';
-import {AdvanceRequestItem, roundLabel} from '../../../advance-requests/models/advance-request.model';
+import {AdvanceRequestItem, AdvanceRound, roundLabel} from '../../../advance-requests/models/advance-request.model';
+import {AdvanceItemsReadonlyComponent} from '../../../../../shared/components/advance-items-readonly';
+import {PriorWriteOffsComponent} from '../../../../../shared/components/prior-write-offs';
+import {CategorySubtotalsComponent} from '../../../../../shared/components/category-subtotals';
+import {WriteOffRound} from '../../../approval-tasks/models/approval-task.model';
 import {JobTitleService} from '../../../job-titles/services/job-title.service';
 import {UserService} from '../../../users/services/user.service';
 import {ApprovalService} from '../../../approvals/services/approval.service';
@@ -35,10 +39,12 @@ import {MAX_REQUEST_DATE, MIN_REQUEST_DATE} from '@shared/utils/date-bounds';
 /** 明細列的三個連動金額欄（總價 = 現金花費 + 支票金額） */
 type AmountField = 'total' | 'cash' | 'check';
 
+const NO_HISTORY: WriteOffRound[] = [];
+
 @Component({
   selector: 'app-write-off-request-form',
   templateUrl: './write-off-form.html',
-  imports: [ReactiveFormsModule, FormsModule, RouterLink, DecimalPipe, DatePipe, FilePreviewModal, AttachmentsUpload, DesignatedReviewersPicker, ScrollIntoViewDirective],
+  imports: [ReactiveFormsModule, FormsModule, RouterLink, DecimalPipe, FilePreviewModal, AttachmentsUpload, DesignatedReviewersPicker, ScrollIntoViewDirective, AdvanceItemsReadonlyComponent, PriorWriteOffsComponent, CategorySubtotalsComponent],
 })
 export class WriteOffRequestForm implements OnInit {
   private fb             = inject(FormBuilder);
@@ -86,16 +92,19 @@ export class WriteOffRequestForm implements OnInit {
   /** 預支批次標籤（單一真相，與 advance-requests 模組共用） */
   readonly roundLabel = roundLabel;
 
-  /** 該批次的預支日期（比照 advance-detail.roundDate） */
-  roundDate(adv: AdvanceSummary, roundNo: number): string | null {
-    return adv.rounds?.find(r => r.roundNo === roundNo)?.advanceDate ?? null;
-  }
+  // ── 預支明細 / 前次沖銷（編輯模式取 GET 回傳；新增模式取選定預支單，皆為穩定參照）──
+  private editAdvItems   = signal<AdvanceRequestItem[]>([]);
+  private editAdvRounds  = signal<AdvanceRound[]>([]);
+  private editHistory    = signal<WriteOffRound[]>([]);
+  /** 表單明細快照（供分類小計；由 form.valueChanges 更新，避免模板內即時 map 新陣列） */
+  currentItemsSnap = signal<{category: string; totalPrice: number}[]>([]);
 
-  /** 是否為該批次的第一列（同批次第二列起批次欄留白，比照分類欄慣例） */
-  isFirstOfRound(items: AdvanceRequestItem[], index: number): boolean {
-    return index === 0 || items[index - 1].roundNo !== items[index].roundNo;
+  advItems(): AdvanceRequestItem[] { return this.selectedAdvance?.items ?? this.editAdvItems(); }
+  advRounds(): AdvanceRound[] { return this.selectedAdvance?.rounds ?? this.editAdvRounds(); }
+  /** 同預支單的前次沖銷（排除本單）*/
+  priorHistory(): WriteOffRound[] {
+    return this.isEdit ? this.editHistory() : (this.selectedAdvance?.writeOffHistory ?? NO_HISTORY);
   }
-
   /** 編輯模式時顯示的預支申請資訊（唯讀） */
   editModeAdvanceNo = '';
   editModeProjectCode = '';
@@ -275,6 +284,9 @@ export class WriteOffRequestForm implements OnInit {
   }
 
   ngOnInit() {
+    // 明細快照 → 分類小計（itemArray 增刪列、輸入金額 / 分類皆會觸發）
+    this.form.valueChanges.subscribe(() => this.currentItemsSnap.set(
+      this.itemArray.controls.map(c => ({category: c.get('category')?.value ?? '', totalPrice: +(c.get('totalPrice')?.value) || 0}))));
     // 檢查簽核流程是否有「申請人指定審核」步驟（呼叫輕量端點，免 approvals:read 權限）
     this.approvalSvc.getActiveByType('write_off').subscribe(flow => {
       const designated = (flow?.steps ?? []).filter(s => s.useApplicantDesignated);
@@ -313,6 +325,9 @@ export class WriteOffRequestForm implements OnInit {
         }
         this.form.patchValue({note: r.note ?? ''});
         this.loadedAttachments = r.attachments ?? [];
+        this.editAdvItems.set(r.advanceItems ?? []);
+        this.editAdvRounds.set(r.advanceRounds ?? []);
+        this.editHistory.set(r.writeOffHistory ?? []);
         // 回填指定審核者：唯讀模式與編輯模式皆由 pickerInitial 傳給 picker
         if (r.designatedReviewers?.length) {
           this.pickerInitial = r.designatedReviewers;

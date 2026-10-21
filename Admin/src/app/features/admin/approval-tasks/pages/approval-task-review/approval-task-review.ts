@@ -11,6 +11,9 @@ import {FilePreviewLoader} from '../../../../../shared/services/file-preview-loa
 import {AttachmentsList} from '../../../../../shared/components/attachments-list';
 import {InstallmentsEditorComponent} from '../../../../../shared/components/installments-editor';
 import {WriteOffReturnedInfo} from '../../../../../shared/components/write-off-returned-info';
+import {AdvanceItemsReadonlyComponent} from '../../../../../shared/components/advance-items-readonly';
+import {PriorWriteOffsComponent} from '../../../../../shared/components/prior-write-offs';
+import {CategorySubtotalsComponent} from '../../../../../shared/components/category-subtotals';
 import {WriteOffSummaryComponent} from '../../../../../shared/components/write-off-summary';
 import {ClosureInfoCardComponent} from '../../../../../shared/components/closure-info-card';
 import {AuthService} from '../../../../../core/auth/services/auth.service';
@@ -59,7 +62,7 @@ import {ShiftMonthCalendar} from '../../../../../shared/components/shift-month-c
 @Component({
   selector: 'app-approval-task-review',
   templateUrl: './approval-task-review.html',
-  imports: [RouterLink, ReactiveFormsModule, AsyncPipe, DatePipe, DecimalPipe, FilePreviewModal, AttachmentsList, InstallmentsEditorComponent, WriteOffSummaryComponent, WriteOffReturnedInfo, ClosureInfoCardComponent, ScrollIntoViewDirective, ShiftMonthCalendar],
+  imports: [RouterLink, ReactiveFormsModule, AsyncPipe, DatePipe, DecimalPipe, FilePreviewModal, AttachmentsList, InstallmentsEditorComponent, WriteOffSummaryComponent, WriteOffReturnedInfo, ClosureInfoCardComponent, ScrollIntoViewDirective, ShiftMonthCalendar, AdvanceItemsReadonlyComponent, PriorWriteOffsComponent, CategorySubtotalsComponent],
 })
 export class ApprovalTaskReview implements OnInit {
   private service           = inject(ApprovalTaskService);

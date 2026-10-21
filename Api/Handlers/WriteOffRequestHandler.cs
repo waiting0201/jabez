@@ -108,6 +108,9 @@ public sealed class WriteOffRequestHandler(
                 .ToListAsync())
             .ToLookup(s => s.AdvanceRequestId);
 
+        // 既有沖銷歷程（含是否過財務 + 前次沖銷明細）：Dapper 批次一次撈回，與沖銷詳情共用 SQL
+        var historyByAdvance = await reader.GetHistoryForAdvancesAsync(ids);
+
         var list = heads.Select(h =>
         {
             var items = itemLookup[h.Id].ToArray();
@@ -117,7 +120,8 @@ public sealed class WriteOffRequestHandler(
                 h.CashTotal, h.CheckTotal, h.GrandTotal, h.WrittenOffTotal, h.PendingWriteOffTotal,
                 // 批次組裝規則與 GET /advance-requests/{id} 共用同一份實作
                 AdvanceRequestReadService.BuildRounds(h.AdvanceDate, h.AdvanceNeededDate, supLookup[h.Id], items),
-                items);
+                items,
+                historyByAdvance.GetValueOrDefault(h.Id, []));
         }).ToList();
 
         return new OkObjectResult(ApiResponse.Ok(list));

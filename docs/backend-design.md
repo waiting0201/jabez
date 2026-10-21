@@ -1200,6 +1200,25 @@ public sealed class GcisService(HttpClient http, ILogger<GcisService> logger) : 
 4. **路由次序**：dispatch table 中**輕量子路由必須在 `[var id]` catch-all 之前**
 5. **DTO 獨立**：用獨立的 Summary DTO（如 `ApprovalFlowSummaryDto` ≠ `ApprovalItemDto`），避免主 DTO 新增欄位時意外洩漏
 
+### 13.5 沖銷單「是否已過財務」判準（FinancePassedSql，2026-10）
+
+沖銷狀態 badge 需區分「審核中 / 財務已審 / 已核准 / 退回修改 / 草稿」，其中「財務已審」＝整單仍 pending、但財務管理部關卡已核准。單一真相為 `WriteOffRequestReadService.FinancePassedSql(alias)`（`internal static`，輸出欄位 `FinancePassed` 0/1，參數 `@FinanceStepCodes` 取自 `FinanceStepCodesParam` ＝ `DepartmentCodes.FinanceStep`，**禁止硬編碼 `'FIN'`**）：
+
+```sql
+CASE WHEN wo.ApprovalStatus = 'approved' OR EXISTS (
+    SELECT 1 FROM ApprovalRecords ar
+    JOIN ApprovalSteps s ON s.ApprovalItemId = wo.ApprovalItemId AND s.StepOrder = ar.StepOrder
+    JOIN Departments d   ON d.Id = s.DepartmentId
+    WHERE ar.ApplicationType = 'write_off' AND ar.ApplicationId = wo.Id
+      AND ar.Action = 'approved' AND d.Code IN @FinanceStepCodes)
+THEN 1 ELSE 0 END AS FinancePassed
+```
+
+- **為何可信**：`WriteOffRequestHandler.SubmitAsync` 不論 draft / returned 送簽一律清空舊 `ApprovalRecords`（2026-10 安全修正），退回 / 拒絕後重送從零開始，故存活的 approved 紀錄必屬本輪簽核；write_off 不走追加批次（`RoundNo` 恆 1），不必過濾 RoundNo。
+- **共用處**：`GetWriteOffHistoryAsync` / `GetHistoryForAdvancesAsync`（沖銷詳情 / 編輯 / 彙總、`available-advances`）與 `PaymentRequestReadService.LoadWriteOffHistoryAsync`（簽核頁）；新增使用點一律呼叫此片段，不得自行改寫判準。
+- **前次沖銷明細 `WriteOffRoundDto.Items`**：非本單列才填。Dapper 路徑單次 `WHERE WriteOffRecordId IN @Ids`；簽核頁沿用 `FetchAllAsync` 已載入的全量 `woItemDict`，不另查。
+- 批次版 `IWriteOffRequestReadService.GetHistoryForAdvancesAsync(advanceIds, currentId?)` 供 Handler 取得歷程而不在 Handler 內寫 SQL。
+
 ### 13.3 何時要新增？
 
 - **症狀**：某前端表單對「沒有 X 管理權限」的使用者異常（欄位不顯示、下拉空、按鈕無效）
