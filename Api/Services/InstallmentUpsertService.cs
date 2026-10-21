@@ -14,7 +14,8 @@ public static class InstallmentUpsertService
 {
     /// <summary>
     /// 套用 <paramref name="inputs"/> 到既有 <paramref name="existing"/>（已 Include 的導覽集合）。
-    /// 回傳本次「新填 PaidAt」的清單供呼叫端發送已撥款通知。
+    /// 回傳本次「新填 PaidAt」與「更正 PaidAt 日期」的清單供呼叫端發送已撥款通知
+    /// （更正日期照發通知，讓申請人收到正確的撥款日）。
     /// </summary>
     /// <param name="db">DbContext（用於 Add / Remove；不 SaveChanges）</param>
     /// <param name="existing">父實體已追蹤的 Installments 導覽集合</param>
@@ -56,15 +57,23 @@ public static class InstallmentUpsertService
                     ?? throw AppException.BadRequest($"找不到要更新的撥款列 Id={input.Id.Value}。");
 
                 var wasPaidNull = !ent.PaidAt.HasValue;
+                var prevPaidDate = ent.PaidAt?.Date;
                 ent.InstallmentNo = input.InstallmentNo;
                 ent.ExpectedDate  = input.ExpectedDate.Date;
                 ent.Amount        = input.Amount;
                 ent.Note          = input.Note;
                 if (input.PaidAt.HasValue)
                 {
-                    ent.PaidAt = input.PaidAt.Value.Date + nowTaipei.TimeOfDay;
                     if (wasPaidNull)
                     {
+                        ent.PaidAt       = input.PaidAt.Value.Date + nowTaipei.TimeOfDay;
+                        ent.PaidByUserId = userId;
+                        newlyPaid.Add(new(ent.InstallmentNo, ent.PaidAt.Value, ent.Amount, inputs.Count));
+                    }
+                    else if (input.PaidAt.Value.Date != prevPaidDate)
+                    {
+                        // 已撥款列更正實際撥款日：出納簽名章改記更正者、照發已撥款通知；日期未變則原值不動
+                        ent.PaidAt       = input.PaidAt.Value.Date + nowTaipei.TimeOfDay;
                         ent.PaidByUserId = userId;
                         newlyPaid.Add(new(ent.InstallmentNo, ent.PaidAt.Value, ent.Amount, inputs.Count));
                     }

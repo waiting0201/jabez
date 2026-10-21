@@ -11,7 +11,8 @@ public static class InstallmentValidator
     /// 1. 至少 1 筆
     /// 2. InstallmentNo 1-based 連續無重複
     /// 3. SUM(Amount) == totalAmount（容忍 0.01 浮點誤差）
-    /// 4. 已撥（PaidAt 有值）的列：ExpectedDate / Amount / PaidAt 不可改、不可刪
+    /// 4. 已撥（PaidAt 有值）的列：ExpectedDate / Amount 不可改、不可刪；
+    ///    PaidAt 可**更正日期**（2026-10-21，財務輸入錯誤時自行修正）但不可清空（清空見 Scripts/19）
     /// </summary>
     /// <param name="inputs">前端送來的分期清單</param>
     /// <param name="totalAmount">申請總金額（PaymentRequest.TotalAmount 或其他三類的 GrandTotal）</param>
@@ -57,8 +58,8 @@ public static class InstallmentValidator
                 throw AppException.BadRequest($"第 {paidRow.InstallmentNo} 期已撥款，預計撥款日不可修改。");
             if (Math.Abs(match.Amount - paidRow.Amount) > 0.01m)
                 throw AppException.BadRequest($"第 {paidRow.InstallmentNo} 期已撥款，金額不可修改。");
-            if (!match.PaidAt.HasValue || match.PaidAt.Value.Date != paidRow.PaidAt!.Value.Date)
-                throw AppException.BadRequest($"第 {paidRow.InstallmentNo} 期已撥款，撥款日不可修改。");
+            if (!match.PaidAt.HasValue)
+                throw AppException.BadRequest($"第 {paidRow.InstallmentNo} 期已撥款，實際撥款日不可清空（僅可更正日期）。");
         }
     }
 }

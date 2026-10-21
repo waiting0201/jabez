@@ -1237,6 +1237,7 @@ UI 行為規範（5 種申請類型一致）：
 | **金額 input** | `min="1" step="1"`（整數，≥ 1）；`[attr.max]="installmentRowMax(task, i)"` 動態 = 申請總額 − 其他列已填 |
 | **預計撥款日 / 實際撥款日 / 金額 / 備註 input** | 已撥款列（`isInstallmentLocked(row)`）：`[attr.readonly]="true"` + `[class.bg-light]="true"` |
 | **刪除按鈕（⨯）** | 已撥款列：完全隱藏；只剩 1 列時也隱藏 |
+| **「編輯」/「取消」鈕（2026-10-21）** | 僅 `manage` mode 的已撥款列，放在刪除鈕同一格（`btn-link`）。「編輯」只解鎖該列實際撥款日（`editingIds` signal 記原值，「取消」還原），清空時該格 `is-invalid` 且「儲存撥款明細」禁用（`editingPaidAtValid()`）；更正中顯示黃字提示「儲存後會重新發送已撥款通知」。`rebuild()` 重載時清空編輯狀態 |
 | **剩餘額度 hint** | 在標題列顯示「剩餘 X 元」，即時反映 `申請總額 − installmentsSum()` |
 
 **元件內部 helpers 命名**：
@@ -1249,7 +1250,7 @@ UI 行為規範（5 種申請類型一致）：
 
 > ⚠️ **禁止用 `paymentStatus === 'FullyPaid'` 當禁用條件**（2026-07 移除）：**追加預支**核准後申請總額會變大，原本 FullyPaid 的單必須能補一期把新增金額排入。若沿用 FullyPaid 鎖定，財務端湊不到 `SUM == 總額`，而後端在財務步驟又強制必填撥款明細 → **整張單卡死無法核准**。已撥款列的保護改由 `isInstallmentLocked(row)`（欄位 readonly + 隱藏刪除鈕）與後端 `InstallmentValidator` 負責，兩者已足夠。
 
-> 後端 `InstallmentValidator.Validate` 提供等同的伺服端防線（序號連續、SUM == 總額、已撥款列不可刪不可改），前端為 UX，後端為強制驗證。
+> 後端 `InstallmentValidator.Validate` 提供等同的伺服端防線（序號連續、SUM == 總額、已撥款列不可刪、僅實際撥款日可更正且不可清空），前端為 UX，後端為強制驗證。
 
 ### 7.7 沖銷金額摘要（[`<app-write-off-summary>`](../Admin/src/app/shared/components/write-off-summary.ts)）
 
