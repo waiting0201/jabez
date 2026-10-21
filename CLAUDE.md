@@ -535,6 +535,9 @@ Api/
 │   │                                  #      無 GPS、請假日仍在整點登入；另列凌晨 / 傍晚才打上班卡、靠系統補下班卡的異常。
 │   │                                  #      ⚠ 08:58～09:00 的集中是 LINE 08:58 提醒推播後點開打卡，屬正常
 │   │                                  #   18 補登歷史預支沖銷的「同仁繳回預支餘額」（@Commit 空跑開關，冪等可重跑）：以預支單 RequestNo 定位，寫入該預支單最後一張已核准沖銷的 ReturnedAmount / ReturnedAt（無匯款照片）；金額超過尚未結清 / 已有不同繳回資料即中止
+│   │                                  #   19 清除預支單某一期誤填的「實際撥款日」（@Commit 空跑開關，冪等可重跑；首例 ADV-20260921-001 第 2 期）：
+│   │                                  #      前台已撥款列全鎖、InstallmentValidator 亦拒改，故以腳本處理。以 RequestNo + InstallmentNo 定位、預計撥款日 / 金額防呆，
+│   │                                  #      PaidAt 與 PaidByUserId 一起清（兩者撥款時同時寫入）；已發出的「已撥款」通知無法撤回
 │   └── Seed/                          # 一次性匯入工具（共用 RocDateParser 解民國年）
 │       ├── EmployeeImporter + EmployeeImportDtos + employee-import.json  # 員工人事資料（RUN_EMPLOYEE_IMPORT 旗標，IMPORT_UPLOAD_FILES 控制附件上傳）
 │       ├── ProjectImporter + ProjectImportDtos + project-import.json     # 專案資料（RUN_PROJECT_IMPORT 旗標，PROJECT_IMPORT_DRY_RUN 只印不寫；來源 reference/專案資料-115.07.29.xls；以 Code upsert、期別明細全量重建）
