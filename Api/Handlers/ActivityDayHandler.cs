@@ -302,9 +302,15 @@ public sealed class ActivityDayHandler(
     }
 
     /// <summary>
+    /// 可把自己列為預定人力的職稱（2026-10-21 業務決議：帶隊出活動的主管層）。以職稱名稱比對，
+    /// 與 Scripts/14 同一做法（JobTitles.Id 各環境不同）；「財務協理」「專案經理」等不在名單內。
+    /// </summary>
+    private static readonly HashSet<string> SelfAssignableJobTitles = ["協理", "經理", "執行長"];
+
+    /// <summary>
     /// 預定人力驗證：必須在職、非 Superadmin；非 Superadmin 呼叫者另須：
-    /// 人員所屬部門落在其 ProjectAccessScope 內（不得指派範圍外部門的人），且不得把自己列為預定人力
-    /// （否則可自行把自己的例假 / 休假覆蓋成上班日、或繞過排班規範）。
+    /// 人員所屬部門落在其 ProjectAccessScope 內（不得指派範圍外部門的人），且除 <see cref="SelfAssignableJobTitles"/>
+    /// 外不得把自己列為預定人力（否則可自行把自己的例假 / 休假覆蓋成上班日、或繞過排班規範）。
     /// <paramref name="existingUserIds"/>：更新時既有的預定人力，不重驗範圍 / 本人條件。
     /// </summary>
     private async Task EnsureAssigneesValidAsync(
@@ -327,7 +333,14 @@ public sealed class ActivityDayHandler(
 
         var callerId = await GetUserIdAsync(req);
         if (added.Contains(callerId))
-            throw AppException.BadRequest("不可將自己列為預定人力，請由其他有權限的人建立或調整。");
+        {
+            var callerTitle = await db.Users.AsNoTracking()
+                .Where(u => u.Id == callerId)
+                .Select(u => u.JobTitle != null ? u.JobTitle.Name : null)
+                .FirstOrDefaultAsync();
+            if (callerTitle is null || !SelfAssignableJobTitles.Contains(callerTitle))
+                throw AppException.BadRequest("不可將自己列為預定人力，請由其他有權限的人建立或調整。");
+        }
 
         var scope = await access.ResolveAsync(principal);
         if (scope.SeeAll) return;
