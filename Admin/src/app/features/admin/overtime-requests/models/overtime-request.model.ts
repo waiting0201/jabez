@@ -32,7 +32,7 @@ export interface DesignatedReviewer {
 
 /**
  * 補償方式（整單二擇一）：
- * - compensatory 補休 → 時數計入補休池（見請假申請的「補休」假別）
+ * - compensatory 補休 → 時數計入補休統計（見請假申請的「補休」假別）
  * - pay 加班費       → 依勞基法分段累進倍率試算，隨「加班日次月」薪資發放
  */
 export type OvertimeCompensationType = 'compensatory' | 'pay';
