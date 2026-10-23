@@ -56,6 +56,9 @@ public static class AdvanceSupplementService
             .ToList();
         db.AdvanceRequestItems.RemoveRange(roundItems);
 
+        // 1b. 刪除該批次加選的預審單關聯（Cascade 只管預支單本身被刪，批次回滾要手動清）
+        await AdvancePreReviewLinker.RemoveRoundAsync(db, ar.Id, roundNo);
+
         // 2. 刪除該批次的簽核足跡（第 1 輪紀錄必須保留）
         db.ApprovalRecords.RemoveRange(
             await db.ApprovalRecords

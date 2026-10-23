@@ -50,4 +50,5 @@ public class AdvanceRequest
     public ICollection<WriteOffRecord>              WriteOffs    { get; set; } = [];
     public ICollection<AdvanceRequestInstallment>   Installments { get; set; } = [];
     public ICollection<AdvanceRequestSupplement>    Supplements  { get; set; } = [];
+    public ICollection<AdvanceRequestPreReview>     PreReviews   { get; set; } = [];
 }

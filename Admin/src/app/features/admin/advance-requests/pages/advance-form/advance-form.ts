@@ -1,4 +1,4 @@
-import {ChangeDetectorRef, Component, inject, OnInit, signal} from '@angular/core';
+import {ChangeDetectorRef, Component, computed, inject, OnInit, signal, viewChild} from '@angular/core';
 import {ActivatedRoute, Router, RouterLink} from '@angular/router';
 import {AbstractControl, FormArray, FormBuilder, FormsModule, ReactiveFormsModule, Validators} from '@angular/forms';
 import {DatePipe, DecimalPipe} from '@angular/common';
@@ -7,7 +7,7 @@ import {HttpErrorResponse} from '@angular/common/http';
 import {AdvanceRequestService} from '../../services/advance-request.service';
 import {ProjectService} from '../../../projects/services/project.service';
 import {Project} from '../../../projects/models/project.model';
-import {ApprovalStatus, APPROVAL_STATUS_LABELS, APPROVAL_STATUS_CLASSES, ITEM_CATEGORIES, DesignatedReviewer, AdvanceRound, roundLabel} from '../../models/advance-request.model';
+import {ApprovalStatus, APPROVAL_STATUS_LABELS, APPROVAL_STATUS_CLASSES, ITEM_CATEGORIES, DesignatedReviewer, AdvanceRound, AdvanceLinkedPreReview, LinkablePreReview, roundLabel} from '../../models/advance-request.model';
 import {CategorySubtotalsComponent} from '../../../../../shared/components/category-subtotals';
 import {JobTitleService} from '../../../job-titles/services/job-title.service';
 import {UserService} from '../../../users/services/user.service';
@@ -30,6 +30,8 @@ import {convertHeicIfNeeded, heicFailedMessage} from '@shared/utils/heic';
 
 import {ScrollIntoViewDirective} from '@shared/directives/scroll-into-view.directive';
 import {ProjectTypeahead} from '@shared/components/project-typeahead';
+import {LinkedPreReviews, PreReviewWindows} from '@shared/components/linked-pre-reviews';
+import {PreReviewRequestService} from '../../../pre-review-requests/services/pre-review-request.service';
 import {MAX_REQUEST_DATE, MIN_REQUEST_DATE} from '@shared/utils/date-bounds';
 
 /** 明細列的三個連動金額欄（總價 = 現金(預支) + 支票(月結)） */
@@ -38,12 +40,13 @@ type AmountField = 'total' | 'cash' | 'check';
 @Component({
   selector: 'app-advance-form',
   templateUrl: './advance-form.html',
-  imports: [ReactiveFormsModule, FormsModule, RouterLink, DecimalPipe, DatePipe, ApprovalTimeline, FilePreviewModal, InstallmentsTable, DesignatedReviewersPicker, ScrollIntoViewDirective, ProjectTypeahead, CategorySubtotalsComponent],
+  imports: [ReactiveFormsModule, FormsModule, RouterLink, DecimalPipe, DatePipe, ApprovalTimeline, FilePreviewModal, InstallmentsTable, DesignatedReviewersPicker, ScrollIntoViewDirective, ProjectTypeahead, CategorySubtotalsComponent, LinkedPreReviews, PreReviewWindows],
 })
 export class AdvanceForm implements OnInit {
   private fb             = inject(FormBuilder);
   private toastr = inject(ToastrService);
   private service        = inject(AdvanceRequestService);
+  private preReviewSvc   = inject(PreReviewRequestService);
   private projectService = inject(ProjectService);
   private jobTitleSvc    = inject(JobTitleService);
   private userSvc        = inject(UserService);
@@ -129,6 +132,74 @@ export class AdvanceForm implements OnInit {
     this._suppressedSteps = stepOrders;
   }
 
+  // ── 關聯預審單（選填，可複選；與專案欄互不連動）──────────────────────────
+  /** 本人 + 已核准的預審單（不限專案） */
+  linkablePreReviews = signal<LinkablePreReview[]>([]);
+  loadingPreReviews  = signal(false);
+  /** 本批次勾選的預審單 id（追加模式只含「這一次新選」的） */
+  selectedPreReviewIds = signal<ReadonlySet<number>>(new Set());
+  /** 已在先前批次關聯的預審單：id -> 批次號（追加模式顯示為已勾選且 disabled） */
+  lockedPreReviews = signal<ReadonlyMap<number, number>>(new Map());
+  /** 後端目前已存的關聯（供唯讀 chip 與補列） */
+  existingPreReviews = signal<AdvanceLinkedPreReview[]>([]);
+  preReviewKeyword = signal('');
+  /** 預審浮動視窗管理器（申請人本人，直接走 pre-review-requests 詳情） */
+  private preWindows = viewChild(PreReviewWindows);
+  readonly preReviewFetcher = (id: number) => this.preReviewSvc.getById(id);
+
+  /** 清單列：可選清單 ∪ 已關聯但不在清單內者（避免已存關聯在畫面上消失） */
+  preReviewRows = computed(() => {
+    const locked = this.lockedPreReviews();
+    const selected = this.selectedPreReviewIds();
+    const rows = this.linkablePreReviews().map(p => ({
+      id: p.id, requestNo: p.requestNo, projectCode: p.projectCode, projectName: p.projectName,
+      reason: p.reason, gross: (p.totalAmount ?? 0) + (p.taxAmount ?? 0), linkedAdvanceNos: p.linkedAdvanceNos ?? [],
+    }));
+    const have = new Set(rows.map(r => r.id));
+    for (const e of this.existingPreReviews()) {
+      if (have.has(e.preReviewRequestId)) continue;
+      rows.push({
+        id: e.preReviewRequestId, requestNo: e.requestNo, projectCode: e.projectCode, projectName: e.projectName,
+        reason: e.reason, gross: (e.totalAmount ?? 0) + (e.taxAmount ?? 0), linkedAdvanceNos: [],
+      });
+    }
+    return rows.map(r => ({...r, lockedRound: locked.get(r.id) ?? null, checked: locked.has(r.id) || selected.has(r.id)}));
+  });
+
+  filteredPreReviewRows = computed(() => {
+    const kw = this.preReviewKeyword().trim().toLowerCase();
+    const rows = this.preReviewRows();
+    if (!kw) return rows;
+    return rows.filter(r => [r.requestNo, r.projectCode, r.projectName, r.reason]
+      .some(v => (v ?? '').toLowerCase().includes(kw)));
+  });
+
+  togglePreReview(id: number, checked: boolean) {
+    this.selectedPreReviewIds.update(set => {
+      const next = new Set(set);
+      if (checked) next.add(id); else next.delete(id);
+      return next;
+    });
+  }
+
+  viewPreReview(id: number) { this.preWindows()?.open(id); }
+
+  /** 編輯 / 追加模式回填既有關聯：本批次的可編輯，其他批次的鎖定 */
+  private _initPreReviews(list: AdvanceLinkedPreReview[]) {
+    const cur = this.isSupplement ? this.supplementRound : 1;
+    this.existingPreReviews.set(list);
+    this.selectedPreReviewIds.set(new Set(list.filter(p => p.roundNo === cur).map(p => p.preReviewRequestId)));
+    this.lockedPreReviews.set(new Map(list.filter(p => p.roundNo !== cur).map(p => [p.preReviewRequestId, p.roundNo] as const)));
+  }
+
+  private _loadLinkablePreReviews() {
+    this.loadingPreReviews.set(true);
+    this.service.getLinkablePreReviews(this.requestId || undefined).subscribe({
+      next: list => { this.linkablePreReviews.set(list); this.loadingPreReviews.set(false); },
+      error: () => this.loadingPreReviews.set(false),   // 選填功能：失敗不阻擋申請，錯誤由全域 interceptor 提示
+    });
+  }
+
   getUserName(userId: string | null): string {
     if (!userId) return '—';
     return this.allUsers.find(u => u.id === userId)?.name ?? userId;
@@ -195,6 +266,7 @@ export class AdvanceForm implements OnInit {
       error: () => { this.loadingProjects = false; this.errorMsg.set('載入專案資料失敗。'); },
     });
     this.isSupplement = this.route.snapshot.data['mode'] === 'supplement';
+    if (!this.route.snapshot.paramMap.get('id')) this._loadLinkablePreReviews();   // 新增模式：進表單即載入；編輯 / 追加待 getById 判定唯讀後載入
     const roundParam = this.route.snapshot.paramMap.get('round');
     this.supplementRound = roundParam ? +roundParam : 0;
 
@@ -212,6 +284,7 @@ export class AdvanceForm implements OnInit {
         this.projectCode = r.projectCode ?? '';
         this.projectName = r.projectName ?? '';
         if (this.isReadOnly) this.form.disable();
+        else this._loadLinkablePreReviews();
         this.form.patchValue({
           projectId:      r.projectId,
           activityName:   r.activityName,
@@ -230,6 +303,7 @@ export class AdvanceForm implements OnInit {
 
         if (this.isSupplement) {
           this._initSupplement(r.rounds ?? [], r.grandTotal ?? 0);
+          this._initPreReviews(r.preReviews ?? []);
           this.seqOffset = r.items.filter(item => item.roundNo < this.supplementRound).length;
           // 只載入本批次明細；新增追加時為空白
           r.items
@@ -244,6 +318,7 @@ export class AdvanceForm implements OnInit {
           return;
         }
 
+        this._initPreReviews(r.preReviews ?? []);
         r.items.forEach((item, idx) => this.itemArray.push(this._itemGroup(
           item.category, item.seqNo, item.itemName, item.unitPrice,
           item.quantity, item.totalPrice, item.cashAmount, item.checkAmount,
@@ -569,6 +644,7 @@ export class AdvanceForm implements OnInit {
     fd.append('activityPeriod', this.form.get('activityPeriod')?.value || '');
     fd.append('advanceDate', this.form.get('advanceDate')?.value || '');
     fd.append('advanceNeededDate', this.form.get('advanceNeededDate')?.value || '');
+    fd.append('preReviewRequestIds', JSON.stringify([...this.selectedPreReviewIds()]));
 
     // 指定審核者清單（從 picker payload 組成，含 approvalStepOrder 與 selectedDepartmentId）
     if (this._pickerPayload.length > 0) {
@@ -585,6 +661,7 @@ export class AdvanceForm implements OnInit {
     fd.append('advanceDate', this.form.get('advanceDate')?.value || '');
     fd.append('advanceNeededDate', this.form.get('advanceNeededDate')?.value || '');
     fd.append('reason', this.form.get('reason')?.value || '');
+    fd.append('preReviewRequestIds', JSON.stringify([...this.selectedPreReviewIds()]));   // 只含本批次新選的
     this._appendItems(fd);
     return fd;
   }

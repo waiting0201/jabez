@@ -325,6 +325,40 @@ namespace Jabez.Api.Data.Migrations
                     b.ToTable("AdvanceRequestItems");
                 });
 
+            modelBuilder.Entity("Jabez.Api.Models.Entities.AdvanceRequestPreReview", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("AdvanceRequestId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasDefaultValueSql("DATEADD(hour, 8, GETUTCDATE())");
+
+                    b.Property<int>("PreReviewRequestId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("RoundNo")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(1);
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PreReviewRequestId");
+
+                    b.HasIndex("AdvanceRequestId", "PreReviewRequestId")
+                        .IsUnique();
+
+                    b.ToTable("AdvanceRequestPreReviews", (string)null);
+                });
+
             modelBuilder.Entity("Jabez.Api.Models.Entities.AdvanceRequestSupplement", b =>
                 {
                     b.Property<int>("Id")
@@ -8064,6 +8098,25 @@ namespace Jabez.Api.Data.Migrations
                     b.Navigation("AdvanceRequest");
                 });
 
+            modelBuilder.Entity("Jabez.Api.Models.Entities.AdvanceRequestPreReview", b =>
+                {
+                    b.HasOne("Jabez.Api.Models.Entities.AdvanceRequest", "AdvanceRequest")
+                        .WithMany("PreReviews")
+                        .HasForeignKey("AdvanceRequestId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Jabez.Api.Models.Entities.PreReviewRequest", "PreReviewRequest")
+                        .WithMany()
+                        .HasForeignKey("PreReviewRequestId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.Navigation("AdvanceRequest");
+
+                    b.Navigation("PreReviewRequest");
+                });
+
             modelBuilder.Entity("Jabez.Api.Models.Entities.AdvanceRequestSupplement", b =>
                 {
                     b.HasOne("Jabez.Api.Models.Entities.AdvanceRequest", "AdvanceRequest")
@@ -9208,6 +9261,8 @@ namespace Jabez.Api.Data.Migrations
                     b.Navigation("Installments");
 
                     b.Navigation("Items");
+
+                    b.Navigation("PreReviews");
 
                     b.Navigation("Supplements");
 

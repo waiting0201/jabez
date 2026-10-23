@@ -105,6 +105,16 @@ export class AdvancePdfService {
       y += 6;
       lv('活動期間：', r.activityPeriod, mx, y);
 
+      // 關聯預審單：只印單號（不印預審明細）
+      const preReviewNos = (r.preReviews ?? []).map(p => p.requestNo).filter((n): n is string => !!n);
+      if (preReviewNos.length > 0) {
+        y += 6;
+        const label = '關聯預審單：';
+        const lines: string[] = doc.splitTextToSize(preReviewNos.join('、'), cw - doc.getTextWidth(label));
+        lv(label, lines[0], mx, y);
+        for (const extra of lines.slice(1)) { y += 5; doc.text(extra, mx + doc.getTextWidth(label), y); }
+      }
+
       // ── 明細表格 ──
       y += 8;
       const items = r.items || [];

@@ -182,6 +182,19 @@ write_off / travel_write_off）與 `approval-tasks` 詳情共用這一份判準�
 而列表 `GetAllAsync` 非 Superadmin 一律只列自己的單 —— 2026-09 一併收斂，是補上缺口而非放寬。
 新增申請類型時，**列表的可見範圍與單筆的檢視授權要一起設計**。
 
+#### 母單的附屬物件（連結表）授權經母單（2026-10）
+
+申請單底下若掛有「**可被點開看細節的另一張單**」（例：預支關聯的預審單，`AdvanceRequestPreReview`），
+該附屬物件**不得**另立一套授權，更不可放行審核者直接讀它自己的端點（`/pre-review-requests/{id}` 僅申請人本人）。
+作法固定為：**新增掛在母單底下的專用端點**（`GET /approval-tasks/advance/{id}/pre-reviews/{preReviewId}`），授權 =
+
+1. 母單的 `RequestViewAccess.CanViewAsync(母單類型, 母單 id, …, StepReviewerProbe)` ——「能看母單的人」才可能看到它的附屬物件；
+2. **且連結表存在 `(母單 id, 附屬物件 id)` 這一列** —— 否則能看母單的人可藉此讀任意他人的預審單（IDOR）。
+
+兩者任一不符一律 **404**。路由可放在 `approval-tasks` 底下（該群組權限表無碼，授權全在 Handler 內）。
+連結表對母單 Cascade、對附屬物件 NoAction（被引用中不可刪，Delete 端點另回 400）；
+母單回滾（追加批次駁回 / 放棄）時須手動清該批次的連結列，Cascade 只涵蓋母單被刪除。
+
 三個施工守則：
 
 1. **`applicationType` 要與送簽時寫進多型足跡表的值一致**。`TravelRequests` 一張表承載兩種申請，

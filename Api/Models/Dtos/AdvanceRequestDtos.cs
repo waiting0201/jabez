@@ -83,7 +83,32 @@ public sealed record AdvanceRequestDto(
     DateTime?                 AdvanceNeededDate      = null,
     // 公司已補撥的超支差額（已核准沖銷的已撥款差額分期合計 / 最後撥款日；詳情頁「尚未結清」為負時判定已結清用）
     decimal                   OverspendPaidTotal     = 0,
-    DateTime?                 OverspendLastPaidAt    = null);
+    DateTime?                 OverspendLastPaidAt    = null,
+    IEnumerable<AdvanceLinkedPreReviewDto>? PreReviews = null);
+
+/// <summary>預支單關聯的預審單摘要（RoundNo = 第幾次預支加選的；1 = 原始預支）。</summary>
+public sealed record AdvanceLinkedPreReviewDto(
+    int       PreReviewRequestId,
+    string?   RequestNo,
+    int       RoundNo,
+    string?   ProjectCode,
+    string?   ProjectName,
+    string?   Reason,
+    decimal   TotalAmount,   // 未稅小計；含稅 = TotalAmount + TaxAmount
+    decimal   TaxAmount,
+    DateTime? SubmittedAt);
+
+/// <summary>預支表單「可關聯預審單」清單項目：LinkedAdvanceNos = 引用它的【其他】預支單（單號或「草稿」，不含已拒絕）。</summary>
+public sealed record LinkablePreReviewDto(
+    int       Id,
+    string?   RequestNo,
+    string?   ProjectCode,
+    string?   ProjectName,
+    string?   Reason,
+    decimal   TotalAmount,
+    decimal   TaxAmount,
+    DateTime? SubmittedAt,
+    IEnumerable<string> LinkedAdvanceNos);
 
 // ── WriteOff DTOs ───────────────────────────────────────────────────────────
 
@@ -191,7 +216,8 @@ public sealed record AdvanceTaskDetailDto(
     int       CurrentRoundNo = 1,
     bool      IsClosed = false,
     DateTime? ClosedAt = null,
-    DateTime? AdvanceNeededDate = null)
+    DateTime? AdvanceNeededDate = null,
+    IEnumerable<AdvanceLinkedPreReviewDto>? PreReviews = null)
 {
     public AdvanceRequestItemDto[] Items { get; init; } = Items ?? Array.Empty<AdvanceRequestItemDto>();
 }

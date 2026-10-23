@@ -127,59 +127,7 @@
           報價單品項
         </div>
         <div class="card-body p-0">
-          <div class="table-responsive">
-            <table class="table table-sm mb-0">
-              <thead class="table-light">
-                <tr>
-                  <th style="width:40px"></th>
-                  <th>品項類別</th>
-                  <th>日期</th>
-                  <th>項目</th>
-                  <th>說明</th>
-                  <th class="text-right">金額</th>
-                  <th>備註</th>
-                </tr>
-              </thead>
-              <tbody>
-                @for (item of r.items; track item.id) {
-                  <tr>
-                    <td class="align-middle text-center">
-                      @if (item.fileUrl) {
-                        <button type="button" class="btn btn-sm btn-ghost-secondary p-1"
-                                (click)="openPreview(item.fileName || '報價單', item.fileUrl!)"
-                                title="{{ item.fileName }}">
-                          <svg class="sa-icon" style="stroke:currentColor"><use href="/assets/icons/sprite.svg#file-text"></use></svg>
-                        </button>
-                      }
-                    </td>
-                    <td class="small">{{ item.itemCategory || '—' }}</td>
-                    <td class="small">{{ item.itemDate ? (item.itemDate | date:'yyyy-MM-dd') : '—' }}</td>
-                    <td class="small">{{ item.itemName || '—' }}</td>
-                    <td class="small">{{ item.description || '—' }}</td>
-                    <td class="text-right small fw-500">{{ item.amount | number:'1.0-0' }}</td>
-                    <td class="small text-muted">{{ item.note || '—' }}</td>
-                  </tr>
-                }
-              </tbody>
-              <tfoot>
-                <tr class="table-light">
-                  <td colspan="5" class="text-right fw-500 small">未稅小計</td>
-                  <td class="text-right fw-600">{{ r.totalAmount | number:'1.0-0' }}</td>
-                  <td></td>
-                </tr>
-                <tr class="table-light">
-                  <td colspan="5" class="text-right fw-500 small">稅金</td>
-                  <td class="text-right fw-500">{{ (r.taxAmount ?? 0) | number:'1.0-0' }}</td>
-                  <td></td>
-                </tr>
-                <tr class="table-light">
-                  <td colspan="5" class="text-right fw-600 small">含稅總計</td>
-                  <td class="text-right fw-700 text-[--forest]">{{ (r.totalAmount + (r.taxAmount ?? 0)) | number:'1.0-0' }}</td>
-                  <td></td>
-                </tr>
-              </tfoot>
-            </table>
-          </div>
+          <app-pre-review-items-readonly [items]="r.items" [totalAmount]="r.totalAmount" [taxAmount]="r.taxAmount" />
         </div>
       </div>
     }
@@ -216,7 +164,3 @@
     <div class="text-center py-6 text-muted">載入中…</div>
   }
 </div>
-
-@if (previewFile) {
-  <app-file-preview-modal [file]="previewFile" (closed)="closePreview()" />
-}

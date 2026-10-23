@@ -15,12 +15,13 @@ import {ApprovalTimeline} from '../../../../../shared/components/approval-timeli
 import {InstallmentsTable} from '../../../../../shared/components/installments-table';
 import {CategorySubtotalsComponent} from '../../../../../shared/components/category-subtotals';
 import {ClosureInfoCardComponent} from '../../../../../shared/components/closure-info-card';
+import {LinkedPreReviews} from '../../../../../shared/components/linked-pre-reviews';
 import {FilePreviewModal, PreviewFileData} from '../../../../../shared/components/file-preview-modal';
 
 @Component({
   selector: 'app-advance-detail',
   templateUrl: './advance-detail.html',
-  imports: [RouterLink, DecimalPipe, DatePipe, ApprovalTimeline, InstallmentsTable, ClosureInfoCardComponent, FilePreviewModal, CategorySubtotalsComponent],
+  imports: [RouterLink, DecimalPipe, DatePipe, ApprovalTimeline, InstallmentsTable, ClosureInfoCardComponent, FilePreviewModal, CategorySubtotalsComponent, LinkedPreReviews],
 })
 export class AdvanceDetail implements OnInit {
   private service = inject(AdvanceRequestService);

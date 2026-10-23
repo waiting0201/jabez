@@ -142,7 +142,60 @@ public sealed class AdvanceRequestReadService(IDbConnection db, IInstallmentRead
             Installments = instList.Count > 0 ? instList.ToArray() : null,
             PaymentStatus = installments.ComputeStatus(instList),
             Rounds = BuildRounds(dto.AdvanceDate, dto.AdvanceNeededDate, supRows, dto.Items),
+            PreReviews = await GetLinkedPreReviewsAsync(id),
         };
+    }
+
+    public async Task<IEnumerable<AdvanceLinkedPreReviewDto>> GetLinkedPreReviewsAsync(int advanceRequestId)
+        => await LoadLinkedPreReviewsAsync(db, advanceRequestId);
+
+    /// <summary>關聯預審單查詢本體（static，簽核作業詳情 PaymentRequestReadService 共用，確保兩處同一份 SQL / 排序）。</summary>
+    internal static async Task<AdvanceLinkedPreReviewDto[]> LoadLinkedPreReviewsAsync(IDbConnection db, int advanceRequestId)
+    {
+        const string sql = """
+            SELECT l.PreReviewRequestId, p.RequestNo, l.RoundNo,
+                   pj.Code AS ProjectCode, pj.Name AS ProjectName,
+                   p.Reason, p.TotalAmount, p.TaxAmount, p.SubmittedAt
+            FROM AdvanceRequestPreReviews l
+            JOIN PreReviewRequests p ON p.Id = l.PreReviewRequestId
+            LEFT JOIN Projects pj    ON pj.Id = p.ProjectId
+            WHERE l.AdvanceRequestId = @Id
+            ORDER BY l.RoundNo, p.RequestNo
+            """;
+        return (await db.QueryAsync<AdvanceLinkedPreReviewDto>(sql, new { Id = advanceRequestId })).ToArray();
+    }
+
+    public async Task<IEnumerable<LinkablePreReviewDto>> GetLinkablePreReviewsAsync(Guid submitterId, int? excludeAdvanceRequestId)
+    {
+        const string sql = """
+            SELECT p.Id, p.RequestNo, pj.Code AS ProjectCode, pj.Name AS ProjectName,
+                   p.Reason, p.TotalAmount, p.TaxAmount, p.SubmittedAt
+            FROM PreReviewRequests p
+            LEFT JOIN Projects pj ON pj.Id = p.ProjectId
+            WHERE p.SubmittedById = @SubmitterId AND p.ApprovalStatus = 'approved'
+            ORDER BY p.SubmittedAt DESC, p.Id DESC
+            """;
+        var items = (await db.QueryAsync<dynamic>(sql, new { SubmitterId = submitterId })).ToList();
+        if (items.Count == 0) return [];
+
+        // 引用它的其他預支單（排除自己這張與已拒絕者）；草稿尚無單號，以「草稿」表示
+        const string linkSql = """
+            SELECT l.PreReviewRequestId, ISNULL(a.RequestNo, N'草稿') AS AdvanceNo
+            FROM AdvanceRequestPreReviews l
+            JOIN AdvanceRequests a ON a.Id = l.AdvanceRequestId
+            WHERE l.PreReviewRequestId IN @Ids
+              AND a.ApprovalStatus <> 'rejected'
+              AND (@ExcludeId IS NULL OR a.Id <> @ExcludeId)
+            ORDER BY a.RequestNo
+            """;
+        var ids = items.Select(i => (int)i.Id).ToList();
+        var links = (await db.QueryAsync<(int PreReviewRequestId, string AdvanceNo)>(
+            linkSql, new { Ids = ids, ExcludeId = excludeAdvanceRequestId })).ToList();
+
+        return items.Select(i => new LinkablePreReviewDto(
+            (int)i.Id, (string?)i.RequestNo, (string?)i.ProjectCode, (string?)i.ProjectName,
+            (string?)i.Reason, (decimal)i.TotalAmount, (decimal)i.TaxAmount, (DateTime?)i.SubmittedAt,
+            links.Where(l => l.PreReviewRequestId == (int)i.Id).Select(l => l.AdvanceNo).ToArray())).ToArray();
     }
 
     /// <summary>
