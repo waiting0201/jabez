@@ -325,6 +325,8 @@ export interface AdvanceTaskDetail {
   refundedAmount?: number;
   /** 預支款需求日（選填；Round 1 的值，逐批次值請看 rounds[]） */
   advanceNeededDate?: string;
+  /** 關聯的預審單（供審核者對照；點開走 GET /approval-tasks/advance/{id}/pre-reviews/{preReviewId}） */
+  preReviews?: import('../../advance-requests/models/advance-request.model').AdvanceLinkedPreReview[];
 }
 
 export interface WriteOffTaskDetailItem {

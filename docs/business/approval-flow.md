@@ -719,6 +719,14 @@ RefundDue = max(0, 前次已沖銷 + 本次沖銷 − 預支總額)
 - `AdvanceRequestSupplement`：只存 `RoundNo ≥ 2` 的批次（日期 / 原因 / 回滾快照）。Round 1 即父單本身，零資料重複；各批次金額一律由該批次明細加總推導，不存金額欄位
 - `ApprovalRecord.RoundNo`：簽核紀錄所屬批次（其餘 9 種申請恆為 1）
 
+### 關聯預審單（2026-10 新增）
+
+預支申請（含追加批次）可關聯多張**已核准、申請人本人送出、不限專案**的預審單（`AdvanceRequestPreReview`，`RoundNo` 記錄哪一批加選），供簽核人員對照「當初預審核准了什麼品項 / 金額」。純對照資訊，**不參與簽核判斷、不影響金額與撥款**。
+
+- 簽核詳情（`GET /approval-tasks/advance/{id}`）的 `advanceDetail.preReviews[]` 帶摘要；點開細項走 `GET /approval-tasks/advance/{id}/pre-reviews/{preReviewId}`
+- **授權一律經母單**：能看這張預支單（`RequestViewAccess.CanViewAsync`，含目前候選審核者 `StepReviewerProbe`）且關聯列存在，才讀得到該預審單；審核者不得直接讀 `/pre-review-requests/{id}`（僅申請人本人），也無須 `pre-review-requests:read`
+- 追加批次被駁回 / 主動放棄：`AdvanceSupplementService.RollbackAsync` 刪除該 `RoundNo` 的關聯列（第 1 輪不受影響）
+
 ### 狀態流轉
 
 ```

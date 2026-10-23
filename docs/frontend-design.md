@@ -2468,6 +2468,37 @@ Angular 指令不會被編譯；自刻 CSS popover 又會被 FullCalendar 格子
 
 ---
 
+## 12.9 可拖拉浮動視窗（`<app-draggable-window>`，2026-10）
+
+**用途**：簽核人員要「一邊看這張單、一邊對照另一份資料」時使用（目前：預支單點開關聯預審單，對照當初核准的品項 / 金額）。
+與 `NgbModal` 的差別：**無背景遮罩、不鎖頁面捲動、可同時開多個**，使用者可把視窗拖到旁邊對照。需要使用者專心完成一個動作的情境（確認 / 填寫）仍用 Modal（§11.7）。
+
+**元件**：[shared/components/draggable-window.ts](../Admin/src/app/shared/components/draggable-window.ts)（不使用 `@angular/cdk`，手寫 pointer events，範本同頭像拖曳 `setPointerCapture`）
+
+| 行為 | 規則 |
+|---|---|
+| 結構 | `position: fixed`；標題列（品牌綠）為拖拉把手，右上 `✕` 關閉；內容以 `<ng-content>` 投影，本體 `overflow: auto`、`max-height: min(70vh, 640px)` |
+| 拖拉 | 標題列 `pointerdown` → `setPointerCapture` → `pointermove` 更新 x/y；夾在 viewport 內（標題列永遠留在畫面中，保證拖得回來）；`✕` 按鈕須 `stopPropagation` 避免觸發拖拉 |
+| 置頂 | 點視窗任何位置 `bringToFront()`；模組層級 `registry` 陣列即 z 軸順序，`z-index = 1000 + index`（**刻意低於 ngb modal 1055 / 檔案預覽 1060**，視窗內開附件預覽時預覽疊在最上） |
+| 多開 | 起始位置依已開視窗數錯開 24px（每 8 個循環）；父層用 `key` input 辨識「已開啟」，重複點擊只 `bringToFront()` 不重開 |
+| 手機（< 640px） | 退化為全寬底部面板（`left:0; right:0; bottom:0`、圓角只留上緣），**不可拖拉**；`window:resize` 時重新判定 |
+| 關閉 | 元件只 emit `closed`，由父層用 `@for` / `@if` 移除（元件銷毀時自動從 registry 移除並重排 z） |
+
+**搭配元件**
+
+- [`<app-pre-review-windows>`](../Admin/src/app/shared/components/linked-pre-reviews.ts)：視窗管理器。`open(id)` 以 `fetcher` input（`(id) => Observable<PreReviewRequest>`）取內容後開窗；同一張重複 open 只置頂；取內容失敗不開窗（錯誤訊息由全域 interceptor 提示）。**fetcher 依呼叫端授權路徑而定**：簽核頁 / 詳情頁一律走 `GET /approval-tasks/advance/{advanceId}/pre-reviews/{preReviewId}`（審核者沒有預審權限，授權經母單）；預支表單（申請人本人）可直接用 `PreReviewRequestService.getById`
+- [`<app-linked-pre-reviews>`](../Admin/src/app/shared/components/linked-pre-reviews.ts)：預支單關聯預審單 chip 列（`PRV-xxx｜專案代號｜含稅 $N｜第N次`），點 chip 開窗；無關聯時整塊不渲染。用於簽核頁 `@case ('advance')`（基本資訊卡後獨立「關聯預審單」卡）與預支詳情頁（預支資訊卡內）
+- [`<app-pre-review-items-readonly>`](../Admin/src/app/shared/components/pre-review-items-readonly.ts)：預審品項唯讀表（含未稅小計 / 稅金 / 含稅總計 + 報價單預覽 icon，內建 `FilePreviewLoader` 與預覽 modal）。**預審詳情頁、簽核頁 `pre_review`、浮動視窗三處共用**，只渲染 table，外層卡片由父層包。⚠ `totalAmount` 為**未稅小計**，含稅一律 `totalAmount + (taxAmount ?? 0)`
+
+**預支表單的關聯預審單選擇**（[advance-form](../Admin/src/app/features/admin/advance-requests/pages/advance-form/)）：基本資訊卡內、專案欄下方獨立一塊「關聯預審單（選填，可複選）」—— 關鍵字篩選（單號 / 專案 / 預審說明，純前端 filter）+ checkbox 清單，每列顯示單號、專案、含稅總額、「已被 ADV-… 引用」小字與「檢視」鈕（開同一個浮動視窗）。**與專案欄互不連動**（可跨專案）。表單一律在 multipart 帶 `preReviewRequestIds`（JSON 數字陣列，可為 `[]`）。追加模式：先前批次已關聯者顯示為勾選且 disabled（標「第N次追加已關聯」），只送「本批次新選」的 id；編輯被退回的追加批次時，該批次自己的關聯可編輯。
+
+**規則**
+
+- 新增浮動視窗內容時，**視窗內不要再放會蓋掉整頁的元件**（Modal 以外）；附件預覽沿用 `<app-file-preview-modal>`
+- 視窗內容的資料來源若需權限判斷，**授權一律經母單**（見 [backend-design.md](backend-design.md) 輕量端點 / `RequestViewAccess`），前端不可直接打只允許申請人本人的端點給審核者用
+
+---
+
 ## 13. 路由與 Lazy Loading
 
 所有 feature 在 `app.routes.ts` 用 `loadComponent` / `loadChildren` lazy load：

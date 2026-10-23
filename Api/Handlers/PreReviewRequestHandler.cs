@@ -397,6 +397,14 @@ public sealed class PreReviewRequestHandler(
         if (pr.ApprovalStatus != "draft" && pr.ApprovalStatus != "returned")
             throw AppException.BadRequest("Only draft or returned pre-review requests can be deleted.");
 
+        // 被預支單引用中不可刪除（AdvanceRequestPreReviews 對預審單為 NoAction FK，不先擋會變成 500）
+        var linkedAdvanceNo = await db.AdvanceRequestPreReviews.AsNoTracking()
+            .Where(l => l.PreReviewRequestId == pr.Id)
+            .Select(l => l.AdvanceRequest.RequestNo ?? "草稿")
+            .FirstOrDefaultAsync();
+        if (linkedAdvanceNo is not null)
+            throw AppException.BadRequest($"此預審單已被預支申請 {linkedAdvanceNo} 引用，不可刪除。");
+
         // 收集要刪除的 blob（品項附件 + 整單附件）
         var blobNames = pr.Items
             .Select(ii => blob.ExtractBlobName(ii.FileUrl, ContainerName))

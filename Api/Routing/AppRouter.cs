@@ -302,6 +302,8 @@ public sealed class AppRouter(
             ("PATCH",  ["advance-requests", var id, "supplements", var round]) => await advanceRequests.UpdateSupplementAsync(req, id, round),
             ("DELETE", ["advance-requests", var id, "supplements", var round]) => await advanceRequests.DeleteSupplementAsync(req, id, round),
             ("PATCH",  ["advance-requests", var id, "installments"])           => await advanceRequests.UpsertInstallmentsAsync(req, id),
+            // linkable-pre-reviews 必須排在 ["advance-requests", var id] 之前，否則會被當成 id 吃掉
+            ("GET",    ["advance-requests", "linkable-pre-reviews"])           => await advanceRequests.GetLinkablePreReviewsAsync(req),
             ("GET",    ["advance-requests", var id])                           => await advanceRequests.GetByIdAsync(req, id),
             ("PUT",    ["advance-requests", var id])                           => await advanceRequests.UpdateAsync(req, id),
             ("PATCH",  ["advance-requests", var id])                           => await advanceRequests.UpdateAsync(req, id),
@@ -496,6 +498,9 @@ public sealed class AppRouter(
             // ── Approval Tasks ─────────────────────────────────────────────────
             ("GET",    ["approval-tasks"])                                                      => await approvalTasks.GetAllAsync(req),
             ("POST",   ["approval-tasks", "batch-approve"])                                     => await approvalTasks.BatchApproveAsync(req),
+            // 預支單關聯的預審單詳情：授權經母單 RequestViewAccess（權限表無 approval-tasks 碼，見 AdvanceRequestHandler.GetLinkedPreReviewAsync）；
+            // 5 段路徑不與下方 3 / 4 段 pattern 衝突，仍置於其前以維持「具體優先」
+            ("GET",    ["approval-tasks", "advance", var id, "pre-reviews", var preReviewId]) => await advanceRequests.GetLinkedPreReviewAsync(req, id, preReviewId),
             // applicants 必須排在 ["approval-tasks", var id] 之前，否則會被當成 id 吃掉
             ("GET",    ["approval-tasks", "applicants"])                                        => await approvalTasks.GetApplicantsAsync(req),
             ("GET",    ["approval-tasks", var appType, var id]) when ApprovalTaskHandler.ValidAppTypes.Contains(appType)

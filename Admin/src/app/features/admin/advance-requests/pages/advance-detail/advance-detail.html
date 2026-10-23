@@ -105,6 +105,11 @@
           </div>
         </div>
 
+        @if (r.preReviews?.length) {
+          <hr class="my-3">
+          <app-linked-pre-reviews [advanceId]="r.id" [preReviews]="r.preReviews" />
+        }
+
       </div>
     </div>
 

@@ -147,6 +147,61 @@
                 <div class="text-muted small mt-1">希望款項撥入的日期，供財務排撥款參考。</div>
               </div>
             </div>
+            <!-- 關聯預審單（選填，可複選）：與專案欄互不連動 -->
+            <div class="mb-4">
+              <label class="form-label fw-500">關聯預審單 <span class="text-muted fw-400 small">（選填，可複選；僅列出您已核准的預審單）</span></label>
+              @if (isReadOnly) {
+                @if (existingPreReviews().length > 0) {
+                  <app-linked-pre-reviews [advanceId]="requestId" [preReviews]="existingPreReviews()" label="" />
+                } @else {
+                  <p class="form-control-plaintext text-muted mb-0">—</p>
+                }
+              } @else if (loadingPreReviews()) {
+                <div class="text-muted small">載入預審單中…</div>
+              } @else if (preReviewRows().length === 0) {
+                <div class="text-muted small">您目前沒有已核准的預審單可關聯。</div>
+              } @else {
+                <div class="border rounded">
+                  <div class="p-2 border-b">
+                    <input type="text" class="form-control form-control-sm" placeholder="搜尋單號／專案／預審說明…"
+                           [value]="preReviewKeyword()" (input)="preReviewKeyword.set($any($event.target).value)">
+                  </div>
+                  <div class="overflow-auto" style="max-height: 15rem">
+                    @for (row of filteredPreReviewRows(); track row.id) {
+                      <div class="flex items-start gap-2 px-3 py-2 border-b">
+                        <input class="form-check-input mt-1 shrink-0" type="checkbox" [id]="'prv-' + row.id"
+                               [checked]="row.checked" [disabled]="row.lockedRound !== null"
+                               (change)="togglePreReview(row.id, $any($event.target).checked)">
+                        <label class="flex-1 min-w-0 mb-0" [for]="'prv-' + row.id">
+                          <div class="flex flex-wrap items-center gap-x-2">
+                            <span class="fw-500 font-monospace">{{ row.requestNo || '（未取號）' }}</span>
+                            <span class="text-muted small font-monospace">{{ row.projectCode || '—' }}{{ row.projectName ? ' - ' + row.projectName : '' }}</span>
+                            <span class="small">含稅 {{ row.gross | number:'1.0-0' }} 元</span>
+                            @if (row.lockedRound !== null) {
+                              <span class="badge bg-blue-subtle text-blue-emphasis">{{ roundLabel(row.lockedRound) }}已關聯</span>
+                            }
+                          </div>
+                          @if (row.reason) {
+                            <div class="text-muted small text-truncate">{{ row.reason }}</div>
+                          }
+                          @if (row.linkedAdvanceNos.length > 0) {
+                            <div class="text-muted small">已被 {{ row.linkedAdvanceNos.join('、') }} 引用</div>
+                          }
+                        </label>
+                        <button type="button" class="btn btn-sm btn-outline-secondary shrink-0" (click)="viewPreReview(row.id)">檢視</button>
+                      </div>
+                    } @empty {
+                      <div class="text-muted small px-3 py-2">查無符合「{{ preReviewKeyword() }}」的預審單。</div>
+                    }
+                  </div>
+                </div>
+                @if (selectedPreReviewIds().size > 0) {
+                  <div class="text-muted small mt-1">本次已選 {{ selectedPreReviewIds().size }} 張。</div>
+                }
+              }
+            </div>
+            <app-pre-review-windows [fetcher]="preReviewFetcher" />
+
             <div class="row g-3 mb-4">
               <div class="col-12 col-md-6">
                 <label class="form-label fw-500">活動名稱 <span class="text-danger">*</span></label>

@@ -161,8 +161,19 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
         var writeOffAttachments  = await LoadWriteOffAttachmentsAsync();
         var preReviewAttachments = await LoadPreReviewAttachmentsAsync();
         var writeOffHistory      = await LoadWriteOffHistoryAsync();
-        return BuildApprovalTasks(payments, leaves, travels, holidayTravels, overtimes, advances, writeOffs, travelWriteOffs, travelPayments, preReviews, preReviewItems, flows, records, designatedRows, writeOffItems, advanceItems, advanceSupplements, travelItems, travelWriteOffItems, travelPaymentItems, holidayParticipants, overtimeProjects, leaveRevocations, leaveRevocationDates, shiftChanges, shiftChangeDates, instDicts, paymentAttachments, writeOffAttachments, preReviewAttachments, writeOffHistory)
+        var task = BuildApprovalTasks(payments, leaves, travels, holidayTravels, overtimes, advances, writeOffs, travelWriteOffs, travelPayments, preReviews, preReviewItems, flows, records, designatedRows, writeOffItems, advanceItems, advanceSupplements, travelItems, travelWriteOffItems, travelPaymentItems, holidayParticipants, overtimeProjects, leaveRevocations, leaveRevocationDates, shiftChanges, shiftChangeDates, instDicts, paymentAttachments, writeOffAttachments, preReviewAttachments, writeOffHistory)
             .FirstOrDefault(t => t.Id == id && t.ApplicationType == applicationType);
+
+        // 預支單關聯的預審單（僅單筆詳情需要，清單不帶；與 AdvanceRequestReadService 共用同一份查詢）
+        if (task?.AdvanceDetail is not null)
+            task = task with
+            {
+                AdvanceDetail = task.AdvanceDetail with
+                {
+                    PreReviews = await AdvanceRequestReadService.LoadLinkedPreReviewsAsync(db, id),
+                },
+            };
+        return task;
     }
 
     // Backward-compat overload (scans all types)

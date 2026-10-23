@@ -23,6 +23,36 @@ export const APPROVAL_STATUS_CLASSES: Record<ApprovalStatus, string> = {
 export const roundLabel = (roundNo: number): string =>
   roundNo <= 1 ? '第1次' : `第${roundNo}次追加`;
 
+/** 預支單關聯的預審單（詳情 / 簽核詳情帶回）；含稅總額 = totalAmount + taxAmount */
+export interface AdvanceLinkedPreReview {
+  preReviewRequestId: number;
+  requestNo: string | null;
+  /** 在第幾批預支加入的關聯（1 = 原始預支） */
+  roundNo: number;
+  projectCode: string | null;
+  projectName: string | null;
+  reason: string | null;
+  /** 未稅小計 */
+  totalAmount: number;
+  taxAmount: number;
+  submittedAt: string | null;
+}
+
+/** 預支表單可勾選的預審單（本人 + 已核准，不限專案） */
+export interface LinkablePreReview {
+  id: number;
+  requestNo: string | null;
+  projectCode: string | null;
+  projectName: string | null;
+  reason: string | null;
+  /** 未稅小計 */
+  totalAmount: number;
+  taxAmount: number;
+  submittedAt: string | null;
+  /** 已被哪些預支單引用（不含自己這張） */
+  linkedAdvanceNos: string[];
+}
+
 /** 預支批次：金額由該批次明細加總推導，Round 1 的日期取自父單 advanceDate */
 export interface AdvanceRound {
   roundNo: number;
@@ -112,6 +142,8 @@ export interface AdvanceRequest {
   paymentStatus?: import('../../approval-tasks/models/approval-task.model').PaymentInstallmentStatus;
   /** 各預支批次（僅 GetById 回傳）；含 Round 1 原始預支 */
   rounds?: AdvanceRound[];
+  /** 關聯的預審單（僅 GetById 回傳） */
+  preReviews?: AdvanceLinkedPreReview[];
   /** 最新已建立的批次號；> 1 且狀態為 pending/returned 表示有進行中的追加 */
   currentRoundNo: number;
 }

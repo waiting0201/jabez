@@ -3,6 +3,7 @@ import {HttpClient} from '@angular/common/http';
 import {Observable} from 'rxjs';
 import {switchMap, map} from 'rxjs/operators';
 import {ApprovalTask, ApprovalTaskApplicant, TaskStatus, InstallmentInput} from '../models/approval-task.model';
+import {PreReviewRequest} from '../../pre-review-requests/models/pre-review-request.model';
 import {ApplicationType} from '../../approvals/models/approval.model';
 import {PagedResult} from '../../../../shared/models/paged-result.model';
 import {NotificationService} from '../../notifications/services/notification.service';
@@ -54,6 +55,11 @@ export class ApprovalTaskService {
   /** 申請人下拉選項（僅財務體系部門可呼叫，其他人後端回 403） */
   getApplicants(): Observable<ApprovalTaskApplicant[]> {
     return this.http.get<ApprovalTaskApplicant[]>(`${environment.apiUrl}/approval-tasks/applicants`);
+  }
+
+  /** 預支單關聯的預審單完整內容（申請人與審核者皆可；授權經母單 advance） */
+  getAdvancePreReview(advanceId: number, preReviewId: number): Observable<PreReviewRequest> {
+    return this.http.get<PreReviewRequest>(`${environment.apiUrl}/approval-tasks/advance/${advanceId}/pre-reviews/${preReviewId}`);
   }
 
   getById(id: number, applicationType?: string): Observable<ApprovalTask> {

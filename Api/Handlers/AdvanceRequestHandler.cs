@@ -18,7 +18,8 @@ public sealed class AdvanceRequestHandler(
     IBlobStorageService blob,
     IJwtService jwtService,
     IApprovalNotificationService notifier,
-    IApprovalFlowService approvalFlow)
+    IApprovalFlowService approvalFlow,
+    IPreReviewRequestReadService preReviewReader)
 {
     private const string ContainerName = "advance-files";
 
@@ -79,6 +80,78 @@ public sealed class AdvanceRequestHandler(
         return new OkObjectResult(ApiResponse.Ok(item));
     }
 
+    // ── 關聯預審單：可選清單 / 單筆預審詳情 ─────────────────────────────────
+
+    /// <summary>
+    /// GET /advance-requests/linkable-pre-reviews?advanceRequestId=
+    /// 預支表單「關聯預審單」的可選清單：申請人本人 ∩ 已核准（不限專案）。
+    /// 帶 advanceRequestId 時：申請人以該預支單的申請人為準 —— 非本人僅 Superadmin 可代為查詢，其餘 404；
+    /// 清單中的 LinkedAdvanceNos 會排除該預支單自己。屬輕量端點，免 pre-review-requests:read。
+    /// </summary>
+    public async Task<IActionResult> GetLinkablePreReviewsAsync(HttpRequest req)
+    {
+        var userId = await GetUserIdAsync(req);
+
+        int? advanceId = null;
+        if (req.Query.ContainsKey("advanceRequestId"))
+        {
+            if (!int.TryParse(req.Query["advanceRequestId"], out var aid))
+                return new BadRequestObjectResult(ApiResponse.Fail("Invalid advanceRequestId."));
+            advanceId = aid;
+        }
+
+        var submitterId = userId;
+        if (advanceId is not null)
+        {
+            var owner = await db.AdvanceRequests.AsNoTracking()
+                .Where(x => x.Id == advanceId.Value).Select(x => x.SubmittedById).FirstOrDefaultAsync();
+            if (owner is null)
+                return new NotFoundObjectResult(ApiResponse.Fail("Advance request not found."));
+            if (owner != userId)
+            {
+                var caller = await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == userId);
+                if (caller?.IsSuperAdmin != true)
+                    return new NotFoundObjectResult(ApiResponse.Fail("Advance request not found."));
+                submitterId = owner.Value;
+            }
+        }
+
+        var items = await reader.GetLinkablePreReviewsAsync(submitterId, advanceId);
+        return new OkObjectResult(ApiResponse.Ok(items));
+    }
+
+    /// <summary>
+    /// GET /approval-tasks/advance/{id}/pre-reviews/{preReviewId}
+    /// 簽核人員 / 申請人點開預支單關聯的預審單，取完整 PreReviewRequestDto。
+    /// 授權一律經【母單】的 RequestViewAccess（能看這張預支單的人，才看得到它關聯的預審單），
+    /// 且須存在 (advanceId, preReviewId) 關聯列 —— 不能讓審核者藉此讀任意預審單。不符一律 404。
+    /// </summary>
+    public async Task<IActionResult> GetLinkedPreReviewAsync(HttpRequest req, string id, string preReviewId)
+    {
+        var userId = await GetUserIdAsync(req);
+        if (!int.TryParse(id, out var advId) || !int.TryParse(preReviewId, out var prvId))
+            return new BadRequestObjectResult(ApiResponse.Fail("Invalid ID format."));
+
+        var submittedById = await db.AdvanceRequests.AsNoTracking()
+            .Where(x => x.Id == advId).Select(x => (Guid?)x.SubmittedById).FirstOrDefaultAsync();
+        if (submittedById is null)
+            return new NotFoundObjectResult(ApiResponse.Fail("Pre-review request not found."));
+
+        var principal = await jwtService.ValidateRequestAsync(req);
+        if (!await RequestViewAccess.CanViewAsync(db, principal, userId, "advance", advId, submittedById == userId,
+                RequestViewAccess.StepReviewerProbe(db, approvalFlow, "advance", advId, userId)))
+            return new NotFoundObjectResult(ApiResponse.Fail("Pre-review request not found."));
+
+        if (!await db.AdvanceRequestPreReviews.AsNoTracking()
+                .AnyAsync(l => l.AdvanceRequestId == advId && l.PreReviewRequestId == prvId))
+            return new NotFoundObjectResult(ApiResponse.Fail("Pre-review request not found."));
+
+        var dto = await preReviewReader.GetByIdAsync(prvId);
+        if (dto is null)
+            return new NotFoundObjectResult(ApiResponse.Fail("Pre-review request not found."));
+        return new OkObjectResult(ApiResponse.Ok(dto));
+    }
+
     // ── 新增（草稿）─────────────────────────────────────────────────────────
 
     public async Task<IActionResult> CreateAsync(HttpRequest req)
@@ -116,6 +189,10 @@ public sealed class AdvanceRequestHandler(
 
         if (!await db.Projects.AnyAsync(p => p.Id == projectId))
             throw AppException.NotFound("Project");
+
+        // 關聯預審單（選填）：先驗再上傳 blob，避免驗證失敗留下孤兒檔
+        var preReviewIds = AdvancePreReviewLinker.ParseIds(form) ?? [];
+        await AdvancePreReviewLinker.ValidateAsync(db, preReviewIds, submittedById);
 
         // 指定審核者
         DesignatedReviewerRequest[]? designatedReviewers = null;
@@ -182,6 +259,13 @@ public sealed class AdvanceRequestHandler(
         db.AdvanceRequests.Add(ar);
         await db.SaveChangesAsync();
 
+        // 儲存關聯預審單（第 1 次預支）
+        if (preReviewIds.Length > 0)
+        {
+            await AdvancePreReviewLinker.ReplaceRoundAsync(db, ar.Id, 1, preReviewIds);
+            await db.SaveChangesAsync();
+        }
+
         // 儲存指定審核者
         if (designatedReviewers is { Length: > 0 })
         {
@@ -245,6 +329,14 @@ public sealed class AdvanceRequestHandler(
         {
             RequestDateGuard.Ensure(neededDate, "預支款需求日");
             ar.AdvanceNeededDate = neededDate;
+        }
+
+        // 關聯預審單（第 1 次預支）：key 不存在＝不變更、[]＝清空；與下方存檔同一次 SaveChanges
+        var preReviewIds = AdvancePreReviewLinker.ParseIds(form);
+        if (preReviewIds is not null)
+        {
+            await AdvancePreReviewLinker.ValidateAsync(db, preReviewIds, ar.SubmittedById);
+            await AdvancePreReviewLinker.ReplaceRoundAsync(db, ar.Id, 1, preReviewIds);
         }
 
         // 指定審核者整組替換
@@ -650,6 +742,14 @@ public sealed class AdvanceRequestHandler(
 
         var roundNo = ar.CurrentRoundNo + 1;
 
+        // 關聯預審單（本次追加批次加選的）
+        var preReviewIds = AdvancePreReviewLinker.ParseIds(form);
+        if (preReviewIds is not null)
+        {
+            await AdvancePreReviewLinker.ValidateAsync(db, preReviewIds, ar.SubmittedById);
+            await AdvancePreReviewLinker.ReplaceRoundAsync(db, ar.Id, roundNo, preReviewIds);
+        }
+
         // 快照父單目前的核准狀態，供追加被駁回時回滾
         db.AdvanceRequestSupplements.Add(new AdvanceRequestSupplement
         {
@@ -707,6 +807,14 @@ public sealed class AdvanceRequestHandler(
         }
         if (form.ContainsKey("reason"))
             supplement.Reason = string.IsNullOrWhiteSpace(reason) ? null : reason.Trim();
+
+        // 關聯預審單（本批次）：key 不存在＝不變更、[]＝清空
+        var preReviewIds = AdvancePreReviewLinker.ParseIds(form);
+        if (preReviewIds is not null)
+        {
+            await AdvancePreReviewLinker.ValidateAsync(db, preReviewIds, ar.SubmittedById);
+            await AdvancePreReviewLinker.ReplaceRoundAsync(db, ar.Id, roundNo, preReviewIds);
+        }
 
         var itemsMeta = JsonSerializer.Deserialize<ItemMetadata[]>(itemsJson, JsonOpts);
         if (itemsMeta is null || itemsMeta.Length == 0)

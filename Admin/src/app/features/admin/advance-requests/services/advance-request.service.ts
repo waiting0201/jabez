@@ -1,7 +1,7 @@
 import {Injectable, inject} from '@angular/core';
 import {HttpClient} from '@angular/common/http';
 import {Observable} from 'rxjs';
-import {AdvanceRequest, WriteOffRecord} from '../models/advance-request.model';
+import {AdvanceRequest, LinkablePreReview, WriteOffRecord} from '../models/advance-request.model';
 import {PagedResult} from '../../../../shared/models/paged-result.model';
 import {UpsertInstallmentsRequest} from '../../approval-tasks/models/approval-task.model';
 import {environment} from '@/environments/environment';
@@ -25,6 +25,12 @@ export class AdvanceRequestService {
 
   updateWithFiles(id: number, formData: FormData): Observable<AdvanceRequest> {
     return this.http.patch<AdvanceRequest>(`${this.base}/${id}`, formData);
+  }
+
+  /** 可關聯的預審單（本人 + 已核准，不限專案）；advanceRequestId 用於排除自己這張的「已被引用」標示 */
+  getLinkablePreReviews(advanceRequestId?: number): Observable<LinkablePreReview[]> {
+    const params: Record<string, number> = advanceRequestId ? {advanceRequestId} : {};
+    return this.http.get<LinkablePreReview[]>(`${this.base}/linkable-pre-reviews`, {params});
   }
 
   delete(id: number): Observable<void> {

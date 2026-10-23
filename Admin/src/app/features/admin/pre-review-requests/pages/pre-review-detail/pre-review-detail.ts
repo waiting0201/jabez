@@ -3,18 +3,17 @@ import {ActivatedRoute, Router, RouterLink} from '@angular/router';
 import {DatePipe, DecimalPipe} from '@angular/common';
 import {PreReviewRequestService} from '../../services/pre-review-request.service';
 import {PreReviewPdfService} from '../../services/pre-review-pdf.service';
-import {FilePreviewLoader} from '../../../../../shared/services/file-preview-loader';
 import {ApprovalTaskService} from '../../../approval-tasks/services/approval-task.service';
 import {ApprovalTask} from '../../../approval-tasks/models/approval-task.model';
 import {PreReviewRequest, APPROVAL_STATUS_LABELS, APPROVAL_STATUS_CLASSES, PAYMENT_TYPE_LABELS, PAYMENT_TYPE_CLASSES} from '../../models/pre-review-request.model';
 import {ApprovalTimeline} from '../../../../../shared/components/approval-timeline';
-import {FilePreviewModal, PreviewFileData} from '../../../../../shared/components/file-preview-modal';
+import {PreReviewItemsReadonly} from '../../../../../shared/components/pre-review-items-readonly';
 import {AttachmentsList} from '../../../../../shared/components/attachments-list';
 
 @Component({
   selector: 'app-pre-review-detail',
   templateUrl: './pre-review-detail.html',
-  imports: [RouterLink, DecimalPipe, DatePipe, ApprovalTimeline, FilePreviewModal, AttachmentsList],
+  imports: [RouterLink, DecimalPipe, DatePipe, ApprovalTimeline, PreReviewItemsReadonly, AttachmentsList],
 })
 export class PreReviewDetail implements OnInit {
   private service     = inject(PreReviewRequestService);
@@ -22,23 +21,10 @@ export class PreReviewDetail implements OnInit {
   private taskService = inject(ApprovalTaskService);
   private route       = inject(ActivatedRoute);
   private router      = inject(Router);
-  private previewLoader = inject(FilePreviewLoader);
 
   request      = signal<PreReviewRequest | null>(null);
   approvalTask = signal<ApprovalTask | null>(null);
   deleting     = signal(false);
-
-  /** 檔案預覽 modal */
-  previewFile: PreviewFileData | null = null;
-  async openPreview(name: string, url: string) {
-    if (!url) return;
-    // 報價單存於私有容器 quotes，需透過 JWT 代理抓 blob，不能直接把 blob URL 丟進 iframe
-    this.previewFile = await this.previewLoader.load(url, name);
-  }
-  closePreview() {
-    this.previewLoader.revoke(this.previewFile);
-    this.previewFile = null;
-  }
 
   readonly statusLabel = APPROVAL_STATUS_LABELS;
   readonly statusClass = APPROVAL_STATUS_CLASSES;
