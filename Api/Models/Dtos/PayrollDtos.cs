@@ -58,7 +58,11 @@ public sealed record EmployeePayrollDto(
     // 依 lot 上的**原始加班費率快照** × 現行時薪換算。Note 為薪資單上的項目名稱（含民國年期間）。
     decimal   CompensatorySettlementHours  = 0m,
     decimal   CompensatorySettlementAmount = 0m,
-    string?   CompensatorySettlementNote   = null);
+    string?   CompensatorySettlementNote   = null,
+    // 颱風假不給薪扣薪（天然災害停班）：未出勤、未請假的工作日 × 日薪（全天 1、半天 0.5）。
+    // 給薪的颱風假恆為 0。計入 NetSalary 的扣項。
+    decimal   DisasterUnpaidDays = 0m,
+    decimal   DisasterDeduction  = 0m);
 
 /// <summary>請假明細（用於薪資頁面顯示）</summary>
 public sealed record LeaveDetailDto(
@@ -91,7 +95,8 @@ public sealed record MonthlyPayrollDto(
     decimal TotalParentalLeaveDays         = 0m,
     decimal TotalCalculatedOvertimePay      = 0m,
     decimal TotalPublicHolidayDoublePay     = 0m,
-    decimal TotalCompensatorySettlementAmount = 0m);
+    decimal TotalCompensatorySettlementAmount = 0m,
+    decimal TotalDisasterDeduction            = 0m);
 
 /// <summary>
 /// 員工自助查詢：單月薪資紀錄（Payroll 為當月即時重算結果，非月結快照）

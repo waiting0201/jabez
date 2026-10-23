@@ -96,6 +96,10 @@
                     <span class="badge bg-info-subtle text-info ms-1"
                           title="打卡時勾選為出差">出差</span>
                   }
+                  @if (row.disasterLabel) {
+                    <span class="badge ms-1" [class]="row.disasterIsPaid === false ? 'bg-danger-subtle text-danger' : 'bg-warning-subtle text-warning-emphasis'"
+                          [title]="row.disasterIsPaid === false ? '天然災害停班（不給薪：未出勤且未請假者依日薪扣薪）' : '天然災害停班（給薪）'">{{ row.disasterLabel }}</span>
+                  }
                 </td>
                 <td class="text-center">
                   @for (line of row.leaveLines; track $index) {

@@ -27,7 +27,8 @@ public static class LeaveRevocationService
     public static async Task ApplyAsync(
         AppDbContext db,
         IEmployeeWorkdaysFactory workdaysFactory,
-        LeaveRevocation revocation)
+        LeaveRevocation revocation,
+        IDisasterDayOffReadService disasterReader)
     {
         var leave = await db.LeaveRequests.FirstOrDefaultAsync(l => l.Id == revocation.LeaveRequestId);
         if (leave is null) return;
@@ -53,7 +54,11 @@ public static class LeaveRevocationService
         var allDays   = await LeaveDayExpander.ExpandAsync(workdays, leave);
         var remaining = allDays.Where(d => !revokedDates.Contains(d.Date.Date)).ToList();
 
-        leave.Hours = remaining.Sum(d => d.Hours);
+        // 給薪颱風假仍須扣除（銷假重算是「從頭加總」，不併入會把颱風假退回的時數又加回去）
+        var disasterReduction = await DisasterLeaveRecalculator.ReductionAsync(
+            disasterReader, workdays, leave.EmployeeId ?? Guid.Empty, remaining);
+        leave.Hours = remaining.Sum(d => d.Hours) - disasterReduction;
+        leave.DisasterAdjustedHours = disasterReduction > 0 ? disasterReduction : null;
 
         // 全數銷完 → 終止狀態，自此不再落入任何 approved 查詢（打卡 / 額度 / 重疊 / 扣薪）
         if (remaining.Count == 0)

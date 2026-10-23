@@ -1,3 +1,4 @@
+import {TAIWAN_COUNTIES} from '@shared/utils/taiwan-counties';
 import {Component, DestroyRef, inject, OnInit, signal} from '@angular/core';
 import {environment} from '../../../../../../environments/environment';
 import {takeUntilDestroyed} from '@angular/core/rxjs-interop';
@@ -45,6 +46,7 @@ import {AuthImageSrcDirective} from '@shared/directives/auth-image-src.directive
   imports: [ReactiveFormsModule, FormsModule, RouterLink, DecimalPipe, ScrollIntoViewDirective, AuthImageSrcDirective],
 })
 export class UserForm implements OnInit {
+  readonly counties = TAIWAN_COUNTIES;
   private fb                   = inject(FormBuilder);
   private userService          = inject(UserService);
   private profileService       = inject(EmployeeProfileService);
@@ -178,6 +180,7 @@ export class UserForm implements OnInit {
     sendPaySlip:   [false],
     compensatoryOpeningHours: [null as number | null],
     isShiftWorker: [false],
+    workCounty:    ['' as string],
     // 自訂上下班時段（賣店等）：勾選才送出兩個時刻，後端未勾選一律寫 null
     hasCustomWorkHours:  [false],
     customWorkStartTime: ['' as string],
@@ -286,6 +289,7 @@ export class UserForm implements OnInit {
           sendPaySlip:   user.sendPaySlip ?? false,
           compensatoryOpeningHours: user.compensatoryOpeningHours ?? null,
           isShiftWorker: user.isShiftWorker ?? false,
+          workCounty:    user.workCounty ?? '',
           hasCustomWorkHours:  !!user.customWorkStartTime && !!user.customWorkEndTime,
           customWorkStartTime: user.customWorkStartTime ?? '',
           customWorkEndTime:   user.customWorkEndTime ?? '',
@@ -1378,6 +1382,8 @@ export class UserForm implements OnInit {
       avatarPositionX: this.removeAvatar() ? undefined : this.avatarPosX(),
       avatarPositionY: this.removeAvatar() ? undefined : this.avatarPosY(),
       avatarScale:     this.removeAvatar() ? undefined : this.avatarScale(),
+      // 工作地縣市：空字串＝清除個人覆寫（FormData 會略過 null，故明確送 ''）
+      workCounty:               rest.workCounty ?? '',
       // 新欄位
       isLowIncome:              rest.isLowIncome ?? false,
       isDisabled:               rest.isDisabled ?? false,

@@ -37,6 +37,10 @@ public class LeaveRequestConfiguration : IEntityTypeConfiguration<LeaveRequest>
         builder.Property(l => l.Hours)
                .HasColumnType("decimal(5,1)");
 
+        // 給薪颱風假退回的時數（Hours 已扣除；DisasterLeaveRecalculator 維護）
+        builder.Property(l => l.DisasterAdjustedHours)
+               .HasColumnType("decimal(5,1)");
+
         builder.Property(l => l.ReviewNote)
                .HasMaxLength(1000);
 

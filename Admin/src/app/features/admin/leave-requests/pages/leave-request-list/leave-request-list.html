@@ -51,6 +51,10 @@
                     <span class="badge bg-warning-subtle text-warning-emphasis ms-1"
                           [title]="'原 ' + r.originalHours + ' 小時，已銷 ' + revokedHours(r) + ' 小時'">部分銷假</span>
                   }
+                  @if ((r.disasterAdjustedHours ?? 0) > 0) {
+                    <span class="badge bg-warning-subtle text-warning-emphasis ms-1"
+                          title="當日遇天然災害停班（給薪），系統已自動退回該段時數">颱風假退回 {{ r.disasterAdjustedHours }} 小時</span>
+                  }
                 </td>
                 <td class="text-muted small hidden lg:table-cell">{{ r.submittedAt ? (r.submittedAt | date:'yyyy-MM-dd') : '—' }}</td>
                 <td class="text-right" style="white-space: nowrap">

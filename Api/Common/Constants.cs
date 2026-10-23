@@ -120,6 +120,15 @@ public static class PermissionCodes
     /// 可排定的部門範圍另由 <c>ProjectAccessScope</c> 控管（只能排自己看得到的部門）。
     /// </summary>
     public const string ActivityDaysWrite = "activity-days:write";
+
+    // ── 天然災害停班（颱風假）──────────────────────────────────────────
+    // ⚠ 同 shift-schedule：Id 1–77 已全滿，**不進 PermissionConfiguration.HasData**，
+    //   由 AddDisasterDayOff migration 的 raw SQL 以 Code 動態取號。刻意不回填任何角色。
+
+    /// <summary>檢視颱風假清單 / 影響名單 / 抓取紀錄。</summary>
+    public const string DisasterDaysRead  = "disaster-days:read";
+    /// <summary>手動建立 / 修改 / 取消颱風假，並收到公告抓取的通知（LINE + Email）。</summary>
+    public const string DisasterDaysWrite = "disaster-days:write";
 }
 
 /// <summary>
@@ -421,4 +430,93 @@ public static class LeaveDaySegments
     public const string Pm      = "pm";
     /// <summary>小時假的任意區段（實際時分見 LeaveDay.Start / End）</summary>
     public const string Partial = "partial";
+}
+
+
+/// <summary>
+/// 天然災害停班（颱風假）的時段代碼與共用常數。
+/// 與 <see cref="LeaveDaySegments"/> 同值（full / am / pm），前端對應 disaster-day.model.ts，兩處須同步。
+/// </summary>
+public static class DisasterSegments
+{
+    public const string Full = LeaveDaySegments.Full;
+    public const string Am   = LeaveDaySegments.Am;
+    public const string Pm   = LeaveDaySegments.Pm;
+
+    public static bool IsValid(string? s) => s is Full or Am or Pm;
+
+    /// <summary>中文標籤（通知、訊息用）</summary>
+    public static string Label(string segment) => segment switch
+    {
+        Am => "上午停止上班",
+        Pm => "下午停止上班",
+        _  => "全天停止上班",
+    };
+
+    /// <summary>
+    /// 把停班時段轉成與請假相同的「時段」結構，讓 <see cref="ExpectedWorkWindow"/> 能以既有的跨午休正規化扣除。
+    /// 時刻取自該日適用的工作時段（舊制 08:00–17:00 / 新制 09:00–18:00），與 LeaveDayExpander 的 Am / Pm 半天一致。
+    /// </summary>
+    public static LeaveDay ToLeaveDay(DateTime date, string segment, WorkdaySchedule sch) => segment switch
+    {
+        Am => new LeaveDay(date.Date, WorkdaySchedule.HalfDayHours, LeaveDaySegments.Am, sch.Start, sch.HalfDayAmEnd),
+        Pm => new LeaveDay(date.Date, WorkdaySchedule.HalfDayHours, LeaveDaySegments.Pm, sch.HalfDayPmStart, sch.End),
+        _  => new LeaveDay(date.Date, sch.FullDayHours, LeaveDaySegments.Full, sch.Start, sch.End),
+    };
+
+    /// <summary>停班天數：全天 1、半天 0.5（扣薪用）。</summary>
+    public static decimal Days(string segment) => segment == Full ? 1m : 0.5m;
+}
+
+/// <summary>狀態 / 來源 / 常用字面值（避免散落魔術字串）。</summary>
+public static class DisasterDayStatus
+{
+    public const string Active    = "active";
+    public const string Cancelled = "cancelled";
+    public const string SourceDgpa   = "dgpa";
+    public const string SourceManual = "manual";
+}
+
+/// <summary>
+/// 臺灣 22 縣市代碼（颱風假的工作地維度）。代碼 → 中文名（人事行政總處頁面用「臺」）。
+/// 前端對應 shared/utils/taiwan-counties.ts 的 TAIWAN_COUNTIES，兩處須同步。
+/// </summary>
+public static class TaiwanCounties
+{
+    public static readonly IReadOnlyDictionary<string, string> Names = new Dictionary<string, string>
+    {
+        ["TPE"] = "臺北市", ["NWT"] = "新北市", ["KEL"] = "基隆市", ["TAO"] = "桃園市",
+        ["HSZ"] = "新竹市", ["HSQ"] = "新竹縣", ["MIA"] = "苗栗縣", ["TXG"] = "臺中市",
+        ["CHA"] = "彰化縣", ["NAN"] = "南投縣", ["YUN"] = "雲林縣", ["CYI"] = "嘉義市",
+        ["CYQ"] = "嘉義縣", ["TNN"] = "臺南市", ["KHH"] = "高雄市", ["PIF"] = "屏東縣",
+        ["ILA"] = "宜蘭縣", ["HUA"] = "花蓮縣", ["TTT"] = "臺東縣", ["PEN"] = "澎湖縣",
+        ["KIN"] = "金門縣", ["LIE"] = "連江縣",
+    };
+
+    public static bool IsValid(string? code) => code is not null && Names.ContainsKey(code);
+
+    public static string NameOf(string? code) =>
+        code is not null && Names.TryGetValue(code, out var n) ? n : (code ?? "");
+
+    /// <summary>「台」「臺」寫法正規化（比對縣市名稱前一律先轉成「臺」）。</summary>
+    public static string NormalizeName(string name) => name.Replace('台', '臺').Trim();
+
+    /// <summary>以中文名稱（容許台／臺、前後空白）反查代碼；查無回 null。</summary>
+    public static string? CodeOfName(string? name)
+    {
+        if (string.IsNullOrWhiteSpace(name)) return null;
+        var n = NormalizeName(name);
+        foreach (var kv in Names)
+            if (kv.Value == n) return kv.Key;
+        return null;
+    }
+
+    /// <summary>驗證並正規化代碼（空白 → null；不合法丟 400）。</summary>
+    public static string? NormalizeCodeOrThrow(string? code, string fieldLabel)
+    {
+        if (string.IsNullOrWhiteSpace(code)) return null;
+        var c = code.Trim().ToUpperInvariant();
+        if (!IsValid(c)) throw AppException.BadRequest($"{fieldLabel}不是有效的縣市代碼：{code}");
+        return c;
+    }
 }

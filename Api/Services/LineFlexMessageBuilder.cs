@@ -284,6 +284,22 @@ public static class LineFlexMessageBuilder
             buttonUrl: $"{linkUrl.TrimEnd('/')}/dashboard");
     }
 
+    /// <summary>
+    /// 天然災害停班（颱風假）通知 — 推給持有 disaster-days:write 的 HR。
+    /// 內容列由呼叫端組好（日期 / 縣市 / 時段 / 影響人數 / 待人工項 / 未設工作地人數）。
+    /// </summary>
+    public static object BuildDisasterDayOffMessage(
+        string title, IReadOnlyList<(string Label, string Value)> rows, string linkUrl)
+    {
+        return BuildBubble(
+            altText:     $"[颱風假] {title}",
+            headerColor: WarningBrown,
+            headerText:  title,
+            rows:        rows.Select(r => (r.Label, r.Value)).ToArray(),
+            buttonLabel: "前往颱風假管理",
+            buttonUrl:   linkUrl);
+    }
+
     private static object BuildBubble(
         string altText, string headerColor, string headerText,
         (string label, string value)[] rows, string buttonLabel, string buttonUrl)

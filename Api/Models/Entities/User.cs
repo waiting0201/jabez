@@ -49,6 +49,12 @@ public class User
     public string?   CustomWorkStartTime { get; set; }
     public string?   CustomWorkEndTime   { get; set; }
 
+    /// <summary>
+    /// 個人工作地縣市代碼（<see cref="Common.TaiwanCounties"/>），覆寫所屬部門的 Department.County。
+    /// null ＝ 沿用部門（含祖先部門）設定。天然災害停班（颱風假）依此套用。
+    /// </summary>
+    public string?   WorkCounty      { get; set; }
+
     public Guid?     AgentUserId     { get; set; }
     public DateTime? Birthday        { get; set; }
     public bool      IsIndigenous    { get; set; }   // 是否為原住民（影響歲時祭儀假申請）

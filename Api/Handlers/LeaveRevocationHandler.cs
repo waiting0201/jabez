@@ -31,7 +31,8 @@ public sealed class LeaveRevocationHandler(
     IJwtService jwtService,
     IApprovalNotificationService notifier,
     IApprovalFlowService approvalFlow,
-    IEmployeeWorkdaysFactory workdaysFactory)
+    IEmployeeWorkdaysFactory workdaysFactory,
+    IDisasterDayOffReadService disasterReader)
 {
     private const string AppType = LeaveRevocationService.AppType;
 
@@ -297,7 +298,7 @@ public sealed class LeaveRevocationHandler(
             revocation.ReviewedAt       = Clock.Now;
             revocation.ReviewedById     = userId;
             revocation.ReviewNote       = "系統自動核准（Superadmin）";
-            await LeaveRevocationService.ApplyAsync(db, workdaysFactory, revocation);
+            await LeaveRevocationService.ApplyAsync(db, workdaysFactory, revocation, disasterReader);
             await db.SaveChangesAsync();
             await notifier.NotifyLeaveRevocationAgentAsync(revocation.Id);
             var saDto = await reader.GetByIdAsync(revocation.Id);
@@ -324,7 +325,7 @@ public sealed class LeaveRevocationHandler(
             revocation.ReviewedAt       = Clock.Now;
             revocation.ReviewedById     = userId;
             revocation.ReviewNote       = "系統自動核准（所有審核步驟皆為申請人本人）";
-            await LeaveRevocationService.ApplyAsync(db, workdaysFactory, revocation);
+            await LeaveRevocationService.ApplyAsync(db, workdaysFactory, revocation, disasterReader);
         }
         else
         {

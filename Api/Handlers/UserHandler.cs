@@ -223,6 +223,10 @@ public sealed class UserHandler(AppDbContext db, IUserReadService reader, IEmail
     /// 且須落在 <see cref="ClockProfile"/> 的合法範圍內（超出提醒排程時段會永遠收不到提醒）；
     /// 未勾選一律回 (null, null) ＝ 公司預設。推導規則見 <see cref="ClockProfile.For"/>。
     /// </summary>
+    /// <summary>工作地縣市：空 / 空白 → null（清除覆寫），其餘須為 <see cref="TaiwanCounties"/> 代碼。</summary>
+    private static string? ParseWorkCounty(IFormCollection form) =>
+        TaiwanCounties.NormalizeCodeOrThrow(form["workCounty"].ToString(), "工作地縣市");
+
     private static (string? Start, string? End) ParseCustomWorkHours(IFormCollection form)
     {
         if (form["hasCustomWorkHours"] != "true") return (null, null);
@@ -355,6 +359,7 @@ public sealed class UserHandler(AppDbContext db, IUserReadService reader, IEmail
             IsShiftWorker = form["isShiftWorker"] == "true",
             CustomWorkStartTime = customStart,
             CustomWorkEndTime   = customEnd,
+            WorkCounty    = ParseWorkCounty(form),
             AgentUserId   = Guid.TryParse(form["agentUserId"], out var aid) && aid != Guid.Empty ? aid : null,
             Birthday     = birthday,
             IsIndigenous = form["isIndigenous"] == "true",
@@ -530,6 +535,9 @@ public sealed class UserHandler(AppDbContext db, IUserReadService reader, IEmail
             user.IsShiftWorker = form["isShiftWorker"] == "true";
         if (form.ContainsKey("hasCustomWorkHours"))
             (user.CustomWorkStartTime, user.CustomWorkEndTime) = ParseCustomWorkHours(form);
+        // 空字串 / 空白 ＝ 清除個人覆寫（改沿用部門）；未帶 key ＝ 不變更
+        if (form.ContainsKey("workCounty"))
+            user.WorkCounty = ParseWorkCounty(form);
         if (form.ContainsKey("agentUserId"))
             user.AgentUserId = Guid.TryParse(form["agentUserId"], out var aid) && aid != Guid.Empty ? aid : null;
         if (form.ContainsKey("birthday"))

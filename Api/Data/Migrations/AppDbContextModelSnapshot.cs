@@ -1573,6 +1573,10 @@ namespace Jabez.Api.Data.Migrations
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)");
 
+                    b.Property<string>("County")
+                        .HasMaxLength(3)
+                        .HasColumnType("nvarchar(3)");
+
                     b.Property<DateTime>("CreatedAt")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("datetime2")
@@ -1735,6 +1739,117 @@ namespace Jabez.Api.Data.Migrations
                             ParentId = 3,
                             SortOrder = 4
                         });
+                });
+
+            modelBuilder.Entity("Jabez.Api.Models.Entities.DisasterDayOff", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime?>("CancelledAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("CancelledById")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("CancelledByName")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("County")
+                        .IsRequired()
+                        .HasMaxLength(3)
+                        .HasColumnType("nvarchar(3)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("CreatedById")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("CreatedByName")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<DateTime>("Date")
+                        .HasColumnType("date");
+
+                    b.Property<bool>("IsPaid")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(true);
+
+                    b.Property<string>("Segment")
+                        .IsRequired()
+                        .HasMaxLength(8)
+                        .HasColumnType("nvarchar(8)");
+
+                    b.Property<string>("Source")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("nvarchar(16)");
+
+                    b.Property<string>("SourceText")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("nvarchar(16)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Date", "County")
+                        .IsUnique()
+                        .HasDatabaseName("UX_DisasterDayOffs_Date_County_Active")
+                        .HasFilter("[Status] = 'active'");
+
+                    b.HasIndex("Date", "Status")
+                        .HasDatabaseName("IX_DisasterDayOffs_Date_Status");
+
+                    b.ToTable("DisasterDayOffs");
+                });
+
+            modelBuilder.Entity("Jabez.Api.Models.Entities.DisasterDayOffFetchLog", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("FetchedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("ManualItemsJson")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("SourceUpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("Success")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Summary")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<string>("TriggerSource")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("nvarchar(16)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("FetchedAt")
+                        .HasDatabaseName("IX_DisasterDayOffFetchLogs_FetchedAt");
+
+                    b.ToTable("DisasterDayOffFetchLogs");
                 });
 
             modelBuilder.Entity("Jabez.Api.Models.Entities.EducationRecord", b =>
@@ -2894,6 +3009,9 @@ namespace Jabez.Api.Data.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("int")
                         .HasDefaultValue(1);
+
+                    b.Property<decimal?>("DisasterAdjustedHours")
+                        .HasColumnType("decimal(5,1)");
 
                     b.Property<Guid?>("EmployeeId")
                         .HasColumnType("uniqueidentifier");
@@ -6192,6 +6310,11 @@ namespace Jabez.Api.Data.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
 
+                    b.Property<bool>("DisasterDayOffPaidDefault")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(true);
+
                     b.Property<DateTime?>("FlexibleWorkStartDate")
                         .HasColumnType("datetime2");
 
@@ -6262,6 +6385,7 @@ namespace Jabez.Api.Data.Migrations
                             ApprovalEmailEnabled = true,
                             ApprovalLineEnabled = true,
                             ContactEmail = "admin@jabez.com",
+                            DisasterDayOffPaidDefault = true,
                             Language = "zh-TW",
                             MaintenanceMessage = "System is under maintenance. Please try again later.",
                             MaintenanceMode = false,
@@ -7096,6 +7220,10 @@ namespace Jabez.Api.Data.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("datetime2")
                         .HasDefaultValueSql("DATEADD(hour, 8, GETUTCDATE())");
+
+                    b.Property<string>("WorkCounty")
+                        .HasMaxLength(3)
+                        .HasColumnType("nvarchar(3)");
 
                     b.HasKey("Id");
 

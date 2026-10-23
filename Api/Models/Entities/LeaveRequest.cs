@@ -13,6 +13,11 @@ public class LeaveRequest
     public decimal  Hours          { get; set; }
     /// <summary>原始請假時數；僅在第一次銷假核准時寫入（null＝從未銷假）。供顯示「原 40h / 已銷 8h」與重算冪等。</summary>
     public decimal? OriginalHours  { get; set; }
+    /// <summary>
+    /// 因「給薪的天然災害停班（颱風假）」而退回的時數（<see cref="Hours"/> 已扣除此數）。null / 0 ＝ 無。
+    /// 重算基準 ＝ Hours + DisasterAdjustedHours，故颱風假取消或改為不給薪時可冪等還原（DisasterLeaveRecalculator）。
+    /// </summary>
+    public decimal? DisasterAdjustedHours { get; set; }
     public string   Reason         { get; set; } = string.Empty;
     public string   ApprovalStatus   { get; set; } = "pending";  // pending | approved | rejected | returned | cancelled（全數銷假）
     public int      CurrentStepOrder { get; set; } = 1;

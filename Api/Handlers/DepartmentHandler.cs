@@ -68,6 +68,7 @@ public sealed class DepartmentHandler(AppDbContext db, IDepartmentReadService re
             CanSeeAll          = body.CanSeeAll,
             CanViewDescendants = body.CanViewDescendants,
             CanViewParent      = body.CanViewParent,
+            County             = TaiwanCounties.NormalizeCodeOrThrow(body.County, "所在縣市"),
             CreatedAt          = Clock.Now,
         };
         db.Departments.Add(dept);
@@ -98,6 +99,8 @@ public sealed class DepartmentHandler(AppDbContext db, IDepartmentReadService re
         if (body.CanSeeAll.HasValue)            dept.CanSeeAll          = body.CanSeeAll.Value;
         if (body.CanViewDescendants.HasValue)   dept.CanViewDescendants = body.CanViewDescendants.Value;
         if (body.CanViewParent.HasValue)        dept.CanViewParent      = body.CanViewParent.Value;
+        // null ＝ 不變更；空字串 / 空白 ＝ 清除；其餘驗證代碼
+        if (body.County is not null)            dept.County             = TaiwanCounties.NormalizeCodeOrThrow(body.County, "所在縣市");
 
         await db.SaveChangesAsync();
 

@@ -50,6 +50,17 @@
             </div>
 
             <div class="mb-4">
+              <label class="form-label fw-500">工作地縣市</label>
+              <select class="form-select" formControlName="county">
+                <option [ngValue]="null">— 沿用上層部門 —</option>
+                @for (c of counties; track c.code) {
+                  <option [ngValue]="c.code">{{ c.name }}</option>
+                }
+              </select>
+              <div class="text-muted small mt-1">颱風假（天然災害停班）依員工工作地縣市套用；員工可在使用者管理個別覆寫。未設定時沿用上層部門，皆未設定則不套用颱風假。</div>
+            </div>
+
+            <div class="mb-4">
               <label class="form-label fw-500">排序號</label>
               <input type="number" class="form-control" formControlName="sortOrder" min="0">
               <div class="text-muted small mt-1">數字越小排越前面。</div>

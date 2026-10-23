@@ -145,3 +145,7 @@ LINE Messaging API 採每月「免費 + 加購」配額制（type=`limited`）�
 - **簽核通知觸發時機（撥款 / 退款 / 待審 / 結果）** → [approval-flow.md](approval-flow.md)
 - **API 端點清單**（5 個 LINE 端點：bind-url / bind / unbind / binding-status / quota） → [api-routes.md §LINE 綁定 / 推播用量](../api-routes.md#line-綁定--推播用量)
 - **環境變數雙底線慣例** → [backend-design.md §16](../backend-design.md#16-環境變數慣例)
+
+## 颱風假 HR 通知（2026-10-23）
+
+新增 LINE Flex 模板 `LineFlexMessageBuilder.BuildDisasterDayOffMessage`（走唯一的 `BuildBubble`，自動帶環境標記），推給持有 `disaster-days:write` 且已綁定 LINE 的人員。見 [notifications.md](notifications.md)。

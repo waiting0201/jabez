@@ -149,6 +149,7 @@ Bug 修復：
 - [flexible-work-hours.md](docs/business/flexible-work-hours.md) — **四週彈性工時（技術規格；八個階段程式已全部實作並部署 staging，但 `SystemSetting.FlexibleWorkStartDate` 為 null ＝ 制度尚未切換，全系統行為與現行一致）**：勞基法 §30-1 框架 / 09:00–18:00＋午休 12:30–13:30 / 個人排班排例休（**例假未排滿或觸及連續 12 天・14 天 2 例假即擋存**，休假未滿只警示；**2026-09-29：例假 ≥4、例＋休合計不變，多排的例假由休假轉入** —— 滾動 14 天規則一年須 52 天例假、每月 4 天只有 48 天，一年約 4 個月必排 5 例）/ 出勤排休總覽表（三色）/ 打卡與加班連動 / **〈改班申請〉逐部門五條簽核路線**（2026-09-17 改，取代原單一三關；「含底下部門」走既有 `ApprovalItem` 祖先部門繼承，不需新功能）/ **國定假日出勤加倍工資**（前 8 小時加發 1 日日薪 ＋ 第 9 小時起走**平日級距**，故 `OvertimePayCalculator` 不需新增級距表、只需改日別解析；**2026-09-17 改：主管的活動日旗標可壓在國定假日上**，被指定者當天解鎖上下班打卡、不需加班單，第 9 小時起才提加班申請 —— 連帶使加倍工資的取數變成「打卡紀錄 ∪ 已核准加班單」且**須依日期去重**，同仁側月曆仍唯讀、仍不佔配額）/ 補休 FIFO（**1–6 月用至 7 月底→8 月薪資結算；7–12 月用至隔年 1 月底→隔年 2 月結算**）/ 假日執行活動退場 / **與現行系統差異對照 + §10 決議（含 2026-09-16 客戶回覆 21 項、2026-09-17 回覆 2 項）**
 - [flexible-work-go-live.md](docs/business/flexible-work-go-live.md) — 四週彈性工時**正式站上線執行清單**（2026-10-11 建立）：程式已上正式站、權限未開、切換日 null；依日期列出 Script 14 / 2027 行事曆 / 打卡提醒 cron / 活動日 / 排班權限（2026-10-21 起改由客戶自行於角色管理開啟，不跑 13a / 13b） / Script 12 期初補休 ＋ 設定切換日 2026-11-01 / 上線後檢查，含確認用 SQL；11 月份照現行規則 10/25 截止（2026-10-11 決議不延長，切換前不自動排班）
 - [flexible-work-hours-client.md](docs/business/flexible-work-hours-client.md) — 四週彈性工時**客戶確認版**（v1.4）：無技術內容與法條罰鍰，A–F 六區塊**逐項寫明實際做法**（v1.3 移除「確認」勾選欄與「修正意見」欄，改為把畫面行為／時點／擋存條件寫清楚；**v1.4 依客戶 2026-09-17 回覆 2 項**：改班申請逐部門流程、國定假日活動出勤；文末原有的「兩點請一併確認」區塊已於 2026-09-18 依客戶要求整段移除，客戶版全文已無待確認事項）。⚠️ **與上一份需人工同步**，改技術規格時要回頭確認客戶版是否受影響
+- [disaster-day-off.md](docs/business/disaster-day-off.md) — **天然災害停班（颱風假）**（2026-10-23）：排程每 10 分鐘抓人事行政總處停班公告（`DgpaStatusParser`，部分鄉鎮 / 無法辨識句型不自動套用、通知 HR），依**員工工作地縣市**（`User.WorkCounty` ?? 部門 `County` ?? 上層部門）套用全天 / 上午 / 下午；**獨立資料表 `DisasterDayOff`、不寫行事曆**（避開國定假日判定與年度匯入覆蓋），只移除應出勤時段、加班日別不變（出勤照平日）；**給薪 / 不給薪**系統預設＋逐筆可改：給薪退回當日假單時數、不給薪假單不動並對未出勤者扣日薪；出缺勤報表新增 `rowKind=disaster` 列；權限 `disaster-days:read/write` 上線不回填
 
 ---
 
@@ -230,6 +231,7 @@ Admin/src/app/
     │   │                       ⚠ 部門下拉的 `ngModelChange` 會清空已選人力（候選名單整組換掉），
     │   │                       但**必須擋掉「值沒真的變」的那次觸發** —— 編輯表單載入時 select 初始化也會 emit，
     │   │                       無條件清空會把回填的預定人力洗掉、且畫面上完全看不出來
+    │   ├── disaster-days/    # **颱風假管理（2026-10-23）**：清單（時段 / 給薪可直接改，過去月份跳警示）＋手動新增（多選縣市）＋影響名單＋抓取紀錄與待人工判斷項；縣市常數 `shared/utils/taiwan-counties.ts`（與後端 `Constants.TaiwanCounties` 同步），見 [docs/business/disaster-day-off.md](docs/business/disaster-day-off.md)
     │   ├── shift-schedules/  # **個人排班排例／休（四週彈性工時功能 A，2026-09 新增）**：月曆大方格頁，權限 `shift-schedule:read/write`。
     │   │                       專案**第一個 FullCalendar 使用點**（`dayGridMonth`，套件早已安裝但從未用過）——
     │   │                       只借月格骨架，每格狀態存在元件 signal、以 `dayCellClassNames` / `dayCellContent` 上色與標字，
@@ -356,6 +358,7 @@ Api/
 │   │                                    刻意由 Service 判斷「今天是不是那四個號碼」而非寫進 cron ——
 │   │                                    25 號是 12:00、其餘是 09:00，單一 cron 表達不出這種組合。
 │   │                                    **制度未切換時不推**（同仁還沒有排班功能可用）
+│   ├── DisasterDayOffFunction.cs      # **颱風假公告抓取 TimerTrigger（2026-10-23）**：cron `DisasterDayOffCron`（`0 */10 * * * *`），抓人事行政總處 nds.html → `DisasterDayOffService.SyncAsync`（自動建立 / 通知持 `disaster-days:write` 者；HR 取消過的不重建、改照常不自動撤銷）
 │   └── PaymentReminderFunction.cs     # TimerTrigger：每日 09:00 Taipei 跑撥款日將屆提醒；cron 由 `PaymentReminderCron` 控制；提前天數讀 `SystemSetting.PaymentReminderDaysBefore`，推給財務體系部門全員
 ├── Routing/
 │   └── AppRouter.cs                   # C# 12 List Pattern 路由分派器
@@ -413,6 +416,7 @@ Api/
 │   │                                    每筆落 `ShiftScheduleAdjustment` 並以鈴鐺通知本人（`GET /shift-schedules/adjustments` + `/ack`）。
 │   │                                    原設計走不通：活動日格子在月曆與改班表單都唯讀、又擋存「不可排例假／休假」＝死結。
 │   │                                    回應 `adjusted[]`（本次覆蓋）＋ `affected[]`（覆蓋後仍不合規）；改期／移除人力**不還原**
+│   ├── DisasterDayOffHandler.cs       # **颱風假管理（2026-10-23）**：`/disaster-days` CRUD / cancel / affected / fetch-logs / fetch（Superadmin）＋ `GET /me/disaster-day-off`；異動觸發 `DisasterLeaveRecalculator`（僅給薪退回假單時數），薪資扣薪走 `DisasterPayrollService` + 純函式 `Common/DisasterPayDeduction.cs`
 │   ├── InsuranceBracketHandler.cs    # 勞健保級距 CRUD
 │   ├── PayrollHandler.cs             # 人事薪資查詢（月薪計算）；GetMineAsync = GET /me/payroll 員工讀自己近 N 個月薪資（免 payroll:read，逐月呼叫帶 employeeId 的同一支計算，依 HireDate 擋掉到職前月份，months clamp 1~24）
 │   ├── LineHandler.cs                # LINE 帳號綁定/解綁 + 月度推播用量查詢（line-quota:read）

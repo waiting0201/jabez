@@ -4,6 +4,7 @@ import {FormBuilder, ReactiveFormsModule, Validators} from '@angular/forms';
 import {HttpErrorResponse} from '@angular/common/http';
 import {DepartmentService} from '../../services/department.service';
 import {Department} from '../../models/department.model';
+import {TAIWAN_COUNTIES} from '@shared/utils/taiwan-counties';
 
 import {ScrollIntoViewDirective} from '@shared/directives/scroll-into-view.directive';
 
@@ -18,6 +19,7 @@ export class DepartmentForm implements OnInit {
   private route = inject(ActivatedRoute);
   private router = inject(Router);
 
+  readonly counties = TAIWAN_COUNTIES;
   departments: Department[] = [];
   isEdit = false;
   deptId = 0;
@@ -33,6 +35,7 @@ export class DepartmentForm implements OnInit {
     canSeeAll:          [false],
     canViewDescendants: [false],
     canViewParent:      [false],
+    county:             [null as string | null],
   });
 
   ngOnInit() {
@@ -42,7 +45,7 @@ export class DepartmentForm implements OnInit {
       this.isEdit = true;
       this.deptId = +id;
       this.deptService.getById(this.deptId).subscribe(dept => {
-        if (dept) this.form.patchValue({...dept, parentId: dept.parentId ?? null});
+        if (dept) this.form.patchValue({...dept, parentId: dept.parentId ?? null, county: dept.county ?? null});
       });
     }
   }
@@ -53,7 +56,8 @@ export class DepartmentForm implements OnInit {
 
   submit() {
     if (this.form.invalid) return;
-    const value = this.form.value as any;
+    // 後端以 county=null 表示「不變更」，清除縣市（沿用上層部門）須明確送空字串
+    const value = { ...this.form.value, county: this.form.value.county ?? '' } as any;
     const obs = this.isEdit
       ? this.deptService.update(this.deptId, value)
       : this.deptService.create(value);

@@ -57,6 +57,8 @@ export class LeaveRequestForm implements OnInit {
   /** 後端已存在的申請單 ID（編輯模式進場即有；新增模式 create 成功後填入）；> 0 即代表要走 update */
   requestId  = 0;
   isReadOnly = false;
+  /** 颱風假（給薪）自動退回的時數（> 0 才顯示 badge） */
+  disasterAdjustedHours = 0;
   isReturned = false;
   isDraft    = true;
   approvalStatus: ApprovalStatus = 'draft';
@@ -529,6 +531,7 @@ export class LeaveRequestForm implements OnInit {
         if (!r) return;
         this.approvalStatus = r.approvalStatus;
         this.requestNo      = r.requestNo ?? '';
+        this.disasterAdjustedHours = r.disasterAdjustedHours ?? 0;
         this._leaveEndDate = r.endDate;
         this.isDraft    = r.approvalStatus === 'draft';
         this.isReturned = r.approvalStatus === 'returned';

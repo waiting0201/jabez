@@ -532,3 +532,7 @@ label 星號與 placeholder 同步條件顯示。後端 `LeaveRequest.Reason` �
 - **銷假通知（審核 + 職務代理人解除）** → [notifications.md](notifications.md)
 - **產假狀態 / 配額查詢端點** → [api-routes.md §請款 / 請假...](../api-routes.md#請款--請假--出差--加班--預支申請)
 - **`LeaveRequest` Entity 結構** → [database-schema.md](../database-schema.md)
+
+## 天然災害停班（颱風假）與請假時數（2026-10-23）
+
+給薪的颱風假會退回當日已送簽／已核准假單的時數（`LeaveRequest.DisasterAdjustedHours` 記錄退回量，`Hours` 已扣除；補休同步重算 lot 扣抵）；不給薪者假單完全不動。新假單 Submit 時套用既有的給薪颱風假；`/leave-requests/working-days` 不列給薪的全天停班日。僅工作日型假別受影響，`parental_leave` 等連續日曆天型不動。銷假核准重算 Hours 時同樣扣除。完整規則見 [disaster-day-off.md](disaster-day-off.md)。

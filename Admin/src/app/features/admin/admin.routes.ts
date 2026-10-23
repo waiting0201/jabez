@@ -156,6 +156,9 @@ export const ADMIN_ROUTES: Routes = [
   // 行事曆管理
   {path: 'calendar-days',                    canActivate: [permissionGuard], data: {title: '行事曆管理',         permission: 'calendar-days:read'}, loadComponent: () => import('./calendar-days/pages/calendar-day-list/calendar-day-list').then(m => m.CalendarDayList)},
 
+  // 颱風假（天然災害停班）管理
+  {path: 'disaster-days',                    canActivate: [permissionGuard], data: {title: '颱風假管理',         permission: 'disaster-days:read'}, loadComponent: () => import('./disaster-days/pages/disaster-day-list/disaster-day-list').then(m => m.DisasterDayList)},
+
   // 加班申請
   {path: 'overtime-requests',             component: OvertimeRequestList, canActivate: [permissionGuard], data: {title: '加班申請',       permission: 'overtime-requests:read'}},
   {path: 'shift-schedules',               canActivate: [permissionGuard], data: {title: '個人排班', permission: 'shift-schedule:read'},

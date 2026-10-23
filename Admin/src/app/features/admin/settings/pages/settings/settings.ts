@@ -41,6 +41,7 @@ export class Settings implements OnInit {
     approvalEmailEnabled:     [true],
     approvalLineEnabled:      [true],
     paymentReminderDaysBefore: [3, [Validators.required, Validators.min(0), Validators.max(30)]],
+    disasterDayOffPaidDefault: [true],
   });
 
   ngOnInit() {

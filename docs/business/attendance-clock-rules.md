@@ -503,3 +503,7 @@ Excel 匯出於時間後加註「（系統補卡）」，以區分本人打卡�
 - **加班申請走簽核流程** → [approval-flow.md](approval-flow.md)、[application-forms.md](application-forms.md)
 - **打卡提醒推播** → [attendance-reminder.md](attendance-reminder.md)
 - **端點清單** → [api-routes.md §出勤打卡](../api-routes.md#出勤打卡)
+
+## 天然災害停班（颱風假）（2026-10-23）
+
+停班時段內**仍可打卡**（照平日計薪），不判遲到（全天／上午停班）、不判早退／逾時（全天／下午停班）；出缺勤報表不產生缺勤列，停班時段不標「未打卡」，本人工作日遇停班且無打卡無請假者產生 `rowKind = disaster` 虛擬列（Id = null）；登入自動補卡因應出勤時段被扣除而不補。與四週彈性工時切換日無關。詳見 [disaster-day-off.md](disaster-day-off.md)。

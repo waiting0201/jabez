@@ -184,6 +184,12 @@ export const menuItems: MenuItemType[] = [
     requiredPermission: 'calendar-days:read',
   },
   {
+    icon: '/assets/icons/sprite.svg#alert-triangle',
+    label: '颱風假管理',
+    url: '/admin/disaster-days',
+    requiredPermission: 'disaster-days:read',
+  },
+  {
     icon: '/assets/icons/sprite.svg#bell',
     label: '打卡提醒紀錄',
     url: '/admin/attendance-reminder-logs',

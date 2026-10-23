@@ -24,6 +24,7 @@
     "Line__CallbackUrl": "http://localhost:4200/line/bind-callback",
     "AttendanceReminderCron": "0 */1 23,0-13 * * *",
     "PaymentReminderCron": "0 0 1 * * *",
+    "DisasterDayOffCron": "0 */10 * * * *",
     "ShiftScheduleReminderCron": "0 0 1,4 * * *",
     "App__EnvironmentLabel": "（非正式環境才設，例：【測試站｜此為測試訊息】；正式站留空或不設）"
   },

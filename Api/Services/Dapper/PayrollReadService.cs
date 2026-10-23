@@ -6,7 +6,7 @@ using System.Data;
 
 namespace Jabez.Api.Services.Dapper;
 
-public sealed class PayrollReadService(IDbConnection db) : IPayrollReadService
+public sealed class PayrollReadService(IDbConnection db, IDisasterPayrollService disasterPayroll) : IPayrollReadService
 {
     /// <param name="employeeId">
     /// 指定員工時只計算該員工（供 GET /me/payroll 員工自助查詢近 N 個月使用）；
@@ -293,6 +293,9 @@ public sealed class PayrollReadService(IDbConnection db) : IPayrollReadService
         var parentalDaysMap = (await db.QueryAsync<dynamic>(parentalSql, new { FirstDay = firstDay, LastDay = lastDay, EmployeeId = employeeId }))
             .ToDictionary(r => (Guid)r.EmployeeId, r => (decimal)r.Days);
 
+        // 颱風假不給薪的扣薪天數（該月沒有不給薪颱風假時為空，不做任何逐人展開）
+        var disasterDaysMap = await disasterPayroll.GetDeductibleDaysAsync(year, month, employeeId);
+
         int daysInMonth = DateTime.DaysInMonth(year, month);
 
         var results = new List<EmployeePayrollDto>();
@@ -447,6 +450,10 @@ public sealed class PayrollReadService(IDbConnection db) : IPayrollReadService
                 note               = (string?)adj.Note;
             }
 
+            // 颱風假不給薪扣薪：日薪（折減前）× 天數。整月留停被剔除者已在上方 continue，不會走到這裡。
+            decimal disasterUnpaidDays = disasterDaysMap.TryGetValue(empId, out var dud) ? dud : 0m;
+            decimal disasterDeduction  = DisasterPayDeduction.Amount(dailySalary, disasterUnpaidDays);
+
             // 勞退自提扣款 = 提繳底薪 × 自提率%，四捨五入至整數（比照勞健保費公式）
             // 用 insuredBaseSalary：留停當月的提繳基準同樣不隨少領而降低
             decimal laborPensionSelfDeduction = Math.Round(insuredBaseSalary * (laborPensionRate ?? 0m) / 100m, 0);
@@ -458,6 +465,7 @@ public sealed class PayrollReadService(IDbConnection db) : IPayrollReadService
                               - laborIns - healthIns
                               - personalDeduction - sickDeduction - menstrualDeduction
                               - familyCareDeduction
+                              - disasterDeduction
                               - otherDeduction
                               - laborPensionSelfDeduction;
 
@@ -505,7 +513,9 @@ public sealed class PayrollReadService(IDbConnection db) : IPayrollReadService
                 publicHolidayDoublePay,
                 compSettlementHours,
                 compSettlementAmount,
-                compSettlementNote));
+                compSettlementNote,
+                disasterUnpaidDays,
+                disasterDeduction));
         }
 
         return new MonthlyPayrollDto(
@@ -529,6 +539,7 @@ public sealed class PayrollReadService(IDbConnection db) : IPayrollReadService
             results.Sum(r => r.ParentalLeaveDays),
             results.Sum(r => r.CalculatedOvertimePay),
             results.Sum(r => r.PublicHolidayDoublePay),
-            results.Sum(r => r.CompensatorySettlementAmount));
+            results.Sum(r => r.CompensatorySettlementAmount),
+            results.Sum(r => r.DisasterDeduction));
     }
 }

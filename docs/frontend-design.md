@@ -1759,15 +1759,29 @@ fetch(`/assets/fonts/NotoSansTC-Regular.subset.ttf?v=${FONT_SUBSET_VERSION}`)
 | 未打下班卡（待處理） | 下班 | `bg-danger-subtle text-danger` | `isMissingClockOut && !missingClockOutResolved`（系統補的下班卡 `isClockOutAuto`，或過去日期仍無下班卡；2026-10-07） |
 | 未打下班卡（已註記） | 下班 | `bg-success-subtle text-success` | `isMissingClockOut && missingClockOutResolved`（HR 於編輯填了備註＝原因，下班欄下方綠色小字顯示「原因：…」） |
 | 超過 9.5 小時 | 下班 | `bg-danger-subtle text-danger` | `isLongWorkday`（純前端 derived） |
+| 颱風假 / 颱風假(上午) / 颱風假(下午) | 日期 | 給薪 `bg-warning-subtle text-warning-emphasis`；不給薪 `bg-danger-subtle text-danger` 且文字加「不給薪」 | `disasterSegment`（後端依員工工作地縣市判定；`clock` / `leave` 列也會帶，不只 `disaster` 虛擬列）；文字由 `disasterLabel(r)` 產生，畫面與 Excel 備註共用（2026-10） |
 
-> **`rowKind` 是三種列的唯一判別依據**：請假列與缺勤列同樣 `id === null`，
-> 不可再用 `id` 分辨（track key 亦因此分成 `a{id}` / `l{userId}_{date}` / `x{userId}_{date}` 三組）。
+> **`rowKind` 是四種列的唯一判別依據**（`clock` / `leave` / `absent` / `disaster`）：請假、缺勤、颱風假列同樣 `id === null`，
+> 不可再用 `id` 分辨（track key 亦因此分成 `a{id}` / `l{userId}_{date}` / `x{userId}_{date}` / `d{userId}_{date}` 四組）。
+> `disaster` 虛擬列（本人工作日遇颱風假、無打卡無請假）：上下班留空、不可編輯（`canEditRow` 以 `id` 為空擋掉）、不標「缺勤」；
+> 半天停班另一半仍有應出勤時段者照標「未打卡」。**畫面 map（`fetchData`）與 Excel map（`exportExcel`）是兩份獨立程式，新增欄位兩處都要補。**
 > 「應出勤時段」（`expectedStart` / `expectedEnd`）刻意**不做成欄位**，改掛在上下班兩格的 tooltip ——
 > 該表已 9 欄 + `min-w-[1040px]`，而絕大多數列都是恆定的 08:00–17:00，做成常駐欄是純雜訊。
 
 > ⚠️ `text-*-emphasis` 在 `tailwind.css` **只定義了 `text-warning-emphasis`**，配其他色時不可照抄 warning 的寫法，
 > 一律改用上表既有組合。同一列可能並存多顆徽章時（例：出缺勤紀錄的「系統補卡」黃 + 「請假」綠），
 > **必須挑不同色系**，否則兩顆同色徽章難以分辨。
+
+#### 颱風假（天然災害停班）相關 UI 慣例（2026-10）
+
+- **管理頁** `features/admin/disaster-days/`（選單「颱風假管理」、`disaster-days:read`，寫入動作 `disaster-days:write`；「立即抓取公告」鈕只給 Superadmin）：
+  清單 inline 編輯時段（select）與給薪（`form-switch`）；**變更過去月份**（日期所屬月份早於本月）的給薪 / 時段 / 取消一律先跳 `<app-confirm-modal tone="warning">`，
+  因薪資是即時重算、無月結快照，已發放月份會跟著變；取消確認後若失敗須 `load()` 重載，避免 switch / select 停在樂觀值。
+- **待人工判斷**（部分鄉鎮、句型無法辨識的公告）以頁面頂端 `alert-warning` 醒目列出縣市 + 原文，資料來自最近一次抓取紀錄的 `manualItems`。
+- **縣市代碼** 一律用共用 [taiwan-counties.ts](../Admin/src/app/shared/utils/taiwan-counties.ts) 的 `TAIWAN_COUNTIES`（與後端 `Constants.TaiwanCounties` 同步），部門 / 使用者表單的縣市下拉都從這裡取。
+  使用者表單 `workCounty` 空字串＝清除覆寫（`buildFormData` 會略過 null，故明確送 `''`）。
+- **打卡頁** 停班提示卡為 `alert-warning`，只提示、不鎖打卡鈕；請假列表 / 檢視頁的「颱風假退回 N 小時」用 `bg-warning-subtle text-warning-emphasis`。
+- **薪資**：`<app-payroll-detail-card>` 於 `disasterUnpaidDays > 0` 時在扣款區顯示「颱風假扣薪（不給薪）N 天」；人事薪資 Excel 總表於「家庭照顧假扣薪」後插 2 欄，`rawNumberCols` 為 11/13/15/22/23/25/27/29/31/35/37。
 
 ### 9.2 跨列表一致性原則（**重要**）
 

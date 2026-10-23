@@ -78,7 +78,7 @@ export class PayrollList implements OnInit {
     });
   }
 
-  /** 匯出總表：一位員工一列 × 38 欄（全部薪資相關欄位）+ 合計列。
+  /** 匯出總表：一位員工一列 × 40 欄（全部薪資相關欄位）+ 合計列。
    *  GET /payroll 本身不分頁、已回傳全月完整欄位，故直接讀 payroll() signal，不再打一次 API。 */
   exportExcel() {
     const p = this.payroll();
@@ -97,6 +97,7 @@ export class PayrollList implements OnInit {
         '勞保費', '健保費', '健保眷屬口數（計費）',
         '事假天數', '事假扣薪', '病假天數', '病假扣薪',
         '生理假天數', '生理假扣薪', '家庭照顧假天數', '家庭照顧假扣薪',
+        '颱風假不給薪天數', '颱風假扣薪',
         '其他扣項', '其他扣項說明', '勞退自提率(%)', '勞退自提扣款',
         '育嬰留停天數', '備註', '實領薪水',
       ];
@@ -115,6 +116,7 @@ export class PayrollList implements OnInit {
         e.laborInsurance, e.healthInsurance, e.cappedDependentCount,
         e.personalLeaveDays, e.personalLeaveDeduction, e.sickLeaveDays, e.sickLeaveDeduction,
         e.menstrualLeaveDays, e.menstrualLeaveDeduction, e.familyCareLeaveDays, e.familyCareLeaveDeduction,
+        e.disasterUnpaidDays ?? 0, e.disasterDeduction ?? 0,
         e.otherDeduction, e.otherDeductionNote ?? '', e.laborPensionSelfContributionRate ?? 0, e.laborPensionSelfDeduction,
         e.parentalLeaveDays, e.note ?? '', e.netSalary,
       ]);
@@ -129,6 +131,7 @@ export class PayrollList implements OnInit {
         p.totalLaborInsurance, p.totalHealthInsurance, '',
         '', p.totalPersonalLeaveDeduction, '', p.totalSickLeaveDeduction,
         '', p.totalMenstrualLeaveDeduction, '', p.totalFamilyCareLeaveDeduction,
+        '', p.employees.reduce((sum, e) => sum + (e.disasterDeduction ?? 0), 0),
         p.totalOtherDeduction, '', '', p.totalLaborPensionSelfDeduction,
         p.totalParentalLeaveDays, '', p.totalNetSalary,
       ];
@@ -145,9 +148,10 @@ export class PayrollList implements OnInit {
       // 天數 / 時數 / 口數 / 自提率不套千分位。**插欄會讓索引整體位移** ——
       // 2026-09 在索引 13、14 插入「國定假日出勤天數 / 加倍工資」後，13 之後的每一欄都 +2
       //（2026-09-29 移除「彈性休假日出勤時數 / 加班費」兩欄，15 之後的每一欄再 −2）。
+      // （2026-10 於家庭照顧假扣薪後插入「颱風假不給薪天數 / 颱風假扣薪」，其後每一欄 +2。）
       // 依序為：假日活動天數 11、國定假日出勤天數 13、補休未休完時數 15、
-      //         健保眷屬口數 22、事假 23、病假 25、生理假 27、家庭照顧假 29、勞退自提率 33、育嬰留停天數 35。
-      const rawNumberCols = new Set([11, 13, 15, 22, 23, 25, 27, 29, 33, 35]);
+      //         健保眷屬口數 22、事假 23、病假 25、生理假 27、家庭照顧假 29、颱風假不給薪天數 31、勞退自提率 35、育嬰留停天數 37。
+      const rawNumberCols = new Set([11, 13, 15, 22, 23, 25, 27, 29, 31, 35, 37]);
       const headerRowIdx = 2;
       const lastRowIdx = aoa.length - 1;
       for (let r = headerRowIdx + 1; r <= lastRowIdx; r++) {

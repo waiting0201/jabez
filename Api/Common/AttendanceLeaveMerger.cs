@@ -40,6 +40,8 @@ public static class AttendanceLeaveMerger
     public const string RowKindClock  = "clock";
     public const string RowKindLeave  = "leave";
     public const string RowKindAbsent = "absent";
+    /// <summary>本人工作日遇天然災害停班、無打卡也無請假（Id = null；取代該日的缺勤列）</summary>
+    public const string RowKindDisaster = "disaster";
 
     public static async Task<PagedResult<AttendanceRecordDto>> BuildPagedAsync(
         IAttendanceReadService reader,
@@ -48,7 +50,8 @@ public static class AttendanceLeaveMerger
         int page, int pageSize,
         Guid? employeeId, DateOnly dateFrom, DateOnly dateTo,
         DateTime? flexibleWorkStartDate = null,
-        IShiftScheduleReadService? shiftReader = null)
+        IShiftScheduleReadService? shiftReader = null,
+        IDisasterDayOffReadService? disasterReader = null)
     {
         // 本次合併專用的行事曆快取：逐張假單展開與缺勤列的工作日計算會反覆查同一年度，收斂成每年最多 2 次查詢
         var cal = new CachedCalendarDayReadService(calendarReader);
@@ -70,6 +73,16 @@ public static class AttendanceLeaveMerger
             cal, shiftReader, flexibleWorkStartDate, shiftByUser,
             [.. clockRows.Select(r => r.UserId)], leaveRows, from, to);
 
+        // 天然災害停班（颱風假）：(員工, 日期) → 停班時段。單一真相 IDisasterDayOffReadService，
+        // 這裡只做三件事：① 應出勤時段扣除 ② 不產生缺勤列（改產生 disaster 列）③ 給薪者退回的請假時數不顯示
+        HashSet<Guid> allUserIds = [.. employees.Select(e => e.UserId), .. clockRows.Select(r => r.UserId), .. leaveRows.Select(l => l.UserId)];
+        IReadOnlyDictionary<(Guid UserId, DateTime Date), DisasterDayEntry> disaster =
+            disasterReader is null || allUserIds.Count == 0
+                ? new Dictionary<(Guid, DateTime), DisasterDayEntry>()
+                : await disasterReader.GetSegmentsAsync(allUserIds, from, to);
+        string? SegOf(Guid userId, DateTime date) =>
+            disaster.TryGetValue((userId, date.Date), out var dz) ? dz.Segment : null;
+
         // (員工, 日期) → 該日所有假單。Dtos 供回傳、Days 供 ExpectedWorkWindow 計算應出勤時段
         var leavesByDay = new Dictionary<(Guid UserId, DateTime Date), (List<AttendanceLeaveDto> Dtos, List<LeaveDay> Days)>();
         var nameByUser  = new Dictionary<Guid, string>();
@@ -88,12 +101,21 @@ public static class AttendanceLeaveMerger
                 if (revokedSet.Contains(date))  continue;       // 該日已核准銷假 → 不算請假日
                 if (d.Hours <= 0)               continue;
 
+                // 給薪的颱風假蓋住的部分已退回，不再顯示為請假時數；整段被蓋住就不產生請假列
+                // （改由 disaster 列呈現）。不給薪者假單照舊（假單不動、照原假別計薪）。
+                var shownHours = d.Hours;
+                if (disaster.TryGetValue((lr.UserId, date), out var dz) && dz.IsPaid)
+                {
+                    shownHours = DisasterLeaveAdjuster.RemainingHours(d, dz.Segment, workdaysFor(lr.UserId).ScheduleFor(date));
+                    if (shownHours <= 0) continue;
+                }
+
                 var key = (lr.UserId, date);
                 if (!leavesByDay.TryGetValue(key, out var entry))
                     leavesByDay[key] = entry = ([], []);
 
                 entry.Dtos.Add(new AttendanceLeaveDto(
-                    lr.Id, lr.LeaveType, d.Hours, lr.StartDate, lr.EndDate,
+                    lr.Id, lr.LeaveType, shownHours, lr.StartDate, lr.EndDate,
                     d.Segment, date.Add(d.Start.ToTimeSpan()), date.Add(d.End.ToTimeSpan())));
                 entry.Days.Add(d);
             }
@@ -110,14 +132,14 @@ public static class AttendanceLeaveMerger
         {
             // Remove：命中即從字典移除，剩下的自然就是「沒有打卡紀錄」的請假日
             merged.Add(leavesByDay.Remove((row.UserId, row.RecordDate.Date), out var entry)
-                ? WithLeaves(row, entry.Dtos, entry.Days, flexibleWorkStartDate)
+                ? WithLeaves(row, entry.Dtos, entry.Days, flexibleWorkStartDate, SegOf(row.UserId, row.RecordDate))
                 : row);
         }
 
         foreach (var (key, entry) in leavesByDay)
             merged.Add(WithLeaves(
                 CreateVirtualRow(key.UserId, nameByUser[key.UserId], key.Date, RowKindLeave, flexibleWorkStartDate),
-                entry.Dtos, entry.Days, flexibleWorkStartDate));
+                entry.Dtos, entry.Days, flexibleWorkStartDate, SegOf(key.UserId, key.Date)));
 
         // 工作日集合，應出勤時段與缺勤列共用。
         // 查詢區間全在切換日之前 → 只取決於排班制旗標，分兩組快取（行事曆查詢最多 2 次）；
@@ -137,8 +159,14 @@ public static class AttendanceLeaveMerger
             return workingMemo[key] = [.. working];
         }
 
-        await ApplyExpectedWindowAsync(merged, WorkingSetAsync, flexibleWorkStartDate);
-        await AppendAbsentRowsAsync(merged, employees, WorkingSetAsync, clockedKeys, leaveKeys, from, to, flexibleWorkStartDate);
+        await ApplyExpectedWindowAsync(merged, WorkingSetAsync, flexibleWorkStartDate, SegOf);
+        await AppendAbsentRowsAsync(merged, employees, WorkingSetAsync, clockedKeys, leaveKeys, from, to, flexibleWorkStartDate, disaster);
+
+        // 每一列（clock / leave / disaster）都帶上當日颱風假資訊，前端據此掛 badge
+        if (disaster.Count > 0)
+            for (int i = 0; i < merged.Count; i++)
+                if (disaster.TryGetValue((merged[i].UserId, merged[i].RecordDate.Date), out var dz))
+                    merged[i] = merged[i] with { DisasterSegment = dz.Segment, DisasterIsPaid = dz.IsPaid };
 
         // 三段式 tiebreak 確保 total order：記憶體切頁若排序不穩定，翻頁會漏列 / 重複列
         var ordered = merged
@@ -163,12 +191,13 @@ public static class AttendanceLeaveMerger
     private static async Task ApplyExpectedWindowAsync(
         List<AttendanceRecordDto> merged,
         Func<Guid, Task<HashSet<DateTime>>> workingSetAsync,
-        DateTime? flexibleWorkStartDate)
+        DateTime? flexibleWorkStartDate,
+        Func<Guid, DateTime, string?> disasterSegOf)
     {
         for (int i = 0; i < merged.Count; i++)
         {
             var row = merged[i];
-            if (row.RowKind == RowKindAbsent) continue;   // 缺勤列建立時已填好
+            if (row.RowKind is RowKindAbsent or RowKindDisaster) continue;   // 缺勤列 / 颱風假列建立時已填好
 
             var working = await workingSetAsync(row.UserId);
             var date = row.RecordDate.Date;
@@ -179,11 +208,9 @@ public static class AttendanceLeaveMerger
             {
                 // 依**該列自己的日期**選時段：回看切換日之前的月份仍須用舊制，否則會生出不存在的「未打卡」
                 var sch = WorkdayHours.For(date, flexibleWorkStartDate);
-                merged[i] = row with
-                {
-                    ExpectedStart = date.Add(sch.Start.ToTimeSpan()),
-                    ExpectedEnd   = date.Add(sch.End.ToTimeSpan()),
-                };
+                // 當日有颱風假時扣掉停班時段（全天 → 免出勤，半天 → 縮成另一半）
+                var window = ExpectedWorkWindow.Compute(date, [], sch, disasterSegOf(row.UserId, date));
+                merged[i] = row with { ExpectedStart = window.Start, ExpectedEnd = window.End };
             }
         }
     }
@@ -199,9 +226,12 @@ public static class AttendanceLeaveMerger
         HashSet<(Guid, DateTime)> clockedKeys,
         HashSet<(Guid, DateTime)> leaveKeys,
         DateTime from, DateTime to,
-        DateTime? flexibleWorkStartDate)
+        DateTime? flexibleWorkStartDate,
+        IReadOnlyDictionary<(Guid UserId, DateTime Date), DisasterDayEntry> disaster)
     {
-        var lastDate = Clock.Now.Date.AddDays(-1);
+        // 缺勤列上界是昨天；颱風假列可含今天（今天停班在家的人，今天就該看得到一列「颱風假」）
+        var absentCeiling = Clock.Now.Date.AddDays(-1);
+        var lastDate = Clock.Now.Date;
         if (to < lastDate) lastDate = to;
         if (employees.Count == 0 || lastDate < from) return;
 
@@ -225,6 +255,18 @@ public static class AttendanceLeaveMerger
                 if (clockedKeys.Contains((emp.UserId, d))) continue;  // 有任何打卡紀錄（含只有加班時間的列）
                 if (leaveKeys.Contains((emp.UserId, d)))   continue;  // 有請假 → 已有請假列，不重複產生
 
+                // 天然災害停班：本人工作日遇颱風假、無打卡也無請假 → 一列 disaster（取代缺勤列）。
+                // 半天停班者另一半天的應出勤時段保留在 Expected*，前端照常標「未打卡」。
+                if (disaster.ContainsKey((emp.UserId, d)))
+                {
+                    var sch = WorkdayHours.For(d, flexibleWorkStartDate);
+                    var window = ExpectedWorkWindow.Compute(d, [], sch, disaster[(emp.UserId, d)].Segment);
+                    merged.Add(CreateVirtualRow(emp.UserId, emp.UserName, d, RowKindDisaster, sch)
+                        with { ExpectedStart = window.Start, ExpectedEnd = window.End });
+                    continue;
+                }
+
+                if (d > absentCeiling) continue;                      // 今天與未來不算缺勤
                 merged.Add(CreateVirtualRow(emp.UserId, emp.UserName, d, RowKindAbsent, flexibleWorkStartDate));
             }
         }
@@ -282,12 +324,12 @@ public static class AttendanceLeaveMerger
     /// <summary>把當日請假資訊與應出勤時段掛到一列上（打卡列與請假虛擬列共用）。</summary>
     private static AttendanceRecordDto WithLeaves(
         AttendanceRecordDto row, List<AttendanceLeaveDto> leaves, List<LeaveDay> days,
-        DateTime? flexibleWorkStartDate)
+        DateTime? flexibleWorkStartDate, string? disasterSegment = null)
     {
         // 以「當日實際起時」排序，同日多張假才會照上午 → 下午的順序呈現
         var sorted = leaves.OrderBy(l => l.DayStart).ThenBy(l => l.LeaveRequestId).ToList();
         var window = ExpectedWorkWindow.Compute(
-            row.RecordDate, days, WorkdayHours.For(row.RecordDate, flexibleWorkStartDate));
+            row.RecordDate, days, WorkdayHours.For(row.RecordDate, flexibleWorkStartDate), disasterSegment);
 
         return row with
         {

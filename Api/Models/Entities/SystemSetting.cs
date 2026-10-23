@@ -51,4 +51,11 @@ public class SystemSetting
     /// 建議切換日訂在月初（薪資即時重算、無月結快照，月中切會讓同一個月跨兩套制度）。
     /// </summary>
     public DateTime? FlexibleWorkStartDate { get; set; }
+
+    // ── 天然災害停班（颱風假）────────────────────────────────
+    /// <summary>
+    /// 自動抓取到的颱風假預設是否給薪（預設 true＝給薪）。HR 可逐筆（某日某縣市）修改。
+    /// 給薪：未出勤不扣薪、已核准請假退回時數；不給薪：未出勤者扣日薪、假單不動。
+    /// </summary>
+    public bool      DisasterDayOffPaidDefault { get; set; } = true;
 }

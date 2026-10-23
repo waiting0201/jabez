@@ -198,7 +198,7 @@ public sealed class PayrollHandler(IPayrollReadService reader, AppDbContext db, 
                           + emp.CompensatorySettlementAmount + emp.OtherAddition;
         var totalDeductions = emp.LaborInsurance + emp.HealthInsurance
                             + emp.PersonalLeaveDeduction + emp.SickLeaveDeduction + emp.MenstrualLeaveDeduction
-                            + emp.FamilyCareLeaveDeduction
+                            + emp.FamilyCareLeaveDeduction + emp.DisasterDeduction
                             + emp.OtherDeduction + emp.LaborPensionSelfDeduction;
 
         // 育嬰留停當月：底薪與各加給已按「在職天數 ÷ 30」折減，於底薪列加註說明（整月留停者不會出現在名單中）
@@ -300,6 +300,10 @@ public sealed class PayrollHandler(IPayrollReadService reader, AppDbContext db, 
         if (emp.FamilyCareLeaveDays > 0)
             deductionRows += $"""
             <tr><td style="padding:8px 12px">家庭照顧假扣薪（{Math.Round(emp.FamilyCareLeaveDays, 2)} 天 = {Math.Round(emp.FamilyCareLeaveDays * 8m, 1)} 小時）</td><td style="padding:8px 12px;text-align:right">{fmt(emp.FamilyCareLeaveDeduction)}</td></tr>
+            """;
+        if (emp.DisasterDeduction > 0)
+            deductionRows += $"""
+            <tr><td style="padding:8px 12px">颱風假不給薪扣薪（{Math.Round(emp.DisasterUnpaidDays, 1)} 天）</td><td style="padding:8px 12px;text-align:right">{fmt(emp.DisasterDeduction)}</td></tr>
             """;
         if (emp.OtherDeduction > 0)
             deductionRows += $"""

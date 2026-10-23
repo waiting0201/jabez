@@ -24,7 +24,8 @@ public sealed record LeaveRequestDto(
     decimal?  OriginalHours        = null,   // 有值代表曾銷假；原始請假時數
     DateTime? ChildBirthDate       = null,   // 育嬰留停：子女出生日期
     bool?     ContinueInsurance    = null,   // 育嬰留停：期間是否續保勞健保（僅記錄意願）
-    string?   RequestNo            = null);  // LV-yyyyMMdd-NNN；送簽時取號，草稿為 null
+    string?   RequestNo            = null,   // LV-yyyyMMdd-NNN；送簽時取號，草稿為 null
+    decimal?  DisasterAdjustedHours = null); // 給薪颱風假退回的時數（Hours 已扣除）；無為 null
 
 public sealed record CreateLeaveRequestRequest(
     Guid?    EmployeeId,

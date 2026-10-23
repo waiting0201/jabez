@@ -1106,3 +1106,7 @@ Excel「備註」欄一併列出。管理者在出缺勤編輯表單改上下班
 - [payroll-formula.md](payroll-formula.md) — **現行**薪資公式（含假日津貼、加班費）
 - [application-forms.md](application-forms.md) — 申請表類型總覽（假日執行活動在此退場）
 - [notifications.md](notifications.md) — 通知系統清單（新增排班提醒推播須登錄於此）
+
+## 天然災害停班（颱風假）不走行事曆（2026-10-23）
+
+颱風假存在獨立資料表 `DisasterDayOff`，**不寫入 `CalendarDay`**：行事曆的 `IsHoliday` 與「國定假日＝IsHoliday 且 Description 非空」判準會連動國定假日加倍工資、打卡鎖定、吃掉已排例休等整串規則，且年度匯入會整年重建。颱風假只把該員該時段從「應出勤」移除，日別（`WorkDayTypes`）、加班級距、排班配額皆不變；新舊制同樣生效。見 [disaster-day-off.md](disaster-day-off.md)。

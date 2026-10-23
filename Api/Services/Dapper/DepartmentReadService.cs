@@ -12,7 +12,7 @@ public sealed class DepartmentReadService(IDbConnection db) : IDepartmentReadSer
             SELECT d.Id, d.Name, d.Code, d.Description, d.ParentId,
                    p.Name AS ParentName, d.SortOrder,
                    d.CanViewSiblings, d.CanSeeAll, d.CanViewDescendants, d.CanViewParent,
-                   d.CreatedAt,
+                   d.County, d.CreatedAt,
                    COUNT(u.Id) AS EmployeeCount,
                    (SELECT STRING_AGG(u2.Name, ', ') WITHIN GROUP (ORDER BY ISNULL(jt2.Level, 2147483647), u2.Name)
                       FROM Users u2
@@ -23,7 +23,7 @@ public sealed class DepartmentReadService(IDbConnection db) : IDepartmentReadSer
             LEFT JOIN Departments p ON d.ParentId = p.Id
             LEFT JOIN Users u       ON u.DepartmentId = d.Id
             GROUP BY d.Id, d.Name, d.Code, d.Description, d.ParentId, p.Name, d.SortOrder,
-                     d.CanViewSiblings, d.CanSeeAll, d.CanViewDescendants, d.CanViewParent, d.CreatedAt
+                     d.CanViewSiblings, d.CanSeeAll, d.CanViewDescendants, d.CanViewParent, d.County, d.CreatedAt
             ORDER BY d.SortOrder, d.Name
             """;
 
@@ -43,7 +43,8 @@ public sealed class DepartmentReadService(IDbConnection db) : IDepartmentReadSer
             (bool)row.CanViewParent,
             (int)row.EmployeeCount,
             (DateTime)row.CreatedAt,
-            (string?)row.EmployeeNames));
+            (string?)row.EmployeeNames,
+            (string?)row.County));
     }
 
     public async Task<DepartmentDto?> GetByIdAsync(int id)
@@ -52,7 +53,7 @@ public sealed class DepartmentReadService(IDbConnection db) : IDepartmentReadSer
             SELECT d.Id, d.Name, d.Code, d.Description, d.ParentId,
                    p.Name AS ParentName, d.SortOrder,
                    d.CanViewSiblings, d.CanSeeAll, d.CanViewDescendants, d.CanViewParent,
-                   d.CreatedAt,
+                   d.County, d.CreatedAt,
                    COUNT(u.Id) AS EmployeeCount,
                    (SELECT STRING_AGG(u2.Name, ', ') WITHIN GROUP (ORDER BY ISNULL(jt2.Level, 2147483647), u2.Name)
                       FROM Users u2
@@ -64,7 +65,7 @@ public sealed class DepartmentReadService(IDbConnection db) : IDepartmentReadSer
             LEFT JOIN Users u       ON u.DepartmentId = d.Id
             WHERE d.Id = @Id
             GROUP BY d.Id, d.Name, d.Code, d.Description, d.ParentId, p.Name, d.SortOrder,
-                     d.CanViewSiblings, d.CanSeeAll, d.CanViewDescendants, d.CanViewParent, d.CreatedAt
+                     d.CanViewSiblings, d.CanSeeAll, d.CanViewDescendants, d.CanViewParent, d.County, d.CreatedAt
             """;
 
         var row = await db.QueryFirstOrDefaultAsync<dynamic>(sql, new { Id = id });
@@ -84,6 +85,7 @@ public sealed class DepartmentReadService(IDbConnection db) : IDepartmentReadSer
             (bool)row.CanViewParent,
             (int)row.EmployeeCount,
             (DateTime)row.CreatedAt,
-            (string?)row.EmployeeNames);
+            (string?)row.EmployeeNames,
+            (string?)row.County);
     }
 }

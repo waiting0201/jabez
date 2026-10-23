@@ -12,7 +12,7 @@ import {AuthService} from '@/app/core/auth/services/auth.service';
 import * as XLSX from 'xlsx';
 
 export interface AttendanceRecordRow {
-  /** 合併列的穩定 track key：打卡列 'a{id}'、請假虛擬列 'l{...}'、缺勤虛擬列 'x{...}' */
+  /** 合併列的穩定 track key：打卡列 'a{id}'、請假虛擬列 'l{...}'、缺勤虛擬列 'x{...}'、颱風假虛擬列 'd{...}' */
   key: string;
   /** AttendanceRecord.Id；null＝虛擬列（DB 無對應紀錄，不可編輯）。種類一律看 rowKind */
   id: number | null;
@@ -21,9 +21,16 @@ export interface AttendanceRecordRow {
   recordDate: string;
   /**
    * 列的種類：clock＝有打卡紀錄／leave＝當日只有請假／absent＝工作日無打卡且無請假。
-   * 請假列與缺勤列同樣 id === null，不可再用 id 判斷是哪一種。
+   * disaster＝颱風假（天然災害停班）當日本人工作日、無打卡無請假的虛擬列。
+   * 請假 / 缺勤 / 颱風假列同樣 id === null，不可再用 id 判斷是哪一種。
    */
-  rowKind: 'clock' | 'leave' | 'absent';
+  rowKind: 'clock' | 'leave' | 'absent' | 'disaster';
+  /** 該日適用的颱風假時段（含有打卡的 clock 列與請假列）；沒有為 null */
+  disasterSegment: 'full' | 'am' | 'pm' | null;
+  /** 該日颱風假是否給薪（disasterSegment 為 null 時亦為 null） */
+  disasterIsPaid: boolean | null;
+  /** 颱風假 badge 文字（例：颱風假(上午)、颱風假 不給薪）；無颱風假為空字串 */
+  disasterLabel: string;
   /** 當日所有假別中文，以「、」串接（Excel 匯出與相容用） */
   leaveType: string;
   /** 逐張假單的當日時段字串，一張一行（例：`事假 09:00–13:00 (4h)`、`年假(特休假) 上午`） */
@@ -277,6 +284,9 @@ export class AttendanceReport implements OnInit {
             id: r.id ?? null,
             userId: r.userId,
             rowKind: r.rowKind ?? (r.id == null ? 'leave' : 'clock'),
+            disasterSegment: r.disasterSegment ?? null,
+            disasterIsPaid: r.disasterIsPaid ?? null,
+            disasterLabel: this.disasterLabel(r),
             isLeaveOnly: (r.rowKind ?? (r.id == null ? 'leave' : 'clock')) === 'leave',
             isAbsent: r.rowKind === 'absent',
             isMissingClockIn: !r.clockInTime && !!r.expectedStart && r.rowKind !== 'absent',
@@ -357,7 +367,7 @@ export class AttendanceReport implements OnInit {
    * 畫面 badge 與 Excel 備註共用此判定。
    */
   private isMissingClockOut(r: any): boolean {
-    if (r.rowKind === 'absent' || r.rowKind === 'leave') return false;
+    if (r.rowKind === 'absent' || r.rowKind === 'leave' || r.rowKind === 'disaster') return false;
     if (r.isClockOutAuto) return true;
     return !!r.clockInTime && !r.clockOutTime
       && !!r.recordDate && new Date(r.recordDate) < new Date(new Date().toDateString());
@@ -425,10 +435,22 @@ export class AttendanceReport implements OnInit {
     return (String(iso ?? '').split('T')[1] ?? '').substring(0, 5);
   }
 
-  /** 三種列各自的穩定 track key（請假列與缺勤列同樣 id === null，不可共用同一組 key） */
+  /**
+   * 颱風假 badge 文字：全天「颱風假」、半天「颱風假(上午)／(下午)」，不給薪者加「不給薪」。
+   * 畫面 badge 與 Excel 備註共用。
+   */
+  private disasterLabel(r: any): string {
+    const seg = r.disasterSegment as 'full' | 'am' | 'pm' | null | undefined;
+    if (!seg) return '';
+    const base = seg === 'am' ? '颱風假(上午)' : seg === 'pm' ? '颱風假(下午)' : '颱風假';
+    return r.disasterIsPaid === false ? `${base} 不給薪` : base;
+  }
+
+  /** 各種列各自的穩定 track key（請假 / 缺勤 / 颱風假列同樣 id === null，不可共用同一組 key） */
   private rowKey(r: any): string {
     const date = String(r.recordDate ?? '').substring(0, 10);
     if (r.rowKind === 'absent') return `x${r.userId}_${date}`;
+    if (r.rowKind === 'disaster') return `d${r.userId}_${date}`;
     return r.id != null ? `a${r.id}` : `l${r.userId}_${date}`;
   }
 
@@ -564,6 +586,8 @@ export class AttendanceReport implements OnInit {
               : '',
             r.rowKind === 'absent' ? '缺勤（未打卡未請假）' : '',
             r.rowKind === 'leave' ? '請假（未打卡）' : '',
+            r.rowKind === 'disaster' ? '颱風假（未打卡，天然災害停班）' : '',
+            this.disasterLabel(r),
             (!r.clockInTime && r.expectedStart && r.rowKind === 'clock') ? '未打上班卡' : '',
             r.isBusinessTrip ? '出差' : '',
             r.isLate ? '遲到' : '',

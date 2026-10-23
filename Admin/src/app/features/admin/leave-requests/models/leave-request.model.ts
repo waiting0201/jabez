@@ -295,6 +295,7 @@ export interface LeaveRequest {
   endDate: string;
   hours: number;              // 剩餘有效時數（銷假核准後遞減）
   originalHours?: number;     // 原始請假時數；有值代表曾銷假（部分或全部）
+  disasterAdjustedHours?: number | null;  // 颱風假（給薪）退回的時數；> 0 時顯示「颱風假退回 N 小時」
   reason: string;
   approvalStatus: ApprovalStatus;
   bereavementRelationship?: string;

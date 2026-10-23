@@ -24,6 +24,7 @@ public sealed class AttendanceReminderService(
     ILineService lineService,
     IWorkdayScheduleProvider workdaySchedule,
     IShiftScheduleReadService shiftReader,
+    IDisasterDayOffReadService disasterReader,
     ILogger<AttendanceReminderService> logger) : IAttendanceReminderService
 {
     /// <summary>提醒提前時間（分鐘）。</summary>
@@ -252,6 +253,12 @@ public sealed class AttendanceReminderService(
 
             return new AttendanceReminderRunResult(0, 0, 0, batchId);
         }
+
+        // 颱風假日不打擾（clockIn：全天 / 上午停班；clockOut：全天 / 下午停班）
+        var suppressed = await DisasterSuppressedAsync(
+            recipients.Select(r => r.UserId), today.Date, type == "clockOut" ? SuppressClockOut : SuppressClockIn);
+        if (suppressed.Count > 0)
+            recipients = [.. recipients.Where(r => !suppressed.Contains(r.UserId))];
 
         logger.LogInformation(
             "AttendanceReminder: type={Type} target={Target} recipientCount={Count} batchId={BatchId}",
@@ -519,6 +526,8 @@ public sealed class AttendanceReminderService(
         // 休假日 / 例假日的人本來就不會打卡，故會留在名單內，再依日別分流文案。
         var recipients = await reader.GetRecipientsAsync(
             targetTime, "clockIn", shiftWorkersOnly: false, ct, excludeCustomHours: true);
+        var typhoonOff = await DisasterSuppressedAsync(recipients.Select(r => r.UserId), now.Date, SuppressClockIn);
+        if (typhoonOff.Count > 0) recipients = [.. recipients.Where(r => !typhoonOff.Contains(r.UserId))];
         if (recipients.Count == 0) return;
 
         var dayTypes = await shiftReader.ResolveRangeForUsersAsync(
@@ -581,6 +590,8 @@ public sealed class AttendanceReminderService(
                      && now <  x.Start.AddMinutes(-LeadMinutes + WindowMinutes))
             .ToList();
 
+        var typhoonOffCustom = await DisasterSuppressedAsync(due.Select(x => x.c.UserId), now.Date, SuppressClockIn);
+        if (typhoonOffCustom.Count > 0) due = [.. due.Where(x => !typhoonOffCustom.Contains(x.c.UserId))];
         if (due.Count == 0) return;
 
         var dayTypes = await shiftReader.ResolveRangeForUsersAsync(
@@ -612,6 +623,10 @@ public sealed class AttendanceReminderService(
 
         var boundary = now.Date.AddHours(13);
         var recipients = await reader.GetHalfDayLeaveRecipientsAsync(now.Date, segment, boundary, ct);
+        // 颱風假：全天停班一律不推；下班前的「準備休假」提醒下午停班者也不推
+        var typhoonOffHandover = await DisasterSuppressedAsync(recipients.Select(r => r.UserId), now.Date,
+            seg => seg == DisasterSegments.Full || (segment == "pm" && seg == DisasterSegments.Pm));
+        if (typhoonOffHandover.Count > 0) recipients = [.. recipients.Where(r => !typhoonOffHandover.Contains(r.UserId))];
 
         var batchId = Guid.NewGuid();
         await WriteBatchStartAsync(batchId, now, slotTime, slot, "auto", null, ct);
@@ -650,6 +665,8 @@ public sealed class AttendanceReminderService(
             .Where(x => now >= x.At && now < x.At.AddMinutes(WindowMinutes))
             .ToList();
 
+        var typhoonOffOut = await DisasterSuppressedAsync(due.Select(x => x.c.UserId), now.Date, SuppressClockOut);
+        if (typhoonOffOut.Count > 0) due = [.. due.Where(x => !typhoonOffOut.Contains(x.c.UserId))];
         if (due.Count == 0) return;
 
         var batchId = Guid.NewGuid();
@@ -667,6 +684,23 @@ public sealed class AttendanceReminderService(
                 new Models.Dtos.AttendanceReminderRecipientDto(c.UserId, c.LineUserId, c.UserName), message, ct);
         }
     }
+
+    /// <summary>
+    /// 天然災害停班（颱風假）日不打擾：全天停班 → 上下班提醒都不推；上午停班 → 不推上班提醒；
+    /// 下午停班 → 不推下班提醒（自訂時段者同）。<paramref name="suppressWhen"/> 決定哪些停班時段要略過。
+    /// 單一真相是 <see cref="IDisasterDayOffReadService"/>，只看當日、不分給薪與否。
+    /// </summary>
+    private async Task<HashSet<Guid>> DisasterSuppressedAsync(
+        IEnumerable<Guid> userIds, DateTime date, Func<string, bool> suppressWhen)
+    {
+        var ids = userIds.Distinct().ToList();
+        if (ids.Count == 0) return [];
+        var map = await disasterReader.GetSegmentsAsync(ids, date, date);
+        return [.. map.Where(kv => suppressWhen(kv.Value.Segment)).Select(kv => kv.Key.UserId)];
+    }
+
+    private static bool SuppressClockIn(string segment)  => segment is DisasterSegments.Full or DisasterSegments.Am;
+    private static bool SuppressClockOut(string segment) => segment is DisasterSegments.Full or DisasterSegments.Pm;
 
     private static TimeOnly ParseOrDefault(string hhmm, TimeOnly fallback) =>
         TryParseHHmm(hhmm, out var ts) ? TimeOnly.FromTimeSpan(ts) : fallback;

@@ -37,6 +37,7 @@ public sealed class AppRouter(
     AttendanceHandler      attendances,
     ShiftScheduleHandler   shiftSchedules,
     ActivityDayHandler     activityDays,
+    DisasterDayOffHandler  disasterDays,
     ShiftScheduleReportHandler shiftScheduleReport,
     ShiftScheduleReminderAdminHandler shiftScheduleReminders,
     ApprovalTaskHandler    approvalTasks,
@@ -454,6 +455,17 @@ public sealed class AppRouter(
             ("PUT",    ["activity-days", var adId])       => await activityDays.UpdateAsync(req, adId),
             ("DELETE", ["activity-days", var adDelId])    => await activityDays.DeleteAsync(req, adDelId),
 
+            // ── 天然災害停班（颱風假）──────────────────────────────────────────
+            // 具體路徑（fetch-logs / fetch）須排在 ["disaster-days", var id] 之前
+            ("GET",    ["disaster-days"])                          => await disasterDays.GetAllAsync(req),
+            ("GET",    ["disaster-days", "fetch-logs"])            => await disasterDays.GetFetchLogsAsync(req),
+            ("POST",   ["disaster-days", "fetch"])                 => await disasterDays.FetchAsync(req),
+            ("POST",   ["disaster-days"])                          => await disasterDays.CreateAsync(req),
+            ("GET",    ["disaster-days", var dId, "affected"])     => await disasterDays.GetAffectedAsync(req, dId),
+            ("POST",   ["disaster-days", var dId, "cancel"])       => await disasterDays.CancelAsync(req, dId),
+            ("PATCH",  ["disaster-days", var dId])                 => await disasterDays.UpdateAsync(req, dId),
+            ("GET",    ["me", "disaster-day-off"])                 => await disasterDays.GetMineAsync(req),
+
             // ── Insurance Brackets ────────────────────────────────────────────
             ("GET",    ["insurance-brackets"])              => await insuranceBrackets.GetAllAsync(),
             ("GET",    ["insurance-brackets", "lookup"])    => await insuranceBrackets.LookupBySalaryAsync(req),
@@ -803,6 +815,13 @@ public sealed class AppRouter(
             ("GET",    ["activity-days", ..])             => PermissionCodes.ActivityDaysRead,
             ("POST" or "PUT" or "DELETE", ["activity-days", ..]) => PermissionCodes.ActivityDaysWrite,
 
+            // 天然災害停班（颱風假）：手動抓取為 Superadmin-only（IsSuperAdminRoute），
+            // 輕量端點 /me/disaster-day-off 登入即可（打卡頁提示用，員工不需 disaster-days:read）
+            ("POST",   ["disaster-days", "fetch"])          => null,
+            ("GET",    ["me", "disaster-day-off"])          => null,
+            ("GET",    ["disaster-days", ..])               => PermissionCodes.DisasterDaysRead,
+            ("POST" or "PATCH", ["disaster-days", ..])      => PermissionCodes.DisasterDaysWrite,
+
             // Insurance Brackets
             ("GET",    ["insurance-brackets", ..])              => PermissionCodes.InsuranceBracketsRead,
             ("POST",   ["insurance-brackets"])                  => PermissionCodes.InsuranceBracketsWrite,
@@ -850,6 +869,7 @@ public sealed class AppRouter(
             ("GET",    ["permissions", _]) or
             ("POST", ["admin", "attendance-reminder", "run"]) or
             ("GET",  ["admin", "attendance-reminder-logs", ..]) or
+            ("POST", ["disaster-days", "fetch"]) or
             ("POST", ["admin", "payment-reminder", "run"]) or
             ("GET",  ["admin", "payment-reminder-logs", ..]);
 

@@ -16,7 +16,8 @@ public sealed class AuthHandler(
     AppDbContext db,
     IJwtService  jwt,
     IConfiguration config,
-    IEmployeeWorkdaysFactory workdaysFactory)
+    IEmployeeWorkdaysFactory workdaysFactory,
+    Services.Dapper.IDisasterDayOffReadService disasterReader)
 {
     private readonly int _refreshExpiryDays =
         int.TryParse(config["Jwt:RefreshExpiryDays"], out var d) ? d : 7;
@@ -127,7 +128,7 @@ public sealed class AuthHandler(
         try
         {
             autoClock = await AttendanceAutoClockService.ApplyAsync(
-                db, await workdaysFactory.ForAsync(user.Id), user, permissions.Contains(PermissionCodes.AttendancesWrite));
+                db, await workdaysFactory.ForAsync(user.Id), user, permissions.Contains(PermissionCodes.AttendancesWrite), disasterReader);
             await db.SaveChangesAsync();
         }
         catch (DbUpdateException)

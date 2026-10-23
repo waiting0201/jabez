@@ -84,6 +84,7 @@ public sealed class SettingsHandler(AppDbContext db, IProjectAllocationSchedule 
         if (body.MonthlyOvertimeLimit     is not null) entity.MonthlyOvertimeLimit     = body.MonthlyOvertimeLimit.Value;
         if (body.ApprovalEmailEnabled     is not null) entity.ApprovalEmailEnabled     = body.ApprovalEmailEnabled.Value;
         if (body.ApprovalLineEnabled      is not null) entity.ApprovalLineEnabled      = body.ApprovalLineEnabled.Value;
+        if (body.DisasterDayOffPaidDefault is not null) entity.DisasterDayOffPaidDefault = body.DisasterDayOffPaidDefault.Value;
         if (body.PaymentReminderDaysBefore is not null) entity.PaymentReminderDaysBefore = Math.Clamp(body.PaymentReminderDaysBefore.Value, 0, 30);
         // 四週彈性工時切換日：日期本身用 Patch 語意（null = 不變更），
         // 「清空」另走 ClearFlexibleWorkStartDate —— 否則退回舊制的意圖表達不出來。
@@ -156,5 +157,6 @@ public sealed class SettingsHandler(AppDbContext db, IProjectAllocationSchedule 
         ApprovalEmailEnabled:     e.ApprovalEmailEnabled,
         ApprovalLineEnabled:      e.ApprovalLineEnabled,
         PaymentReminderDaysBefore: e.PaymentReminderDaysBefore,
-        FlexibleWorkStartDate:     e.FlexibleWorkStartDate);
+        FlexibleWorkStartDate:     e.FlexibleWorkStartDate,
+        DisasterDayOffPaidDefault: e.DisasterDayOffPaidDefault);
 }

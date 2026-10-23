@@ -43,9 +43,17 @@ public static class ExpectedWorkWindow
     /// 該日適用的工作時段。傳 null ＝ 舊制（等同四週彈性工時上線前的行為），
     /// 供尚未接上切換日的呼叫點暫時沿用；接上後一律傳 <c>WorkdayHours.For(date, switchDate)</c>。
     /// </param>
-    public static WorkWindow Compute(DateTime date, IReadOnlyList<LeaveDay> dayLeaves, WorkdaySchedule? schedule = null)
+    /// <param name="disasterSegment">
+    /// 當日適用的天然災害停班時段（full / am / pm；null ＝ 無）。**比照請假時段扣除**：全天 → 免出勤；
+    /// 上午 / 下午 → 與半天假同樣做跨午休正規化。與請假無關的獨立來源（見 docs/business/disaster-day-off.md），
+    /// 給薪與否都一樣移除應出勤時段（是否扣薪另由薪資處理）。
+    /// </param>
+    public static WorkWindow Compute(DateTime date, IReadOnlyList<LeaveDay> dayLeaves, WorkdaySchedule? schedule = null,
+        string? disasterSegment = null)
     {
         var s          = schedule ?? WorkdayHours.Legacy;
+        if (disasterSegment is not null)
+            dayLeaves = [.. dayLeaves, DisasterSegments.ToLeaveDay(date, disasterSegment, s)];
         var day        = date.Date;
         var start      = s.Start;       // 舊制 08:00 / 新制 09:00
         var end        = s.End;         // 舊制 17:00 / 新制 18:00

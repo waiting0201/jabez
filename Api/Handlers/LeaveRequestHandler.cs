@@ -29,7 +29,9 @@ public sealed class LeaveRequestHandler(
     IApprovalFlowService approvalFlow,
     ICalendarDayReadService calendarReader,
     IEmployeeWorkdaysFactory workdaysFactory,
-    IWorkdayScheduleProvider scheduleProvider)
+    IWorkdayScheduleProvider scheduleProvider,
+    IDisasterLeaveRecalculator disasterRecalc,
+    IDisasterDayOffReadService disasterReader)
 {
     private static readonly HashSet<string> ValidLeaveTypes =
         ["annual", "personal", "sick", "compensatory", "marriage", "bereavement",
@@ -165,6 +167,19 @@ public sealed class LeaveRequestHandler(
         }
 
         var (hasData, holidays, working) = await ComputeWorkingDatesAsync(callerId, start, end);
+
+        // 給薪的全天颱風假：該日不算請假日（半天停班只減半天時數，由送簽時的重算處理，這裡列日不變）
+        var typhoon = await disasterReader.GetSegmentsAsync([callerId], start.Date, end.Date);
+        var paidFullDays = typhoon
+            .Where(kv => kv.Value is { IsPaid: true, Segment: DisasterSegments.Full })
+            .Select(kv => kv.Key.Date).ToHashSet();
+        if (paidFullDays.Count > 0)
+        {
+            var moved = working.Where(paidFullDays.Contains).ToList();
+            working  = [.. working.Except(moved)];
+            holidays = [.. holidays.Concat(moved).OrderBy(d => d)];
+        }
+
         return new OkObjectResult(ApiResponse.Ok(new WorkingDaysDto(hasData, holidays, working, working.Count)));
     }
 
@@ -1196,6 +1211,8 @@ public sealed class LeaveRequestHandler(
             item.ReviewedAt       = Clock.Now;
             item.ReviewedById     = userId;
             item.ReviewNote       = "系統自動核准（Superadmin）";
+            // 已存在的給薪颱風假：退回該日時數（在額度 / 簽核分流判定之後才套用，不影響送簽門檻）
+            await disasterRecalc.RecalculateLeaveAsync(item);
             await CompensatoryLotService.SyncUsageAsync(db, scheduleProvider, item);
             await db.SaveChangesAsync();
             await notifier.NotifyLeaveAgentAsync(item.Id);
@@ -1251,6 +1268,8 @@ public sealed class LeaveRequestHandler(
         // 補休 lot：送出即佔用（pending 與 approved 同樣佔用，比照現行補休池語意）。
         // 三個出口（Superadmin 自動核准 / 全自審自動核准 / 一般送簽）都要走到 ——
         // 漏掉任一個，那批時數就會一直顯示為可用而被重複申請。
+        // 已存在的給薪颱風假先退回該日時數（簽核分流 / 額度判定已完成，不受影響）。
+        await disasterRecalc.RecalculateLeaveAsync(item);
         await CompensatoryLotService.SyncUsageAsync(db, scheduleProvider, item);
 
         await db.SaveChangesAsync();

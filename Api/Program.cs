@@ -90,6 +90,15 @@ var host = new HostBuilder()
             bool.TryParse(ctx.Configuration[Jabez.Api.Common.ShiftScheduleWindow.OpenAllFutureMonthsConfigKey], out var openAll)
             && openAll;
 
+        // ── 人事行政總處「天然災害停止上班及上課情形」公告（HttpClient 注入）──
+        // 公開網頁、免登入；10s timeout，失敗回 null 由排程下個 tick 重試。
+        services.AddHttpClient<IDgpaTyphoonService, DgpaTyphoonService>(c =>
+        {
+            c.BaseAddress = new Uri("https://www.dgpa.gov.tw/");
+            c.Timeout     = TimeSpan.FromSeconds(10);
+            c.DefaultRequestHeaders.UserAgent.ParseAdd("JabezHR/1.0 (+disaster-day-off)");
+        });
+
         // ── GCIS Service（HttpClient 注入）─────────────────────────────
         // 政府開放資料商工登記公示資料查詢；以統編查公司名稱 / 地址 / 負責人。
         // 8s timeout：查不到不快取，回 404 讓使用者手動填寫即可。
@@ -158,6 +167,12 @@ var host = new HostBuilder()
         // 專案工時佔比上線日（app setting ProjectAllocation:StartDate；未設 ＝ 不啟用）
         services.AddSingleton<IProjectAllocationSchedule, ProjectAllocationSchedule>();
         services.AddScoped<IEmployeeWorkdaysFactory, EmployeeWorkdaysFactory>();
+        // 天然災害停班（颱風假）：工作地解析 + (員工, 日期) → 停班時段的單一真相
+        services.AddScoped<IWorkCountyResolver, WorkCountyResolver>();
+        services.AddScoped<IDisasterDayOffReadService, DisasterDayOffReadService>();
+        services.AddScoped<IDisasterLeaveRecalculator, DisasterLeaveRecalculator>();
+        services.AddScoped<IDisasterPayrollService, DisasterPayrollService>();
+        services.AddScoped<IDisasterDayOffService, DisasterDayOffService>();
         services.AddScoped<IShiftScheduleReminderService, ShiftScheduleReminderService>();
         services.AddScoped<IAutoShiftScheduleService, AutoShiftScheduleService>();
         services.AddScoped<ITravelPaymentRequestReadService, TravelPaymentRequestReadService>();
@@ -177,6 +192,7 @@ var host = new HostBuilder()
         services.AddScoped<SettingsHandler>();
         services.AddScoped<HealthHandler>();
         services.AddScoped<DepartmentHandler>();
+        services.AddScoped<DisasterDayOffHandler>();
         services.AddScoped<JobTitleHandler>();
         services.AddScoped<VendorHandler>();
         services.AddScoped<ApprovalHandler>();

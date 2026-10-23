@@ -409,6 +409,23 @@
 
 ---
 
+## 天然災害停班（颱風假）
+
+詳見 [business/disaster-day-off.md](business/disaster-day-off.md)。`fetch-logs` / `fetch` 為具體路徑，路由表須排在 `["disaster-days", var id]` 之前。
+
+| Method | Path | 權限 | 說明 |
+|---|---|---|---|
+| GET | `/disaster-days?from=&to=` | `disaster-days:read` | 清單（含縣市名稱、來源、狀態、影響人數 `affectedCount`） |
+| POST | `/disaster-days` | `disaster-days:write` | 手動建立，body `{ date, counties[], segment, isPaid? }`；同日同縣市已有有效紀錄回 400 |
+| PATCH | `/disaster-days/{id}` | `disaster-days:write` | 改 `segment` / `isPaid`（觸發請假重算） |
+| POST | `/disaster-days/{id}/cancel` | `disaster-days:write` | 取消（保留列，自動抓取不再重建） |
+| GET | `/disaster-days/{id}/affected` | `disaster-days:read` | 影響名單 + 被退回時數的假單 + 未設工作地人數 |
+| GET | `/disaster-days/fetch-logs?limit=` | `disaster-days:read` | 公告抓取紀錄（含待人工項原文） |
+| POST | `/disaster-days/fetch` | Superadmin | 手動抓取一次並套用（忽略更新時間去重） |
+| GET | `/me/disaster-day-off` | 登入即可 | 今天本人適用的颱風假；無則 `data = null`（打卡頁提示用） |
+
+相關欄位：Department DTO `county`、User DTO / `GET /me/user` `workCounty`、Settings DTO `disasterDayOffPaidDefault`、出缺勤列 `disasterSegment` / `disasterIsPaid` / `rowKind = disaster`、請假 DTO `disasterAdjustedHours`、薪資列 `disasterUnpaidDays` / `disasterDeduction`、月合計 `totalDisasterDeduction`。
+
 ## 跨業務關聯
 
 - 申請類路由業務含義 → [docs/business/application-forms.md](business/application-forms.md)

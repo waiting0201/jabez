@@ -17,7 +17,7 @@ namespace Jabez.Api.Handlers;
 /// GET   /approval-tasks/{id}                               → 單筆
 /// PATCH /approval-tasks/{applicationType}/{id}/review      → 多步驟審核（核准 / 退回修改 / 拒絕）
 /// </summary>
-public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadService reader, IJwtService jwtService, IApprovalNotificationService notifier, IApprovalFlowService approvalFlow, IBlobStorageService blob, ICalendarDayReadService calendarReader, IEmployeeWorkdaysFactory workdaysFactory, IShiftScheduleReadService shiftSchedule, IWorkdayScheduleProvider scheduleProvider)
+public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadService reader, IJwtService jwtService, IApprovalNotificationService notifier, IApprovalFlowService approvalFlow, IBlobStorageService blob, ICalendarDayReadService calendarReader, IEmployeeWorkdaysFactory workdaysFactory, IShiftScheduleReadService shiftSchedule, IWorkdayScheduleProvider scheduleProvider, IDisasterDayOffReadService disasterReader)
 {
     private static readonly HashSet<string> ValidActions  = ["approved", "returned", "rejected"];
     /// <summary>
@@ -522,7 +522,7 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
                 // 退回 / 拒絕不需任何回滾 —— 父單自始至終維持 approved
                 if (rv.ApprovalStatus == "approved")
                 {
-                    await LeaveRevocationService.ApplyAsync(db, workdaysFactory, rv);
+                    await LeaveRevocationService.ApplyAsync(db, workdaysFactory, rv, disasterReader);
 
                     // 銷的若是補休假，父單 Hours 已遞減 → 扣抵紀錄必須跟著縮，
                     // 否則被銷掉的那幾天仍佔著 lot，同仁憑空少一批補休。
