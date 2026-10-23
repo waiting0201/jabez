@@ -264,6 +264,16 @@
                   <div class="text-muted small mt-1">賣店 / 營業所等排班人員請勾選，請假天數不再扣除六日與國定假日</div>
                 </div>
                 <div class="col-12 col-md-4">
+                  <label class="form-label fw-500">工作地縣市（覆寫部門）</label>
+                  <select class="form-select" formControlName="workCounty">
+                    <option value="">— 依部門 —</option>
+                    @for (c of counties; track c.code) {
+                      <option [value]="c.code">{{ c.name }}</option>
+                    }
+                  </select>
+                  <div class="text-muted small mt-1">颱風假依工作地縣市套用；空白＝依所屬部門的工作地</div>
+                </div>
+                <div class="col-12 col-md-4">
                   <label class="form-label fw-500">上下班時段</label>
                   <div class="form-check mt-2">
                     <input class="form-check-input" type="checkbox" formControlName="hasCustomWorkHours" id="hasCustomWorkHours">

@@ -23,6 +23,9 @@ public class SystemSettingConfiguration : IEntityTypeConfiguration<SystemSetting
         builder.Property(s => s.WorkStartTime).IsRequired().HasMaxLength(5);   // "HH:MM"
         builder.Property(s => s.WorkEndTime).IsRequired().HasMaxLength(5);     // "HH:MM"
 
+        // ── 天然災害停班：預設給薪（既有列由 migration 補 1）──────────
+        builder.Property(s => s.DisasterDayOffPaidDefault).HasDefaultValue(true);
+
         // ── Seed：Id = 1 ────────────────────────────────────
         builder.HasData(new SystemSetting
         {

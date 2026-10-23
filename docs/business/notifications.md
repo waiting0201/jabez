@@ -263,3 +263,11 @@
 見 [attendance-reminder.md](attendance-reminder.md)：排班提醒四個時點（10／20／25／26 號）
 與個人化下班提醒、半天假 12:55 交接提醒。
 ⚠ 手動觸發端點**預設乾跑**，要真的發送必須明確帶 `send=true`。
+
+## 颱風假公告通知（2026-10-23）
+
+| 通道 | 觸發 | 對象 | 內容 |
+|---|---|---|---|
+| Email + LINE Flex（`BuildDisasterDayOffMessage`） | `DisasterDayOffService.SyncAsync` 自動建立颱風假，或出現新的待人工項（部分鄉鎮／無法辨識／公告改照常／時段不符） | 持有 `disaster-days:write` 的在職人員 | 日期／時段／縣市／給薪預設／影響約 N 人／未設定工作地人數／待人工項原文 |
+
+受系統「簽核通知 Email／LINE」開關控制；待人工項與上次成功紀錄相同者不重複通知。見 [disaster-day-off.md](disaster-day-off.md)。

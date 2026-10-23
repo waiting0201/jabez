@@ -62,6 +62,8 @@
 | `ShiftScheduleMonth` | 個人排班的**整月狀態**：`Status` = `draft` / `committed` / `auto`，唯一索引 `(UserId, Year, Month)`。供「次月是否已完成排班」（20 號提醒）、「是否為系統自動排班」（26 號批次）判定；`AutoAssignedAt` 非 null 即代表該月班表非本人所排 |
 | `ActivityDay` | 主管（部門協理）於活動 3 個月前預先排定的**活動日**。⚠ **疊加旗標、非第 5 種日別** —— 月曆格狀態仍四選一，活動日壓在其上；做成第 5 種會讓自動排班的「跳過活動日」與配額計算互相打架。**可排在國定假日上** |
 | `ShiftScheduleAdjustment` | **活動日覆蓋個人排班的異動紀錄 ＝ 鈴鐺通知來源**（2026-09-29）：`UserId`（CASCADE）/ `ActivityDayId`（SET NULL，活動日刪除後保留紀錄）/ `ActivityTitle` 快照 / `Date`（被改為上班日的日子）/ `OriginalDayType` / `RelocatedTo`（原例假／休假搬到哪天，null ＝ 待補排）/ `AcknowledgedAt`（null ＝ 未讀）。索引 `(UserId, AcknowledgedAt)` |
+| `DisasterDayOff` | **天然災害停班（颱風假，2026-10-23）**：`Date`(date) / `County`(縣市代碼) / `Segment`(full·am·pm) / `IsPaid` / `Source`(dgpa·manual) / `SourceText` / `Status`(active·cancelled) / 建立與取消者 Id + 姓名快照（**不設 FK**，免加入 UserHandler 刪除清洗清單）。filtered unique `(Date, County) WHERE Status='active'`；取消列保留。**刻意不寫進 CalendarDay** |
+| `DisasterDayOffFetchLog` | 人事行政總處公告每次抓取的紀錄：`SourceUpdatedAt`（去重鍵）/ `Success` / `Summary` / `ManualItemsJson`（待人工項） |
 | `ActivityDayAssignee` | 活動日的**預定人力**，唯一索引 `(ActivityDayId, UserId)`。被列入者若當日為國定假日 → 解鎖上下班打卡、不需加班申請單 |
 | `ShiftChangeRequest` | **改班申請**（四週彈性工時 §3.5.2）：開放期結束、班表定案後的異動途徑。單號 `SC-yyyyMMdd-NNN`（**送簽時取號**，草稿為 null）。⚠ **與銷假申請不同，必須有自己的 `ApplicationType`（`shift_change`）** —— 逐部門六條簽核路線要靠管理員建 6 個 `ApprovalItem`，借用別型就建不出來 |
 | `ShiftChangeRequestDate` | 改班的逐日明細：`FromDayType`（**送單當下的快照**，讓簽核者看得到原本是什麼）+ `ToDayType`。一張單可同時調多天（支援「A 日改上班、B 日改休假」的對調）；唯一索引 `(ShiftChangeRequestId, Date)` |
@@ -101,3 +103,4 @@
 - **HealthInsuranceDependent 影響薪資公式** → [docs/business/payroll-formula.md](business/payroll-formula.md)
 - **AttendanceReminderLog** → [docs/business/attendance-reminder.md](business/attendance-reminder.md)
 - **LeaveRequest 假別與規則** → [docs/business/leave-rules.md](business/leave-rules.md)
+- **颱風假新增欄位（2026-10-23）**：`Departments.County`、`Users.WorkCounty`（縣市代碼 nvarchar(3)）、`SystemSettings.DisasterDayOffPaidDefault`（bit，預設 1）、`LeaveRequests.DisasterAdjustedHours`（decimal(5,1)，給薪颱風假退回的時數；Hours 已扣除）→ [docs/business/disaster-day-off.md](business/disaster-day-off.md)

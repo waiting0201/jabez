@@ -129,6 +129,17 @@
             </div>
           }
 
+          <!-- 颱風假（天然災害停班）：僅提示，打卡鈕照常可用 -->
+          @if (disasterToday(); as dt) {
+            <div class="alert alert-warning border-0 mb-3 flex items-start gap-2">
+              <svg class="sa-icon mt-1 flex-shrink-0" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#alert-triangle"></use></svg>
+              <div>
+                <div class="fw-600">今日{{ dt.countyName }}{{ disasterSegmentLabels[dt.segment] }}停止上班（人事行政總處公告）</div>
+                <div class="small mt-1">出勤仍可照常打卡；{{ dt.isPaid ? '本次停班給薪。' : '本次停班不給薪，未出勤且未請假者依日薪扣薪。' }}</div>
+              </div>
+            </div>
+          }
+
           <!-- 今日日別（四週彈性工時；舊制不顯示）。鎖定原因來自後端，前端不自行判斷規則 -->
           @if (dayTypeLabel()) {
             <div class="alert border-0 mb-3"

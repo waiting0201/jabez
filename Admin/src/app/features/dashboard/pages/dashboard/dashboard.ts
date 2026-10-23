@@ -12,6 +12,8 @@ import {LineQuota} from '../../models/line-quota.model';
 import {OvertimeRequestService} from '@features/admin/overtime-requests/services/overtime-request.service';
 import {OvertimeRequest} from '@features/admin/overtime-requests/models/overtime-request.model';
 import {TodayAttendance, ClockActionType, ProjectAllocationInput, ActiveLeave, SHIFT_DAY_TYPE_LABELS} from '../../models/attendance.model';
+import {DisasterDayService} from '@features/admin/disaster-days/services/disaster-day.service';
+import {DISASTER_SEGMENT_LABELS, MyDisasterDayOff} from '@features/admin/disaster-days/models/disaster-day.model';
 import {LEAVE_TYPE_LABELS} from '@features/admin/leave-requests/models/leave-request.model';
 
 const DAY_NAMES = ['日', '一', '二', '三', '四', '五', '六'];
@@ -29,6 +31,7 @@ export class Dashboard implements OnInit, OnDestroy {
   private overtimeService = inject(OvertimeRequestService);
   private lineQuotaService = inject(LineQuotaService);
   private turnstile = inject(TurnstileService);
+  private disasterService = inject(DisasterDayService);
 
   /** Cloudflare Turnstile 容器：平常為空、看不到；Cloudflare 起疑時才浮出勾選框 */
   private turnstileBox = viewChild<ElementRef<HTMLElement>>('turnstileBox');
@@ -70,6 +73,10 @@ export class Dashboard implements OnInit, OnDestroy {
   lineQuota = signal<LineQuota | null>(null);
   /** 用量查詢失敗（LINE API 不可用 / Token 無效），給卡片顯示提示用 */
   lineQuotaFailed = signal(false);
+
+  /** 今日本人工作地縣市停班（颱風假）；沒有則 null。打卡鈕照常可按（出勤照平日計薪） */
+  disasterToday = signal<MyDisasterDayOff | null>(null);
+  readonly disasterSegmentLabels = DISASTER_SEGMENT_LABELS;
 
   /** 是否有權限看 LINE 用量卡片（line-quota:read 或 superadmin） */
   canViewLineQuota = computed(() => this.auth.hasPermission('line-quota:read'));
@@ -199,6 +206,12 @@ export class Dashboard implements OnInit, OnDestroy {
     this.attendanceService.getToday().subscribe(r => {
       // 後端永遠回傳非 null（即使無打卡紀錄也會回傳含 todayLeaves 的空殼 DTO）
       if (r) this.applyTodayRecord(r);
+    });
+
+    // 失敗（含 null）一律當作今日未停班，不影響打卡
+    this.disasterService.mine().subscribe({
+      next: d => this.disasterToday.set(d ?? null),
+      error: () => this.disasterToday.set(null),
     });
 
     this.overtimeService.getApprovedForToday().subscribe(list => {

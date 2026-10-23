@@ -62,3 +62,7 @@
 - **3 Tab UI / FormArray pattern** → [frontend-design.md §5 Tab UI](../frontend-design.md#5-tab-uipill-button-pattern) + [§7 明細列表](../frontend-design.md#7-明細列表formarray)
 - **Entity 結構（EmployeeProfile + 9 子表 + HealthInsuranceDependent）** → [database-schema.md](../database-schema.md)
 - **API 端點 GET / PUT /users/{id}/profile** → [api-routes.md §員工人事資料卡](../api-routes.md#員工人事資料卡hr-profile)
+
+## 工作地縣市（2026-10-23）
+
+`Department.County`（部門所在縣市）與 `User.WorkCounty`（個人覆寫，空值＝沿用部門，沿 `ParentId` 往上找最近有設定者）。僅供天然災害停班（颱風假）判定哪些員工適用，不顯示於人事資料卡 PDF。表單送空字串＝清除。詳見 [disaster-day-off.md](disaster-day-off.md)。

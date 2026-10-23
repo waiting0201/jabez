@@ -309,3 +309,13 @@ EmployeePayrollDto / 月度合計 / 薪資編輯頁 / 薪資明細 Email + PDF
 - **勞健保級距 lookup（級距表 entity）** → [database-schema.md](../database-schema.md)（`InsuranceBracket`）
 - **PayrollHandler 計算邏輯實作** → [Api/Handlers/PayrollHandler.cs](../../Api/Handlers/PayrollHandler.cs)
 - **PayrollReadService SQL** → [Api/Services/Dapper/PayrollReadService.cs](../../Api/Services/Dapper/PayrollReadService.cs)
+
+## 颱風假不給薪扣薪（2026-10-23）
+
+- **公式**：颱風假扣薪 ＝ 日薪（折減前，底薪 ÷ 30 四捨五入）× 不給薪未出勤天數（全天 1、半天 0.5）；金額 `Math.Round(…, 0, AwayFromZero)`。計入實領扣項。
+- **天數判定**（`DisasterPayDeduction`，純函式）：不給薪 ∧ 本人當日工作日 ∧ 停班時段無打卡重疊 ∧ 停班時段無核准請假。給薪者恆為 0。整月育嬰留停被剔除薪資單者不扣。
+- **新欄位**（皆加在 DTO 最末端）：`EmployeePayrollDto.DisasterUnpaidDays` / `DisasterDeduction`、`MonthlyPayrollDto.TotalDisasterDeduction`；薪資明細信新增「颱風假不給薪扣薪」列並計入扣項合計。
+- 給薪的颱風假不產生薪資項目，只退回請假時數（假單 Hours 改變會連帶影響事假／病假扣薪）。
+- 薪資即時重算、無月結快照：修改已發薪月份的給薪設定會讓歷史薪資跟著變。
+- 欄位連動 checklist：薪資列 DTO → `PayrollReadService` → 薪資明細信（`PayrollHandler.BuildPaySlipHtml`）→ 前端 `payroll.model` / `<app-payroll-detail-card>` / Excel 總表（插欄會使 `rawNumberCols` 索引位移）。
+- 詳見 [disaster-day-off.md](disaster-day-off.md)。

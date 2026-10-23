@@ -18,6 +18,13 @@
     }
   </div>
 
+  @if (isEdit && disasterAdjustedHours > 0) {
+    <div class="alert alert-warning flex items-center gap-2 mb-6 py-2" role="alert">
+      <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#alert-triangle"></use></svg>
+      <span><span class="badge bg-warning-subtle text-warning-emphasis me-1">颱風假退回 {{ disasterAdjustedHours }} 小時</span>當日遇天然災害停班（給薪），系統已自動退回該段時數；颱風假取消後會自動恢復。</span>
+    </div>
+  }
+
   @if (errorMsg()) {
     <div appScrollIntoView class="alert alert-danger flex items-center gap-2 mb-6 py-2" role="alert">
       <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#alert-triangle"></use></svg>

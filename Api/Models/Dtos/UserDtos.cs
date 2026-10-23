@@ -46,7 +46,9 @@ public sealed record UserDto(
     decimal?  LaborPensionSelfContributionRate = null,
     // 自訂上下班時段（"HH:mm"；null ＝ 公司預設，僅新制生效）
     string?   CustomWorkStartTime = null,
-    string?   CustomWorkEndTime   = null);
+    string?   CustomWorkEndTime   = null,
+    // 個人工作地縣市代碼（TaiwanCounties；null ＝ 沿用所屬部門）。天然災害停班（颱風假）依此套用
+    string?   WorkCounty = null);
 
 public sealed record CreateUserRequest(
     string    Name,

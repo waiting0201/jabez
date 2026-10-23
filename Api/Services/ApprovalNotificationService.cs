@@ -704,6 +704,64 @@ public sealed class ApprovalNotificationService(
         }
     }
 
+    /// <inheritdoc />
+    public async Task<(bool EmailSent, bool LineSent, string? ErrorMessage)> NotifyDisasterDayOffAsync(
+        Guid userId, string title, IReadOnlyList<(string Label, string Value)> rows)
+    {
+        try
+        {
+            var (emailEnabled, lineEnabled) = await ReadNotificationFlagsAsync();
+            var user = await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == userId);
+            if (user is null) return (false, false, "user not found");
+
+            var linkUrl = $"{await GetSiteUrlAsync()}/admin/disaster-days";
+
+            bool emailSent = false;
+            if (emailEnabled && !string.IsNullOrEmpty(user.Email))
+            {
+                await emailService.SendAsync(user.Email, $"[颱風假] {title}", BuildDisasterDayOffEmail(user.Name, title, rows, linkUrl));
+                emailSent = true;
+            }
+
+            bool lineSent = false;
+            if (lineEnabled)
+            {
+                await PushLineByUserIdAsync(userId, LineFlexMessageBuilder.BuildDisasterDayOffMessage(title, rows, linkUrl), lineEnabled);
+                lineSent = true;
+            }
+            return (emailSent, lineSent, null);
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "寄送颱風假通知失敗：User={Id}", userId);
+            return (false, false, ex.Message);
+        }
+    }
+
+    private static string BuildDisasterDayOffEmail(
+        string userName, string title, IReadOnlyList<(string Label, string Value)> rows, string linkUrl)
+    {
+        // 所有進 HTML 的字串（含公告原文）一律 HtmlEncode
+        var rowHtml = string.Join("", rows.Select((r, idx) => $"""
+              <tr style="background:{(idx % 2 == 0 ? "#EDE9E1" : "#F5F2ED")};">
+                <td style="padding:8px 12px;color:#525358;white-space:nowrap;vertical-align:top;">{H(r.Label)}</td>
+                <td style="padding:8px 12px;color:#525358;font-weight:600;">{H(r.Value)}</td>
+              </tr>
+            """));
+        return $"""
+        <div style="font-family:'Microsoft JhengHei','Segoe UI',sans-serif;max-width:640px;margin:0 auto;">
+          <div style="background:#B8892A;padding:16px 24px;border-radius:8px 8px 0 0;">
+            <h2 style="color:#fff;margin:0;font-size:18px;">{H(title)}</h2>
+          </div>
+          <div style="background:#F5F2ED;padding:24px;border-radius:0 0 8px 8px;">
+            <p style="color:#525358;margin:0 0 16px;">{H(userName)} 您好，</p>
+            <table style="width:100%;border-collapse:collapse;margin:0 0 16px;font-size:14px;">{rowHtml}</table>
+            <p style="margin:0;"><a href="{H(linkUrl)}" style="color:#B8892A;font-weight:600;">前往颱風假管理</a></p>
+          </div>
+        </div>
+        """;
+    }
+
     private static string BuildUpcomingPaymentsEmail(
         string financeUserName,
         IReadOnlyList<(string AppType, string AppLabel, int ApplicationId, string Applicant, DateTime ExpectedDate, decimal Amount)> items,

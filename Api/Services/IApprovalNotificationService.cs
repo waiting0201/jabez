@@ -74,4 +74,12 @@ public interface IApprovalNotificationService
     Task<(bool EmailSent, bool LineSent, string? ErrorMessage)> NotifyFinanceUpcomingPaymentsAsync(
         Guid financeUserId,
         IReadOnlyList<(string AppType, string AppLabel, int ApplicationId, string Applicant, DateTime ExpectedDate, decimal Amount)> items);
+
+    /// <summary>
+    /// 天然災害停班（颱風假）通知 — 對持有 disaster-days:write 的人員推一則（LINE Flex + Email）。
+    /// <paramref name="rows"/> 為 (標籤, 內容) 列；內容為純文字（Email 端會 HtmlEncode）。
+    /// 受系統的簽核通知 Email / LINE 開關控制，與其他自動通知一致。
+    /// </summary>
+    Task<(bool EmailSent, bool LineSent, string? ErrorMessage)> NotifyDisasterDayOffAsync(
+        Guid userId, string title, IReadOnlyList<(string Label, string Value)> rows);
 }

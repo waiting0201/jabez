@@ -31,7 +31,8 @@ public sealed class AttendanceHandler(
     IWorkdayScheduleProvider workdaySchedule,
     IShiftScheduleReadService shiftReader,
     IAttendancePunchGuard punchGuard,
-    IProjectAllocationSchedule allocationSchedule)
+    IProjectAllocationSchedule allocationSchedule,
+    IDisasterDayOffReadService disasterReader)
 {
     /// <summary>備註欄長度上限（與 AttendanceRecordConfiguration 的 HasMaxLength(500) 同步）</summary>
     private const int RemarkMaxLength = 500;
@@ -63,7 +64,7 @@ public sealed class AttendanceHandler(
         // 應出勤時段依「該列自己的日期」在新舊制間選用，故傳切換日而非單一時段
         var switchDate = await workdaySchedule.GetSwitchDateAsync();
         var result = await AttendanceLeaveMerger.BuildPagedAsync(
-            reader, calendarReader, scope, page, pageSize, employeeId, dateFrom, dateTo, switchDate, shiftReader);
+            reader, calendarReader, scope, page, pageSize, employeeId, dateFrom, dateTo, switchDate, shiftReader, disasterReader);
         return new OkObjectResult(ApiResponse.Ok(result));
     }
 
@@ -131,7 +132,7 @@ public sealed class AttendanceHandler(
 
         // 遲到：超過準時界線（公司 09:30、自訂時段 S+2 分、上午請假者 13:05）須填遲到原因（2026-10-06）。
         // 出差只是出缺勤紀錄上的標記，不影響遲到判定與原因必填（2026-10-12）。
-        if (ctx.Flexible
+        if (ctx.Flexible && !ctx.LateExempt
             && ClockRules.IsLate(now, ctx.Schedule, ctx.AfternoonOnly, ctx.Profile)
             && string.IsNullOrWhiteSpace(body.Reason))
             throw AppException.BadRequest(
@@ -189,7 +190,7 @@ public sealed class AttendanceHandler(
         await EnsureNotOnLeaveAsync(userId, now, ctx.Flexible, forClockOut: true);
 
         var kind = ClockOutKind.Normal;
-        if (ctx.Flexible && record.ClockInTime is { } clockIn)
+        if (ctx.Flexible && !ctx.EarlyExempt && record.ClockInTime is { } clockIn)
         {
             kind = ClockRules.ResolveClockOutKind(clockIn, now, ctx.Schedule, ctx.AfternoonOnly, ctx.Profile);
 
@@ -600,7 +601,8 @@ public sealed class AttendanceHandler(
             var ctx = await ResolveClockContextAsync(record.UserId, record.RecordDate);
             if (ctx.Flexible)
             {
-                ClockOutKind? kind = record.ClockInTime is { } inAt && record.ClockOutTime is { } outAt
+                ClockOutKind? kind = ctx.EarlyExempt ? ClockOutKind.Normal
+                    : record.ClockInTime is { } inAt && record.ClockOutTime is { } outAt
                     ? ClockRules.ResolveClockOutKind(inAt, outAt, ctx.Schedule, ctx.AfternoonOnly, ctx.Profile)
                     : null;
                 RefreshExceptionFlags(record, ctx, kind);
@@ -651,7 +653,14 @@ public sealed class AttendanceHandler(
     /// </summary>
     private readonly record struct ClockContext(
         bool Flexible, string DayType, bool IsActivityAssignee,
-        WorkdaySchedule Schedule, bool AfternoonOnly, ClockProfile Profile);
+        WorkdaySchedule Schedule, bool AfternoonOnly, ClockProfile Profile,
+        string? DisasterSegment = null)
+    {
+        /// <summary>天然災害停班（颱風假）：全天 / 上午停班者上班不判遲到（仍可打卡，照平日計薪）</summary>
+        public bool LateExempt  => DisasterSegment is DisasterSegments.Full or DisasterSegments.Am;
+        /// <summary>天然災害停班（颱風假）：全天 / 下午停班者下班不判早退 / 逾時</summary>
+        public bool EarlyExempt => DisasterSegment is DisasterSegments.Full or DisasterSegments.Pm;
+    }
 
     /// <summary>
     /// 重算遲到／早退旗標。出差（`IsBusinessTrip`）只是出缺勤紀錄上的標記，**不免除**遲到／早退 ——
@@ -664,6 +673,7 @@ public sealed class AttendanceHandler(
 
         record.IsLate = record.ClockInTime is { } ci
                      && !record.IsClockInAuto            // 系統補卡不是本人遲到
+                     && !ctx.LateExempt                  // 颱風假停班時段內不判遲到
                      && ClockRules.IsLate(ci, ctx.Schedule, ctx.AfternoonOnly, ctx.Profile);
 
         if (clockOutKind is { } kind)
@@ -684,8 +694,11 @@ public sealed class AttendanceHandler(
         var schedule   = WorkdayHours.For(now.Date, switchDate);
         bool flexible  = switchDate is { } sd && now.Date >= sd.Date;
 
+        // 颱風假：停班時段內不判遲到 / 早退（仍可打卡，不阻擋）
+        var disasterSeg = (await disasterReader.GetForUserOnAsync(userId, now.Date))?.Segment;
+
         if (!flexible)
-            return new ClockContext(false, WorkDayTypes.Work, false, schedule, false, ClockProfile.Company);
+            return new ClockContext(false, WorkDayTypes.Work, false, schedule, false, ClockProfile.Company, disasterSeg);
 
         var dayType    = await shiftReader.ResolveDayTypeAsync(userId, now.Date);
         var isAssignee = await shiftReader.IsActivityAssigneeAsync(userId, now.Date);
@@ -699,7 +712,7 @@ public sealed class AttendanceHandler(
         // 自訂上下班時段（賣店等）只在新制生效，舊制分支一律走公司預設
         var profile = await workPattern.GetClockProfileAsync(userId);
 
-        return new ClockContext(true, dayType, isAssignee, schedule, afternoonOnly, profile);
+        return new ClockContext(true, dayType, isAssignee, schedule, afternoonOnly, profile, disasterSeg);
     }
 
     private async Task EnsureNotOnLeaveAsync(

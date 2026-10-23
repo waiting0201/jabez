@@ -151,6 +151,12 @@ import {LEAVE_TYPE_LABELS, LeaveType, formatLeaveDuration} from '../../features/
                 <td class="text-right pe-4 text-danger">-{{ e.familyCareLeaveDeduction | number:'1.0-0' }}</td>
               </tr>
             }
+            @if (e.disasterUnpaidDays > 0) {
+              <tr>
+                <td class="ps-6">颱風假扣薪（不給薪）{{ e.disasterUnpaidDays | number:'1.0-1' }} 天</td>
+                <td class="text-right pe-4 text-danger">-{{ e.disasterDeduction | number:'1.0-0' }}</td>
+              </tr>
+            }
             @if (e.laborPensionSelfDeduction > 0) {
               <tr>
                 <td class="ps-6">勞工退休金自提（{{ e.laborPensionSelfContributionRate }}%）</td>

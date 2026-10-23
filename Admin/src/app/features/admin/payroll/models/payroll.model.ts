@@ -27,6 +27,10 @@ export interface EmployeePayroll {
   menstrualLeaveDeduction: number;
   familyCareLeaveDays: number;
   familyCareLeaveDeduction: number;
+  /** 颱風假（不給薪）未出勤的扣薪天數（全天 1、半天 0.5）；給薪或有出勤者不計 */
+  disasterUnpaidDays: number;
+  /** 颱風假扣薪 ＝ 日薪 × disasterUnpaidDays */
+  disasterDeduction: number;
   otherDeduction: number;
   otherDeductionNote: string | null;
   note: string | null;

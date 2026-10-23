@@ -34,6 +34,8 @@ export interface User {
   compensatoryOpeningHours?: number;
   /** 排班制員工（賣店 / 營業所）：六日與國定假日視為工作日，可請六日的假 */
   isShiftWorker?: boolean;
+  /** 工作地縣市代碼（覆寫部門；null＝依部門）。颱風假依此套用 */
+  workCounty?: string | null;
   /** 自訂上下班時段（賣店等，"HH:mm"；null ＝ 公司預設）。僅四週彈性工時切換後生效 */
   customWorkStartTime?: string | null;
   customWorkEndTime?: string | null;

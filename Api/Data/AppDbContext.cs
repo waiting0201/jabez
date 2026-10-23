@@ -58,6 +58,10 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<AttendanceReminderLog>      AttendanceReminderLogs     { get; set; }
     public DbSet<PaymentReminderLog>         PaymentReminderLogs        { get; set; }
 
+    // 天然災害停班（颱風假）：獨立於 CalendarDay，依縣市 + 時段
+    public DbSet<DisasterDayOff>             DisasterDayOffs            { get; set; }
+    public DbSet<DisasterDayOffFetchLog>     DisasterDayOffFetchLogs    { get; set; }
+
     // 四週彈性工時：個人排班 + 主管活動日
     public DbSet<ShiftScheduleDay>           ShiftScheduleDays          { get; set; }
     public DbSet<ShiftScheduleMonth>         ShiftScheduleMonths        { get; set; }

@@ -47,7 +47,8 @@ public static class AttendanceAutoClockService
     /// </param>
     /// <param name="workdays">本人的工作日判定（切換日起看個人排班，見 <see cref="EmployeeWorkdays"/>）。</param>
     public static async Task<AutoClockResult> ApplyAsync(
-        AppDbContext db, EmployeeWorkdays workdays, User user, bool canClockIn)
+        AppDbContext db, EmployeeWorkdays workdays, User user, bool canClockIn,
+        IDisasterDayOffReadService disasterReader)
     {
         var today = Clock.Now.Date;
 
@@ -87,6 +88,12 @@ public static class AttendanceAutoClockService
             workingDates = [.. working];
         }
 
+        // 天然災害停班日：停班時段比照請假從應出勤時段扣除（全天停班 → 免出勤，不補卡）
+        var disasterByDate = needWindow.Count == 0
+            ? new Dictionary<(Guid UserId, DateTime Date), DisasterDayEntry>()
+            : (await disasterReader.GetSegmentsAsync([user.Id], needWindow.Min(), needWindow.Max()))
+                .ToDictionary(kv => kv.Key, kv => kv.Value);
+
         var filledClockIn  = new List<DateTime>();
         var filledClockOut = new List<DateTime>();
 
@@ -96,7 +103,8 @@ public static class AttendanceAutoClockService
             // 該日適用的工作時段依「該日日期」與切換日選用（舊制 08:00–17:00 / 新制 09:00–18:00）
             var window = ExpectedWorkWindow.Compute(
                 date, leavesByDay.TryGetValue(date, out var dayLeaves) ? dayLeaves : [],
-                workdays.ScheduleFor(date));
+                workdays.ScheduleFor(date),
+                disasterByDate.TryGetValue((user.Id, date), out var dz) ? dz.Segment : null);
 
             // ① 補上班卡：僅工作日、當日並非全日請假
             if (NeedsClockIn(record)

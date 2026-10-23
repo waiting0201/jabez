@@ -13,7 +13,7 @@ public sealed class LeaveRequestReadService(IDbConnection db) : ILeaveRequestRea
                lr.ApprovalStatus, lr.CreatedAt, lr.SubmittedAt, lr.ReviewedAt, lr.ReviewNote,
                lr.ApprovalItemId, lr.CurrentStepOrder, lr.ReviewedById,
                lr.BereavementRelationship, lr.AgentUserId, ag.Name AS AgentName,
-               lr.ChildBirthDate, lr.ContinueInsurance
+               lr.ChildBirthDate, lr.ContinueInsurance, lr.DisasterAdjustedHours
         FROM LeaveRequests lr
         LEFT JOIN Users u  ON lr.EmployeeId  = u.Id
         LEFT JOIN Users ag ON lr.AgentUserId = ag.Id
@@ -118,7 +118,8 @@ public sealed class LeaveRequestReadService(IDbConnection db) : ILeaveRequestRea
             OriginalHours:           (decimal?)row.OriginalHours,
             ChildBirthDate:          (DateTime?)row.ChildBirthDate,
             ContinueInsurance:       (bool?)row.ContinueInsurance,
-            RequestNo:               (string?)row.RequestNo);
+            RequestNo:               (string?)row.RequestNo,
+            DisasterAdjustedHours:   (decimal?)row.DisasterAdjustedHours);
     }
 
     /// <summary>依假別取得時間單位字串（與 LeaveRequestHandler 保持一致）</summary>

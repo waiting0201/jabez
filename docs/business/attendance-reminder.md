@@ -174,3 +174,7 @@
 - **時區處理 Clock.Now** → [backend-design.md §11](../backend-design.md#11-時區處理重要)
 - **AttendanceReminderLog Entity** → [database-schema.md](../database-schema.md)
 - **管理頁列表 UI** → [docs/frontend-design.md](../frontend-design.md)
+
+## 天然災害停班（颱風假）（2026-10-23）
+
+依員工工作地套用的當日颱風假：全天停班 → 上班、下班提醒都不推；上午停班 → 不推上班提醒；下午停班 → 不推下班提醒（自訂上下班時段者同）；12:55 交接提醒全天停班不推、「準備休假」提醒下午停班不推。單一真相 `IDisasterDayOffReadService`，不分給薪與否。詳見 [disaster-day-off.md](disaster-day-off.md)。

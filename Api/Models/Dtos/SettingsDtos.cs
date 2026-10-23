@@ -18,7 +18,9 @@ public sealed record SystemSettingsDto(
     bool   ApprovalEmailEnabled,
     bool   ApprovalLineEnabled,
     int    PaymentReminderDaysBefore,
-    DateTime? FlexibleWorkStartDate);
+    DateTime? FlexibleWorkStartDate,
+    /// <summary>颱風假預設是否給薪（自動抓取者套用；HR 可逐筆改）</summary>
+    bool   DisasterDayOffPaidDefault = true);
 
 public sealed record UpdateSettingsRequest(
     string? SiteName                  = null,
@@ -41,4 +43,5 @@ public sealed record UpdateSettingsRequest(
     // 四週彈性工時切換日。null 於此代表「本次請求不變更」，
     // 要「清空切換日（退回舊制）」請另傳 ClearFlexibleWorkStartDate = true。
     DateTime? FlexibleWorkStartDate = null,
-    bool?   ClearFlexibleWorkStartDate = null);
+    bool?   ClearFlexibleWorkStartDate = null,
+    bool?   DisasterDayOffPaidDefault = null);

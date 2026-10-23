@@ -1445,6 +1445,17 @@ services.ConfigureFunctionsApplicationInsights();
 
 ---
 
+### 16.7 外部網頁抓取模式（人事行政總處颱風假公告，2026-10）
+
+抓取外部公開網頁（沒有 API）的標準拆法，新增同類功能照抄：
+
+1. **HttpClient 服務比照 `GcisService`**：`AddHttpClient<IXxxService, XxxService>` 設 BaseAddress / Timeout / User-Agent；**任何失敗（逾時、非 2xx、頁面改版解析不到）只記 log 並回 null，不丟例外**，由排程下個 tick 重試。解析出 0 筆視為失敗，避免把「頁面改版」誤判成「全部照常」。
+2. **解析拆成純函式**（`Common/DgpaStatusParser.cs`，無 I/O、可獨立測試）：服務只負責 I/O。保守原則：無法辨識一律「不套用、交人工」，不猜。
+3. **以來源的「更新時間」去重**（`DisasterDayOffFetchLog`），高頻輪詢（每 10 分鐘）才安全；連續失敗只留第一筆。
+4. **自動動作可被人類覆蓋且不被覆蓋回去**：人工取消的列保留為 `cancelled`，自動同步永不重建；來源後來改口（改照常）不自動撤銷，改通知人工。
+5. **通知持權限碼者**（`disaster-days:write`），走 `IApprovalNotificationService` 的 LINE + Email，受系統通知開關控制；Email 內所有字串（含來源原文）一律 `HtmlEncode`。
+6. TimerTrigger 比照 `PaymentReminderFunction`：cron 放 app setting（`%DisasterDayOffCron%`，需同步 `local.settings.example.json`）、`IsPastDue` 不跳過、例外只記 log。
+
 ## 17. Coding Style Checklist（每次撰寫前自我檢查）
 
 ### 17.1 後端（.NET）
