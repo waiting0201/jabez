@@ -3,7 +3,7 @@ namespace Jabez.Api.Common;
 /// <summary>
 /// 排班檢核結果。<see cref="CanSave"/> ＝ 三條硬性檢核全過；<see cref="Warnings"/> 不影響儲存。
 /// </summary>
-/// <param name="CanSave">是否允許儲存（例假排滿 ∧ 關卡 A ∧ 關卡 B）</param>
+/// <param name="CanSave">是否允許儲存（例假排滿 ∧ 關卡 A ∧ 關卡 B ∧ 關卡 C）</param>
 /// <param name="Blocks">擋存原因（給使用者看的完整句子）</param>
 /// <param name="Warnings">警示（可存，但要提示）</param>
 /// <param name="StatutoryOffCount">本月已排例假天數</param>
@@ -28,7 +28,7 @@ public sealed record ShiftScheduleValidationResult(
 /// 個人排班「能不能存」的單一真相（純函式、無 I/O，比照 <see cref="OvertimePayCalculator"/>）。
 ///
 /// 擋存判準（2026-09-16 客戶回覆改版，原規格為三項皆警示不擋存）：
-/// <code>例假 4 天已排滿 ∧ 關卡 A 通過 ∧ 關卡 B 通過 ⇒ 可儲存</code>
+/// <code>例假 4 天已排滿 ∧ 關卡 A 通過 ∧ 關卡 B 通過 ∧ 關卡 C 通過 ⇒ 可儲存</code>
 /// 休假未排滿**不影響儲存**，只出警示。
 ///
 /// 設計理由：例假日是《勞基法》強制休息日（違者罰鍰 2 萬～100 萬元），
@@ -42,6 +42,14 @@ public sealed record ShiftScheduleValidationResult(
 /// ⚠ **關卡 B 會跨出當月**：滾動 14 天視窗必須併入前一個月月底與次月月初的已定案班表，
 /// 否則月初／月底永遠算不準。前月為歷史（唯讀、已定案）可直接讀；
 /// 次月若尚未排定則**該側不檢核**（不可把未排的日子當成上班日，否則會誤擋）。
+///
+/// <b>關卡 C：任意連續 28 天的正常工時不得超過 160 小時（2026-10-28 新增）</b>：
+/// 每個上班日以 8 小時計，即任意 28 天內上班日 ≤ 20 天、休息日（例假＋休假＋國定假日）≥ 8 天。
+/// 起因：配額只按日曆月計算，30／31 日的月份把休息日排在月底（或前月排在月初），
+/// 跨出去的 28 天就只剩 6～7 天休息；本機正式資料實測 11 月有 9 人達 168～176 小時，
+/// 原本三條檢核全過。⚠ 30 日的月份若只排 8 天休息日，**8 天必須全落在 3～28 日**
+/// （1–28 與 3–30 兩個視窗都要 8 天），月初月底若想休就得多排一天 —— 休假天數無上限，這是預期行為。
+/// 跨月規則同關卡 B（視窗跨進未排定的日子即略過），故上下文須涵蓋前後各 27 天（<see cref="ContextDays"/>）。
 ///
 /// <b>例假由休假轉入（2026-09-29 決議）</b>：關卡 B 是滾動視窗，等同要求例假平均每 7 天至少一天，
 /// 一年至少 52 天；但配額是每月 4 天、一年只有 48 天。兩者差 4 天，故每位同仁一年約有 4 個月
@@ -63,6 +71,24 @@ public static class ShiftScheduleValidator
 
     /// <summary>滾動視窗內的最低例假天數。</summary>
     public const int MinStatutoryOffPerWindow = 2;
+
+    /// <summary>關卡 C 的滾動視窗天數（四週）。</summary>
+    public const int FourWeekWindowDays = 28;
+
+    /// <summary>四週正常工時上限（小時）。</summary>
+    public const int MaxFourWeekNormalHours = 160;
+
+    /// <summary>每個上班日計入的正常工時（小時）。</summary>
+    public const int NormalHoursPerDay = 8;
+
+    /// <summary>四週內最低休息日天數 ＝ 28 − 160 ÷ 8 ＝ 8（例假＋休假＋國定假日皆算）。</summary>
+    public const int MinOffDaysPerFourWeeks = FourWeekWindowDays - MaxFourWeekNormalHours / NormalHoursPerDay;
+
+    /// <summary>
+    /// 跨月檢核需要的前後月天數：最長的視窗（關卡 C 的 28 天）跨出當月最多 27 天。
+    /// 呼叫端載入 <c>contextDays</c> 一律用這個值，不可再用 14 天視窗推算。
+    /// </summary>
+    public const int ContextDays = FourWeekWindowDays - 1;
 
     /// <summary>該月應排休假天數：31 日曆月為 5 天，其餘 4 天。</summary>
     /// <remarks>
@@ -144,6 +170,14 @@ public static class ShiftScheduleValidator
             blocks.Add($"{v.Start:M/d}～{v.End:M/d} 的 {RollingWindowDays} 天內只有 {v.Count} 天例假日，"
                      + $"依法每 2 週至少需有 {MinStatutoryOffPerWindow} 天，請調整排班。");
 
+        // ── 關卡 C：任意連續 28 天正常工時不得超過 160 小時 ─────────────
+        var overload = FirstFourWeekViolation(timeline);
+        if (overload is { } o)
+            blocks.Add($"{o.Start:M/d}～{o.End:M/d} 的 {FourWeekWindowDays} 天內只有 {o.OffDays} 天休息日"
+                     + $"（上班 {FourWeekWindowDays - o.OffDays} 天，正常工時 {(FourWeekWindowDays - o.OffDays) * NormalHoursPerDay} 小時），"
+                     + $"任 4 週正常工時不得超過 {MaxFourWeekNormalHours} 小時，"
+                     + $"請讓這段期間至少有 {MinOffDaysPerFourWeeks} 天例假／休假（國定假日也算）。");
+
         return new ShiftScheduleValidationResult(
             CanSave:              blocks.Count == 0,
             Blocks:               blocks,
@@ -198,6 +232,36 @@ public static class ShiftScheduleValidator
 
             if (complete && count < MinStatutoryOffPerWindow)
                 return (start, start.AddDays(RollingWindowDays - 1), count);
+        }
+        return null;
+    }
+
+    /// <summary>
+    /// 找出第一個休息日不足 <see cref="MinOffDaysPerFourWeeks"/> 天的滾動 28 天視窗。
+    /// 休息日＝非上班日（例假／休假／國定假日）。與 <see cref="FirstRollingWindowViolation"/> 同規則：
+    /// 只檢核完整落在已知範圍內的視窗，跨進未排定日子的視窗略過。
+    /// </summary>
+    private static (DateTime Start, DateTime End, int OffDays)? FirstFourWeekViolation(
+        SortedDictionary<DateTime, string> timeline)
+    {
+        if (timeline.Count < FourWeekWindowDays) return null;
+
+        var first = timeline.Keys.First();
+        var last  = timeline.Keys.Last();
+
+        for (var start = first; start.AddDays(FourWeekWindowDays - 1) <= last; start = start.AddDays(1))
+        {
+            int off = 0;
+            bool complete = true;
+
+            for (int i = 0; i < FourWeekWindowDays; i++)
+            {
+                if (!timeline.TryGetValue(start.AddDays(i), out var type)) { complete = false; break; }
+                if (type != WorkDayTypes.Work) off++;
+            }
+
+            if (complete && off < MinOffDaysPerFourWeeks)
+                return (start, start.AddDays(FourWeekWindowDays - 1), off);
         }
         return null;
     }

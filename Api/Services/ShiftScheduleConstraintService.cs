@@ -104,8 +104,8 @@ public static class ShiftScheduleConstraintService
     }
 
     /// <summary>
-    /// 前月月底與次月月初（各 13 天，恰為滾動 14 天視窗會跨出去的範圍）逐日的日別。
-    /// **月曆顯示與關卡 A／B 的跨月檢核共用這一份**，同仁在月曆上看到的前後月就是檢核看到的前後月。
+    /// 前月月底與次月月初（各 27 天，恰為關卡 C 滾動 28 天視窗會跨出去的範圍，見 <see cref="ShiftScheduleValidator.ContextDays"/>）逐日的日別。
+    /// **月曆顯示與關卡 A／B／C 的跨月檢核共用這一份**，同仁在月曆上看到的前後月就是檢核看到的前後月。
     ///
     /// 判定順序：國定假日 → 已落地的例假／休假 → 該月<b>已定案</b>（committed / auto）則為上班日 → 其餘為 null（未排定）。
     /// ⚠ 第三步不可省：上班日不落地（查無紀錄即上班日），只讀 <c>ShiftScheduleDays</c> 的話
@@ -116,15 +116,15 @@ public static class ShiftScheduleConstraintService
         AppDbContext db, ICalendarDayReadService calendarReader,
         Guid userId, DateTime monthStart, DateTime monthEnd)
     {
-        var from = monthStart.AddDays(-(ShiftScheduleValidator.RollingWindowDays - 1));
-        var to   = monthEnd.AddDays(ShiftScheduleValidator.RollingWindowDays - 1);
+        var from = monthStart.AddDays(-ShiftScheduleValidator.ContextDays);
+        var to   = monthEnd.AddDays(ShiftScheduleValidator.ContextDays);
 
         var saved = await db.ShiftScheduleDays.AsNoTracking()
             .Where(d => d.UserId == userId
                      && ((d.Date >= from && d.Date < monthStart) || (d.Date > monthEnd && d.Date <= to)))
             .ToDictionaryAsync(d => d.Date.Date, d => WorkDayTypes.Normalize(d.DayType));
 
-        // from / to 必然分別落在前月與次月（13 天不會跨過整個月）
+        // from / to 必然分別落在前月與次月（27 天不會跨過整個月：最短的 2 月也有 28 天）
         var settled = (await db.ShiftScheduleMonths.AsNoTracking()
                 .Where(m => m.UserId == userId
                          && (m.Status == ShiftScheduleMonthStatus.Committed || m.Status == ShiftScheduleMonthStatus.Auto)
@@ -153,7 +153,7 @@ public static class ShiftScheduleConstraintService
     }
 
     /// <summary>
-    /// 關卡 A／B 的跨月上下文：<see cref="LoadAdjacentDaysAsync"/> 中日別已知的日子。
+    /// 關卡 A／B／C 的跨月上下文：<see cref="LoadAdjacentDaysAsync"/> 中日別已知的日子。
     /// 未排定（null）的日子不放進去 —— 未知的日子不可當成上班日，否則會誤擋（見 ShiftScheduleValidator）。
     /// </summary>
     public static async Task<Dictionary<DateTime, string>> LoadContextDaysAsync(

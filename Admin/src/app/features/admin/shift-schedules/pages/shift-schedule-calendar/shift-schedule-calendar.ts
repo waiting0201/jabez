@@ -31,7 +31,7 @@ import {ShiftMonthCalendar, lockedCellMessage} from '../../../../../shared/compo
  * 月曆為共用元件 `<app-shift-month-calendar>`（與改班申請、簽核頁共用，FullCalendar 細節收在該元件內）；
  * 每格的狀態存在本元件的 `dayTypes` signal，點格時切換後傳回元件重畫。
  *
- * 三條規則不在前端重算（後端 `ShiftScheduleValidator` 為單一真相）：
+ * 四條規則不在前端重算（後端 `ShiftScheduleValidator` 為單一真相）：
  * 畫面只顯示後端回傳的 `blocks` / `warnings`，前端僅即時算「已排幾天」這種純計數。
  */
 @Component({
