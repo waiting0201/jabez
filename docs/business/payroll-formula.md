@@ -131,6 +131,7 @@
       ② 同一人同一日只能有一張非「已拒絕」的加班單（草稿 / 簽核中 / 退回修改中 / 已核准皆算，編輯自己那張不算）；
       ③ 當日已有涵蓋全天的已核准**有薪假**不可申請加班（`LeaveDayExpander` 逐日展開，全天段或上下午兩段皆被蓋住；事假 / 家庭照顧假 / 育嬰留停為無薪假，不擋）；
       ④ 每月上限 `SystemSetting.MonthlyOvertimeLimit`（預設 46，≤ 0 視為不限制）：該加班日所屬月份「已核准 ＋ 簽核中 ＋ 本單」的**申請時數**合計不得超過；核准時只計「已核准 ＋ 本單」，避免調低上限後互卡；
+      ④-2 每期（三個月）上限 `SystemSetting.QuarterlyOvertimeLimit`（預設 138，≤ 0 不限制，2026-10-28 新增）：期別固定 11–1 / 2–4 / 5–7 / 8–10 月（`OvertimeRequestGuard.QuarterRange`），口徑與核准時再檢同每月上限；期起日早於 2026-11-01（`QuarterlyLimitEffectiveFrom`）的期別不檢查；
       ⑤ 單日時數上限（上班日 4h / 假日 12h）本就**不分補休或加班費**一律擋件（沿用，未改）。
     - **國定假日出勤加倍工資的加班單來源（`publicHolidayWorkSql`）**：只計 `ISNULL(SettledHours, EstimatedHours) > 0` 的已核准加班單 —— 新單沒打加班卡（結算 0）不算出勤一天。
     - **與補休二擇一**：`CompensationType='pay'` 的加班單**不計入補休池**（`LeaveRequestHandler.ComputeCompensatoryAsync` 已加此條件），避免同一段工時領兩次。詳見 [leave-rules.md §補休](leave-rules.md)。

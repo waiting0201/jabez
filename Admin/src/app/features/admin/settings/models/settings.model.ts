@@ -15,6 +15,8 @@ export interface SystemSettings {
   workStartTime: string;        // HH:MM，例如 "09:00"
   workEndTime: string;          // HH:MM，例如 "18:00"
   monthlyOvertimeLimit: number; // 小時
+  /** 每期（三個月：11–1 / 2–4 / 5–7 / 8–10 月）加班時數上限，0 = 不限制；自 2026-11 那一期起檢查 */
+  quarterlyOvertimeLimit: number;
   // 通知設定
   approvalEmailEnabled: boolean; // 是否寄送簽核流程相關 Email
   approvalLineEnabled: boolean;  // 是否推播簽核流程相關 LINE 訊息

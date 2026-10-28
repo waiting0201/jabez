@@ -22,6 +22,8 @@ public class SystemSettingConfiguration : IEntityTypeConfiguration<SystemSetting
         // ── 工時設定 ─────────────────────────────────────────
         builder.Property(s => s.WorkStartTime).IsRequired().HasMaxLength(5);   // "HH:MM"
         builder.Property(s => s.WorkEndTime).IsRequired().HasMaxLength(5);     // "HH:MM"
+        // 每期（三個月）加班上限：既有列由 migration 補 138
+        builder.Property(s => s.QuarterlyOvertimeLimit).HasDefaultValue(138);
 
         // ── 天然災害停班：預設給薪（既有列由 migration 補 1）──────────
         builder.Property(s => s.DisasterDayOffPaidDefault).HasDefaultValue(true);
@@ -44,6 +46,7 @@ public class SystemSettingConfiguration : IEntityTypeConfiguration<SystemSetting
             WorkStartTime            = "09:00",
             WorkEndTime              = "18:00",
             MonthlyOvertimeLimit     = 46,
+            QuarterlyOvertimeLimit   = 138,
             ApprovalEmailEnabled     = true,
             ApprovalLineEnabled      = true,
         });

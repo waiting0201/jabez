@@ -644,9 +644,12 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
                 if (ot.ApprovalStatus != "pending")
                     throw AppException.BadRequest("Only pending overtime requests can be reviewed.");
 
-                // 防灌工時（2026-10）：核准時再檢一次每月上限（只計已核准 + 本單，見 OvertimeRequestGuard）
+                // 防灌工時（2026-10）：核准時再檢一次每月 / 每期（三個月）上限（只計已核准 + 本單，見 OvertimeRequestGuard）
                 if (action == "approved")
+                {
                     await OvertimeRequestGuard.EnsureMonthlyLimitOnApprovalAsync(db, ot);
+                    await OvertimeRequestGuard.EnsureQuarterlyLimitOnApprovalAsync(db, ot);
+                }
                 // 反向重複給付：核准時再擋一次同日假日執行活動參與（含補休型）
                 if (action == "approved" && ot.EmployeeId is { } otOwner)
                     await HolidayTravelParticipantGuard.EnsureNoOvertimeConflictAsync(db, calendarReader, otOwner, ot.OvertimeDate);

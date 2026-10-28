@@ -552,7 +552,7 @@ public sealed class OvertimeRequestHandler(
 
     /// <summary>
     /// 加班申請送件檢查（Create / Update / Submit 共用，2026-10 防灌工時）：
-    /// 補登期限（7 天）→ 同日唯一 → 當日有薪全日假 → 每月上限。規則細節見 <see cref="OvertimeRequestGuard"/>。
+    /// 補登期限（7 天）→ 同日唯一 → 當日有薪全日假 → 每月上限 → 每期（三個月）上限。規則細節見 <see cref="OvertimeRequestGuard"/>。
     /// <paramref name="excludeId"/>＝編輯 / 送簽中的單自己（Create 為 null）。
     /// <paramref name="isPostHoc"/>＝事後申請：不套 7 天補登期限，改由 <c>EnsurePostHocAsync</c> 的「加班日後一個工作日」期限把關
     /// （春節等長假後的第一個工作日可能距加班日超過 7 天）。
@@ -563,6 +563,7 @@ public sealed class OvertimeRequestHandler(
         await OvertimeRequestGuard.EnsureNoDuplicateAsync(db, ownerId, overtimeDate, excludeId);
         await OvertimeRequestGuard.EnsureNotOnPaidFullDayLeaveAsync(db, workdaysFactory, ownerId, overtimeDate);
         await OvertimeRequestGuard.EnsureMonthlyLimitAsync(db, ownerId, overtimeDate, hours, excludeId);
+        await OvertimeRequestGuard.EnsureQuarterlyLimitAsync(db, ownerId, overtimeDate, hours, excludeId);
         // 反向重複給付：同日已列為假日執行活動參與人員者不可申請加班（含補休型）
         await HolidayTravelParticipantGuard.EnsureNoOvertimeConflictAsync(db, calendarReader, ownerId, overtimeDate);
     }

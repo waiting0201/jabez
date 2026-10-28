@@ -57,11 +57,19 @@
               <label class="form-label fw-500">下班時間 <span class="text-danger">*</span></label>
               <input type="time" class="form-control" formControlName="workEndTime">
             </div>
-            <div class="mb-0">
+            <div class="mb-4">
               <label class="form-label fw-500">每月加班時數限制 <span class="text-muted font-normal">（小時）</span></label>
               <input type="number" class="form-control" formControlName="monthlyOvertimeLimit" min="0" max="200">
               @if (form.get('monthlyOvertimeLimit')?.invalid && form.get('monthlyOvertimeLimit')?.touched) {
                 <div class="text-danger small mt-1">請輸入 0 到 200 之間的數值。</div>
+              }
+            </div>
+            <div class="mb-0">
+              <label class="form-label fw-500">每三個月加班時數限制 <span class="text-muted font-normal">（小時）</span></label>
+              <input type="number" class="form-control" formControlName="quarterlyOvertimeLimit" min="0" max="600">
+              <div class="text-muted small mt-1">期別固定為 11–1 月、2–4 月、5–7 月、8–10 月，自 2026 年 11 月那一期起檢查；0 為不限制。</div>
+              @if (form.get('quarterlyOvertimeLimit')?.invalid && form.get('quarterlyOvertimeLimit')?.touched) {
+                <div class="text-danger small mt-1">請輸入 0 到 600 之間的數值。</div>
               }
             </div>
           </div>
