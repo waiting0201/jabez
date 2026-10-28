@@ -543,6 +543,9 @@ Api/
 │   │                                  #   19 清除預支單某一期誤填的「實際撥款日」（@Commit 空跑開關，冪等可重跑；首例 ADV-20260921-001 第 2 期）：
 │   │                                  #      前台已撥款列全鎖、InstallmentValidator 亦拒改，故以腳本處理。以 RequestNo + InstallmentNo 定位、預計撥款日 / 金額防呆，
 │   │                                  #      PaidAt 與 PaidByUserId 一起清（兩者撥款時同時寫入）；已發出的「已撥款」通知無法撤回
+│   │                                  #   20 指定員工的個人排班加一天休假日（@Commit 空跑開關，冪等可重跑；首例鄭宇婷 2026-11-27，班表已過開放期）：
+│   │                                  #      以姓名（或 @Email）定位，只 INSERT 一列 ShiftScheduleDays rest_day、不動 ShiftScheduleMonths.Status；
+│   │                                  #      國定假日 / 活動日預定人力 / 有假單 / 進行中改班申請 / 已是例假即中止；例＋休合計會多 1 天（validator 不擋）
 │   └── Seed/                          # 一次性匯入工具（共用 RocDateParser 解民國年）
 │       ├── EmployeeImporter + EmployeeImportDtos + employee-import.json  # 員工人事資料（RUN_EMPLOYEE_IMPORT 旗標，IMPORT_UPLOAD_FILES 控制附件上傳）
 │       ├── ProjectImporter + ProjectImportDtos + project-import.json     # 專案資料（RUN_PROJECT_IMPORT 旗標，PROJECT_IMPORT_DRY_RUN 只印不寫；來源 reference/專案資料-115.07.29.xls；以 Code upsert、期別明細全量重建）
@@ -569,7 +572,7 @@ Api/
 │   ├── UserRateLimiter.cs             # 每人速率限制（2026-10 第二輪）：記憶體滑動視窗、以 JWT sub 為鍵，AppRouter 對 OCR（`/invoice-ocr` `/quote-ocr`）與 GCIS 統編查詢套用，超限 429；每實例獨立，數值集中在 `Limits`
 │   ├── OvertimeSettlementService.cs   # 加班依實際打卡結算（2026-10）：`SettledHours` = min(核准時數, 加班打卡)，終局核准 / 打加班結束卡 / 管理者改出缺勤時冪等重算並同步加班費快照與補休 lot；
 │   │                                    給付基準單一真相 `Common/OvertimeSettlement.BillableHours`（`SettledHours ?? EstimatedHours`，舊單 null 不 backfill）；支援跨日加班結束卡（隔天 06:00 前）
-│   ├── OvertimeRequestGuard.cs        # 加班送件檢查（2026-10）：補登最多 7 天、同人同日一張、全天有薪假不可加班、每月上限 `SystemSetting.MonthlyOvertimeLimit`（送簽與核准）
+│   ├── OvertimeRequestGuard.cs        # 加班送件檢查（2026-10）：補登最多 7 天、同人同日一張、全天有薪假不可加班、每月上限 `SystemSetting.MonthlyOvertimeLimit` ＋ **每期（三個月）上限 `QuarterlyOvertimeLimit`**（2026-10-28，期別固定 11–1 / 2–4 / 5–7 / 8–10 月、自 2026-11 那一期起檢查；送簽與核准）
 │   ├── HolidayTravelParticipantGuard.cs # 假日津貼重複給付防線（2026-10）：參與人員須在職；同人同一假日不得跨單、不得同時有已核准加班費單或有薪假
 │   ├── TurnstileVerifier.cs           # **Cloudflare Turnstile siteverify**（2026-10）：比對 success ＋ action ＋ hostname；設定 `Turnstile__SecretKey` / `Turnstile__Mode`（off 預設・log 只記錄・enforce 擋下）/ `Turnstile__AllowedHostnames`；
 │   │                                    連不到回 unavailable（打卡端 fail-open）；secret 空白強制 off；官方測試 secret 跳過 action / hostname 比對
@@ -820,7 +823,7 @@ dotnet ef database update               # 套用 Migration
 >
 > **防濫用安全修補（2026-10）**：客戶發現員工以排程腳本打卡、灌加班時數、自己簽自己的單後全面補強 ——
 > 打卡一次性挑戰碼（`AttendancePunchGuard`；GPS 原為強制，2026-10-11 改回選填）；**加班費 / 補休改依實際加班打卡結算**（`SettledHours`，舊單不變）、不再自動補加班結束卡、非工作日的上班卡不自動補下班卡（2026-10-07 拿掉「上班時間須在應出勤起點 −2h～+3h」的檢查，改為報表紅字「未打下班卡」→ HR 於編輯填原因後轉綠字留存）；
-> 加班補登 ≤7 天 / 同日一張 / 每月上限；半天制假別時數改由後端計算；**簽核一律禁止自審**、指定審核者不可是本人 / 離職者 / 低階者、流程 ID 只由後端解析；
+> 加班補登 ≤7 天 / 同日一張 / 每月上限 / 每三個月上限；半天制假別時數改由後端計算；**簽核一律禁止自審**、指定審核者不可是本人 / 離職者 / 低階者、流程 ID 只由後端解析；
 > 沖銷退款日限財務關卡；明細金額不可為負、發票號碼正規化比對；後端強制首次改密碼、登入失敗鎖定、refresh token 30 天上限與重用偵測、簽名檔改需登入；
 > 角色管理不可改自己所屬角色、不可授出超出自身的權限；出缺勤不可改自己的、修改留 `AttendanceAuditLogs`。
 > **第二輪（2026-10，21 項，commit `0bda4907` / `a1b3c621`）**：使用者管理防提權（禁改自己部門 / 職稱 / 薪資、調財務部或高職級限 Superadmin、改他人密碼須權限子集，異動留 `UserAuditLogs`）；

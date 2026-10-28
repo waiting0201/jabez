@@ -82,6 +82,7 @@ public sealed class SettingsHandler(AppDbContext db, IProjectAllocationSchedule 
         if (body.WorkStartTime            is not null) entity.WorkStartTime            = NormalizeWorkTime(body.WorkStartTime, "上班時間");
         if (body.WorkEndTime              is not null) entity.WorkEndTime              = NormalizeWorkTime(body.WorkEndTime,   "下班時間");
         if (body.MonthlyOvertimeLimit     is not null) entity.MonthlyOvertimeLimit     = body.MonthlyOvertimeLimit.Value;
+        if (body.QuarterlyOvertimeLimit   is not null) entity.QuarterlyOvertimeLimit   = body.QuarterlyOvertimeLimit.Value;
         if (body.ApprovalEmailEnabled     is not null) entity.ApprovalEmailEnabled     = body.ApprovalEmailEnabled.Value;
         if (body.ApprovalLineEnabled      is not null) entity.ApprovalLineEnabled      = body.ApprovalLineEnabled.Value;
         if (body.DisasterDayOffPaidDefault is not null) entity.DisasterDayOffPaidDefault = body.DisasterDayOffPaidDefault.Value;
@@ -154,6 +155,7 @@ public sealed class SettingsHandler(AppDbContext db, IProjectAllocationSchedule 
         WorkStartTime:            e.WorkStartTime,
         WorkEndTime:              e.WorkEndTime,
         MonthlyOvertimeLimit:     e.MonthlyOvertimeLimit,
+        QuarterlyOvertimeLimit:   e.QuarterlyOvertimeLimit,
         ApprovalEmailEnabled:     e.ApprovalEmailEnabled,
         ApprovalLineEnabled:      e.ApprovalLineEnabled,
         PaymentReminderDaysBefore: e.PaymentReminderDaysBefore,

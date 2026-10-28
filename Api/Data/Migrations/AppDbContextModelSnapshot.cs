@@ -6371,6 +6371,11 @@ namespace Jabez.Api.Data.Migrations
                     b.Property<int>("PaymentReminderDaysBefore")
                         .HasColumnType("int");
 
+                    b.Property<int>("QuarterlyOvertimeLimit")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(138);
+
                     b.Property<bool>("RequireEmailVerification")
                         .HasColumnType("bit");
 
@@ -6425,6 +6430,7 @@ namespace Jabez.Api.Data.Migrations
                             MaintenanceMode = false,
                             MonthlyOvertimeLimit = 46,
                             PaymentReminderDaysBefore = 3,
+                            QuarterlyOvertimeLimit = 138,
                             RequireEmailVerification = true,
                             SessionTimeoutMinutes = 60,
                             SiteDescription = "Enterprise administration portal",

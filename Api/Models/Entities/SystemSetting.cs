@@ -24,6 +24,11 @@ public class SystemSetting
     public string WorkStartTime            { get; set; } = "09:00";
     public string WorkEndTime              { get; set; } = "18:00";
     public int    MonthlyOvertimeLimit     { get; set; } = 46;
+    /// <summary>
+    /// 每期（三個月）加班時數上限，0 = 不限制。期別固定為 11–1 月 / 2–4 月 / 5–7 月 / 8–10 月，
+    /// 自 2026-11-01 那一期起檢查（見 <c>OvertimeRequestGuard.QuarterlyLimitEffectiveFrom</c>）。
+    /// </summary>
+    public int    QuarterlyOvertimeLimit   { get; set; } = 138;
 
     // ── 通知設定 ─────────────────────────────────────────────
     /// <summary>是否寄送簽核流程相關 Email（待審核 / 結果 / 撥款 / 退款 / 財務）。</summary>
