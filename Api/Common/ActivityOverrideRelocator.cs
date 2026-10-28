@@ -28,7 +28,7 @@ public static class ActivityOverrideRelocator
     /// <param name="monthDays">覆蓋前的當月日別（<see cref="ShiftScheduleMap.BuildMonthDayTypes"/> 的結果）。</param>
     /// <param name="conflictDate">活動日（目前排為例假／休假）。</param>
     /// <param name="blockedDates">不可拿來補排的日子。</param>
-    /// <param name="contextDays">前後月已定案班表，供關卡 A／B 跨月檢核（見 <see cref="ShiftScheduleValidator.Validate"/>）。</param>
+    /// <param name="contextDays">前後月已定案班表，供關卡 A／B／C 跨月檢核（見 <see cref="ShiftScheduleValidator.Validate"/>）。</param>
     public static ActivityOverrideResult Relocate(
         int year, int month,
         IReadOnlyDictionary<DateTime, string> monthDays,

@@ -14,7 +14,7 @@ public sealed record AutoScheduleResult(
 /// 逾期未排班者的系統自動排班（四週彈性工時 §3.5.1）。純函式、無 I/O。
 ///
 /// <b>設計原則</b>：唯一的硬性要求是**產出必須合於《勞基法》**（例假至少 4 天、連續上班 ≤ 12 天、
-/// 任意 14 天內 ≥ 2 例假）。規則刻意做得單純可驗證 —— 它只是逾期者的保底，
+/// 任意 14 天內 ≥ 2 例假、任意 28 天內休息日 ≥ 8 天）。規則刻意做得單純可驗證 —— 它只是逾期者的保底，
 /// 真正要排得好的人請在開放期內自己排。
 ///
 /// <b>規則</b>：
@@ -23,9 +23,11 @@ public sealed record AutoScheduleResult(
 ///   <item>候選日優先序：**週日 → 週六 → 其餘平日**（各組內由月初往後依序）</item>
 ///   <item>依序取 4 天排為例假日，再依序取 4 天（31 日曆月 5 天）排為休假日</item>
 ///   <item>**主管已排定的活動日一律跳過**，不會被排成例假或休假</item>
-///   <item>排完跑三條檢核，任一不過就**往後遞補** —— 把最接近違規區間的候選日改排為例假日，重跑至全過。
+///   <item>排完跑四條檢核，任一不過就**往後遞補** —— 把最接近違規區間的候選日改排為例假日，重跑至全過。
 ///         違規區間內**優先把休假改為例假**（例假由休假轉入，休息總天數不變，見 <see cref="ShiftScheduleValidator"/>），
-///         沒有休假可改才動上班日；14 天視窗**含前後月已定案的日子**（跨月違規也要在當月內補救）</item>
+///         沒有休假可改才動上班日；14 天視窗**含前後月已定案的日子**（跨月違規也要在當月內補救）。
+///         28 天視窗休息日不足時，只能把視窗內的**上班日**改為例假（休假改例假不會增加休息日），
+///         故這種月份產出的休息日會多於配額（例：30 日月份候選日由週日起排，常需排到 9 天）</item>
 ///   <item>通過後若例假＋休假多於該月休息總天數（遞補動到上班日所致），把多出的休假逐一改回上班日，
 ///         每改一天都重跑檢核、仍通過才保留</item>
 ///   <item>⚠ **候選日用盡仍無法通過時，一律不得產生違法班表**：回傳失敗、班表留白不寫入，
@@ -133,7 +135,8 @@ public static class AutoShiftScheduler
     /// 找一個「改排為例假日」最有幫助的日子。
     ///
     /// 優先修**連續上班過長**（把最長連續區間的中點改為例假，一刀切兩半最有效），
-    /// 其次補**14 天視窗例假不足**（在該視窗內優先找休假日、其次上班日）。
+    /// 其次補**14 天視窗例假不足**（在該視窗內優先找休假日、其次上班日），
+    /// 再補**28 天視窗休息日不足**（在該視窗內找上班日）。
     /// 都找不到可動的日子時回 null ＝ 候選日用盡。
     /// </summary>
     private static DateTime? FindFixDate(
@@ -204,7 +207,26 @@ public static class AutoShiftScheduler
                 if (Movable(start.AddDays(i))) return start.AddDays(i);
         }
 
-        // ③ 例假仍不足 4 天 → 任一可動的日子
+        // ③ 第一個休息日不足的 28 天視窗 → 取視窗內可動的「上班日」
+        // 休假改例假不會讓休息日變多，故這裡不可挑休假日；同 ② 由尾端往前找，一次涵蓋最多個後續視窗。
+        var fourWeekFrom = monthStart.AddDays(-(ShiftScheduleValidator.FourWeekWindowDays - 1));
+        for (var start = fourWeekFrom; start <= monthEnd; start = start.AddDays(1))
+        {
+            int off = 0;
+            bool complete = true;
+            for (int i = 0; i < ShiftScheduleValidator.FourWeekWindowDays; i++)
+            {
+                if (!timeline.TryGetValue(start.AddDays(i), out var t)) { complete = false; break; }
+                if (t != WorkDayTypes.Work) off++;
+            }
+
+            if (!complete || off >= ShiftScheduleValidator.MinOffDaysPerFourWeeks) continue;
+
+            for (int i = ShiftScheduleValidator.FourWeekWindowDays - 1; i >= 0; i--)
+                if (Movable(start.AddDays(i)) && !IsRest(start.AddDays(i))) return start.AddDays(i);
+        }
+
+        // ④ 例假仍不足 4 天 → 任一可動的日子
         return EnumerateDates(monthStart, monthEnd).FirstOrDefault(Movable) is { } any
                && Movable(any) ? any : null;
     }

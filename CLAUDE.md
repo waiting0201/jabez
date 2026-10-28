@@ -238,7 +238,7 @@ Admin/src/app/
     │   │                       只借月格骨架，每格狀態存在元件 signal、以 `dayCellClassNames` / `dayCellContent` 上色與標字，
     │   │                       **不使用 event 模型**。四個踩過的坑（重繪須走 `getApi().render()`、首次渲染吃 `initialDate`、
     │   │                       `.fc-daygrid-day-top` 不可 `display:none`、手機要橫向捲動）見 [docs/frontend-design.md §12.8](docs/frontend-design.md)。
-    │   │                       三條擋存規則**不在前端重算**（後端 `ShiftScheduleValidator` 為單一真相），畫面只顯示回傳的 blocks / warnings
+    │   │                       四條擋存規則**不在前端重算**（後端 `ShiftScheduleValidator` 為單一真相），畫面只顯示回傳的 blocks / warnings
     │   ├── users/          # 使用者管理（清單頁含**部門下拉 + 在職狀態下拉 + 勞退下拉 + 員工姓名搜尋列 + 分頁**，走 `GET /users?page=&pageSize=&search=&departmentId=&status=&hasLaborPension=`（每頁 20 筆，比照 vendors），後端以姓名模糊比對、部門 / 狀態為等值比對，四者可併用，單一擴充點為 `UserReadService.BuildFilter`；**在職狀態**（`status=active|inactive`，預設全部，白名單正規化）；**勞退**（`hasLaborPension=true|false`，有無自提二選一，SQL 以 `ISNULL(LaborPensionSelfContributionRate,0)` 正規化故 null 與 0 同屬「未自提」）**為 `payroll:read` 欄位級權限**：無權者前端不顯示該下拉、後端收到參數回 403（否則可用篩選結果反推他人自提率，繞過 `PayrollFieldAccess.Mask`）；user-form 含 3 Tab：員工基本資料 / 人事資料卡 / 健保眷屬；頭像卡有拖曳 / 縮放 / 重設位置，另有**「旋轉 90°」**（2026-10，`ImageCompressionService.rotate90()` 以 canvas 轉正後當新檔上傳，既有頭像經 `/files/avatars` 取回再轉）；Tab1「員工資訊」含 **「排班制（六日與國定假日視為工作日）」** 勾選框（`isShiftWorker`，賣店 / 營業所用，清單頁姓名旁掛「排班制」badge）與 **「自訂上下班時間」** 勾選框＋兩個時間欄（`hasCustomWorkHours` / `customWorkStartTime` / `customWorkEndTime`，2026-09-30，**僅四週彈性工時切換後生效**，決定該員打卡判定與 LINE 提醒時點，清單頁掛 `09:00–17:00` badge）；含 employee-profile.service / hr-profile-pdf.service / 9 組 FormArray；**薪資為欄位級權限 `users:salary-read`**（2026-10 由借用人事薪資的 `payroll:read` 獨立出來，Module「員工管理」/「薪資欄位檢視」，migration 已回填給原持 `payroll:read` 的角色）：進得了員工管理（`users:read`）不等於看得到薪資，Tab1 的 8 個薪資／勞健保欄（2026-08 移除職務加給 / 主管加給 / 外派加給，加給剩其他加給 + 代扣代付款（2026-08 由「調整差額」更名，識別字仍為 `AdjustmentDifference`））、Tab2 薪資調整歷史、Tab3 健保費試算、列印 PDF 第 3 頁皆需另持 `users:salary-read`，前端共用 `canSeeSalary` + `SALARY_CONTROLS`（`@if` 隱藏區塊 + `disable()` 控制項 + 送出前剔除 payload key），後端共用 [Api/Common/PayrollFieldAccess.cs](Api/Common/PayrollFieldAccess.cs) 抹除回應並拒絕寫入；薪資調整歷史改為**條件式**整批替換（`null`＝不變更）避免無權者送空陣列刪光歷史；`/me/user`、`/me/profile` 刻意全開，員工看自己的薪資不受影響）
     │   ├── roles/          # 角色管理（僅 Superadmin）
     │   ├── permissions/    # 權限管理（僅 Superadmin）
@@ -761,7 +761,7 @@ Api/
 │   │                                    月曆讀取／整月寫入／配額重算三個消費點共用此判準。**彈性休假日比照國定假日**（2026-09-29 改回；9/28 曾改為可排班，已撤銷）。
 │   │                                    日別解析 `ShiftScheduleReadService` 同步改為**國定假日優先於個人排班**（與月曆同一優先序），
 │   │                                    9/28–9/29 間殘留在彈性休假日上的例假／休假紀錄因此不會生效
-│   ├── ShiftScheduleValidator.cs      # 排班「能不能存」單一真相（純函式）：`例假 ≥4 天 ∧ 連續上班 ≤12 天 ∧ 任意 14 天內 ≥2 例假` ⇒ 可存；
+│   ├── ShiftScheduleValidator.cs      # 排班「能不能存」單一真相（純函式）：`例假 ≥4 天 ∧ 連續上班 ≤12 天 ∧ 任意 14 天內 ≥2 例假 ∧ 任意 28 天內 ≥8 休息日（例＋休＋國定假日，即四週正常工時 ≤160h，2026-10-28）` ⇒ 可存；跨月上下文前後各 `ContextDays`＝27 天；
 │   │                                    休假未排滿只警示，應排天數 `RequiredRestDaysFor(y, m, 已排例假)` ＝ 合計 8／9 − max(4, 例假)（多排的例假由休假轉入）。滾動 14 天視窗**跨月**（併入前後月已定案班表，次月未排則該側不檢核）。
 │   │                                    ⚠ 空白月曆第一次儲存必然被擋，為預期行為，UI 須一進畫面就提示
 │   ├── ShiftScheduleWindow.cs         # 排班開放期單一真相（純函式）：**每個月份開放期＝前三個月 10 日 ～ 前一個月 25 日**（2026-10-01 由「10–25 日只排次月」放寬為兩個月，2026-10-06 再延為三個月，常數 `OpenMonthsAhead`：10–25 日可排未來三個月、26 日起次月鎖定）／當月僅當日 08:30 前改當天／歷史唯讀／
