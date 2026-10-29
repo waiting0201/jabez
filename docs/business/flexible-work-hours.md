@@ -427,8 +427,8 @@
 **權限／視角**：**與 §3.1 同一套判定**（權限碼 ＋ 既有 `ProjectAccessScope` 部門可見性），不另立一套。
 
 - 頁面進入：`reports-shift-schedule:read`
-- 未持 `shift-schedule:view-all` 者，部門下拉的選項僅限其 `ProjectAccessScope` 涵蓋的部門
-- 持 `shift-schedule:view-all` 者：部門下拉含「全部」，可檢視全公司排班狀態
+- 名單與部門下拉**一律依部門管理的部門可見性**（`ProjectAccessScope`）：Superadmin 或所屬部門 `CanSeeAll` 者看全公司，其餘僅 CanViewSiblings / CanViewDescendants / CanViewParent 涵蓋的部門；下拉走 `GET /departments/lookup?scope=visible`，「全部部門」＝全部可見部門
+- **總覽表不看 `shift-schedule:view-all`**（2026-10-29 決議）：該碼只管個人排班頁看別人的班表；要看全公司總覽，須從部門管理開 `CanSeeAll`
 
 ---
 

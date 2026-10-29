@@ -37,6 +37,10 @@
 - `GET /reports/payment`（款項統計報表，JOIN `Users` 後過濾；支援 `dateFrom / dateTo` 區間篩選）
 - `GET /reports/payment/export`（款項統計匯出 = 一張發票一列，與 `/reports/payment` 共用同一 `BuildWhereAndParameters`，部門 scope 過濾邏輯一致）
 - `GET /users/lookup?scope=department`（報表員工下拉，**不帶 `scope` 參數時維持原行為，回傳全公司**）
+- `GET /reports/shift-schedule`（出勤／排休總覽表；**只看部門可見性、不看 `shift-schedule:view-all`**）
+
+**過濾鍵：`Department.Id`**
+- `GET /departments/lookup?scope=visible`（出勤排休總覽的部門下拉，**不帶 `scope` 參數時維持原行為，回傳全部部門**）
 
 ## 前置必要條件（資料完整性）
 

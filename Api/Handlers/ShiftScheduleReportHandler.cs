@@ -15,12 +15,14 @@ namespace Jabez.Api.Handlers;
 ///
 /// GET /reports/shift-schedule?year=&amp;month=[&amp;departmentId=]
 ///
-/// 與 §3.1 同一套可見性判定，不另立一套：
+/// 可見範圍一律依部門管理的部門可見性（<c>ProjectAccessScope</c>），不另立一套：
 /// <list type="bullet">
 ///   <item>進入頁面：<c>reports-shift-schedule:read</c></item>
-///   <item>持 <c>shift-schedule:view-all</c> → 全公司</item>
-///   <item>未持者 → 僅 <c>ProjectAccessScope</c> 涵蓋的部門</item>
+///   <item>Superadmin 或所屬部門 <c>CanSeeAll</c> → 全公司</item>
+///   <item>其他人 → 僅 CanViewSiblings / CanViewDescendants / CanViewParent 涵蓋的部門</item>
+///   <item>**不看 <c>shift-schedule:view-all</c>**（該碼只管個人排班頁看別人的班表）</item>
 /// </list>
+/// 前端部門下拉走 <c>GET /departments/lookup?scope=visible</c>，選項與資料範圍同一份判定。
 ///
 /// ⚠ **已知取捨**：六個部門的 <c>Department.CanSeeAll = 1</c>，故那些部門的一般同仁
 /// 也看得到全公司排班。這是與需求方確認後接受的現狀（排班不視為敏感資料），見 §3.1。

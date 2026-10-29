@@ -217,7 +217,7 @@ public sealed class AppRouter(
             ("PATCH",  ["settings"])                  => await settings.UpdateAsync(req),
 
             // ── Departments ────────────────────────────────────────────────────
-            ("GET",    ["departments", "lookup"])     => await depts.GetLookupAsync(),
+            ("GET",    ["departments", "lookup"])     => await depts.GetLookupAsync(req),
             ("GET",    ["departments"])               => await depts.GetAllAsync(),
             ("POST",   ["departments"])               => await depts.CreateAsync(req),
             ("GET",    ["departments", var id])       => await depts.GetByIdAsync(id),
