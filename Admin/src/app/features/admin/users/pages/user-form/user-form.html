@@ -809,7 +809,7 @@
                         </tr>
                       </thead>
                       <tbody formArrayName="educationRecords">
-                        @for (ctrl of educationControls; track $index; let i = $index) {
+                        @for (ctrl of educationControls; track ctrl; let i = $index) {
                           <tr [formGroupName]="i">
                             <td><input type="text" class="form-control form-control-sm" formControlName="school" placeholder="學校名稱"></td>
                             <td><input type="text" class="form-control form-control-sm" formControlName="department" placeholder="科系"></td>
@@ -862,7 +862,7 @@
                         </tr>
                       </thead>
                       <tbody formArrayName="employmentHistoryRecords">
-                        @for (ctrl of employmentControls; track $index; let i = $index) {
+                        @for (ctrl of employmentControls; track ctrl; let i = $index) {
                           <tr [formGroupName]="i">
                             <td><input type="text" class="form-control form-control-sm" formControlName="organization" placeholder="機構名稱"></td>
                             <td><input type="text" class="form-control form-control-sm" formControlName="jobTitle" placeholder="職稱"></td>
@@ -909,7 +909,7 @@
                         </tr>
                       </thead>
                       <tbody formArrayName="familyMembers">
-                        @for (ctrl of familyControls; track $index; let i = $index) {
+                        @for (ctrl of familyControls; track ctrl; let i = $index) {
                           <tr [formGroupName]="i">
                             <td><input type="text" class="form-control form-control-sm" formControlName="name" placeholder="姓名"></td>
                             <td><input type="text" class="form-control form-control-sm" formControlName="relationship" placeholder="父/母/配偶…"></td>
@@ -955,7 +955,7 @@
                         </tr>
                       </thead>
                       <tbody formArrayName="professionalTrainings">
-                        @for (ctrl of trainingControls; track $index; let i = $index) {
+                        @for (ctrl of trainingControls; track ctrl; let i = $index) {
                           <tr [formGroupName]="i">
                             <td><input type="text" class="form-control form-control-sm" formControlName="trainingName" placeholder="訓練名稱"></td>
                             <td><input type="text" class="form-control form-control-sm" formControlName="trainingOrg" placeholder="機構名稱"></td>
@@ -1002,7 +1002,7 @@
                         </tr>
                       </thead>
                       <tbody formArrayName="languageAbilities">
-                        @for (ctrl of languageControls; track $index; let i = $index) {
+                        @for (ctrl of languageControls; track ctrl; let i = $index) {
                           <tr [formGroupName]="i">
                             <td><input type="text" class="form-control form-control-sm" formControlName="language" placeholder="中文/英文…"></td>
                             <td>
@@ -1192,7 +1192,7 @@
                         </tr>
                       </thead>
                       <tbody formArrayName="jobTransferRecords">
-                        @for (ctrl of jobTransferControls; track $index; let i = $index) {
+                        @for (ctrl of jobTransferControls; track ctrl; let i = $index) {
                           <tr [formGroupName]="i">
                             <td>
                               <input type="date" class="form-control form-control-sm" formControlName="effectiveDate"
@@ -1235,7 +1235,7 @@
                         </tr>
                       </thead>
                       <tbody formArrayName="rewardPunishmentRecords">
-                        @for (ctrl of rewardControls; track $index; let i = $index) {
+                        @for (ctrl of rewardControls; track ctrl; let i = $index) {
                           <tr [formGroupName]="i">
                             <td>
                               <input type="date" class="form-control form-control-sm" formControlName="effectiveDate"
@@ -1289,7 +1289,7 @@
                           </tr>
                         </thead>
                         <tbody formArrayName="salaryAdjustmentRecords">
-                          @for (ctrl of salaryControls; track $index; let i = $index) {
+                          @for (ctrl of salaryControls; track ctrl; let i = $index) {
                             <tr [formGroupName]="i">
                               <td>
                                 <input type="date" class="form-control form-control-sm" formControlName="effectiveDate"
@@ -1398,7 +1398,7 @@
                     </tr>
                   </thead>
                   <tbody formArrayName="healthDependents">
-                    @for (ctrl of dependentsControls; track $index; let i = $index) {
+                    @for (ctrl of dependentsControls; track ctrl; let i = $index) {
                       <tr [formGroupName]="i">
                         <td><input type="text" class="form-control form-control-sm" formControlName="name" placeholder="姓名"></td>
                         <td>
