@@ -3,7 +3,7 @@ namespace Jabez.Api.Common;
 /// <summary>
 /// 排班檢核結果。<see cref="CanSave"/> ＝ 三條硬性檢核全過；<see cref="Warnings"/> 不影響儲存。
 /// </summary>
-/// <param name="CanSave">是否允許儲存（例假排滿 ∧ 關卡 A ∧ 關卡 B ∧ 關卡 C）</param>
+/// <param name="CanSave">是否允許儲存（例假排滿 ∧ 例＋休 ≤ 10 ∧ 關卡 A ∧ 關卡 B ∧ 關卡 C）</param>
 /// <param name="Blocks">擋存原因（給使用者看的完整句子）</param>
 /// <param name="Warnings">警示（可存，但要提示）</param>
 /// <param name="StatutoryOffCount">本月已排例假天數</param>
@@ -28,8 +28,14 @@ public sealed record ShiftScheduleValidationResult(
 /// 個人排班「能不能存」的單一真相（純函式、無 I/O，比照 <see cref="OvertimePayCalculator"/>）。
 ///
 /// 擋存判準（2026-09-16 客戶回覆改版，原規格為三項皆警示不擋存）：
-/// <code>例假 4 天已排滿 ∧ 關卡 A 通過 ∧ 關卡 B 通過 ∧ 關卡 C 通過 ⇒ 可儲存</code>
+/// <code>例假 4 天已排滿 ∧ 例假＋休假 ≤ 10 天 ∧ 關卡 A 通過 ∧ 關卡 B 通過 ∧ 關卡 C 通過 ⇒ 可儲存</code>
 /// 休假未排滿**不影響儲存**，只出警示。
+///
+/// <b>例假＋休假合計上限 10 天（2026-10-29 新增）</b>：配額是下限（8／31 日曆月 9），
+/// 關卡 C 又會讓休息日排在月初月底的人多排 1 天，故上限取最長月份的配額 ＋ 1。
+/// 不分月份大小、只數當月例假＋休假，**國定假日不計入**（不由同仁排定）。
+/// ⚠ 極端情況下關卡 C 會與上限衝突：前月休假集中在月初、本月又是 31 日的月份時，
+/// 任意 28 天 ≥ 8 天休息可能逼出 11 天，此時怎麼排都存不了，交 HR 以腳本處理（Scripts/20、21 不跑本檢核）。
 ///
 /// 設計理由：例假日是《勞基法》強制休息日（違者罰鍰 2 萬～100 萬元），
 /// 關卡 A／B 又都是「例假排得夠不夠散」的衍生條件 —— 三者本質是同一件事，故一併硬擋。
@@ -48,7 +54,7 @@ public sealed record ShiftScheduleValidationResult(
 /// 起因：配額只按日曆月計算，30／31 日的月份把休息日排在月底（或前月排在月初），
 /// 跨出去的 28 天就只剩 6～7 天休息；本機正式資料實測 11 月有 9 人達 168～176 小時，
 /// 原本三條檢核全過。⚠ 30 日的月份若只排 8 天休息日，**8 天必須全落在 3～28 日**
-/// （1–28 與 3–30 兩個視窗都要 8 天），月初月底若想休就得多排一天 —— 休假天數無上限，這是預期行為。
+/// （1–28 與 3–30 兩個視窗都要 8 天），月初月底若想休就得多排一天（仍受例＋休 10 天上限約束）。
 /// 跨月規則同關卡 B（視窗跨進未排定的日子即略過），故上下文須涵蓋前後各 27 天（<see cref="ContextDays"/>）。
 ///
 /// <b>例假由休假轉入（2026-09-29 決議）</b>：關卡 B 是滾動視窗，等同要求例假平均每 7 天至少一天，
@@ -62,6 +68,9 @@ public static class ShiftScheduleValidator
 {
     /// <summary>每月應排例假天數（法定 4 週至少 4 天）。</summary>
     public const int RequiredStatutoryOffDays = 4;
+
+    /// <summary>每月例假＋休假合計上限（不含國定假日）。</summary>
+    public const int MaxOffDaysPerMonth = 10;
 
     /// <summary>連續上班日上限（勞基法：不得超過 12 日）。</summary>
     public const int MaxConsecutiveWorkDays = 12;
@@ -145,6 +154,9 @@ public static class ShiftScheduleValidator
         else if (statutoryOff > RequiredStatutoryOffDays)
             warnings.Add($"例假日排了 {statutoryOff} 天，多出的 {statutoryOff - RequiredStatutoryOffDays} 天由休假轉入，"
                        + $"本月休假日應排 {requiredRest} 天（例假＋休假合計 {requiredOff} 天）。");
+
+        if (statutoryOff + restDay > MaxOffDaysPerMonth)
+            blocks.Add($"例假＋休假合計不得超過 {MaxOffDaysPerMonth} 天（目前 {statutoryOff + restDay} 天），請改回上班日。");
 
         // 休假未排滿只警示、不擋存
         if (restDay < requiredRest)

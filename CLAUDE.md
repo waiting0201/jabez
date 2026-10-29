@@ -546,6 +546,9 @@ Api/
 │   │                                  #   20 指定員工的個人排班加一天休假日（@Commit 空跑開關，冪等可重跑；首例鄭宇婷 2026-11-27，班表已過開放期）：
 │   │                                  #      以姓名（或 @Email）定位，只 INSERT 一列 ShiftScheduleDays rest_day、不動 ShiftScheduleMonths.Status；
 │   │                                  #      國定假日 / 活動日預定人力 / 有假單 / 進行中改班申請 / 已是例假即中止；例＋休合計會多 1 天（validator 不擋）
+│   │                                  #   21 指定員工某月個人排班整批補登例假 / 休假（@Commit 空跑開關，冪等可重跑；首例鄭宇婷 2026-11，該月從未排定）：
+│   │                                  #      @Days 逐日 INSERT、既有同日別跳過、不同日別中止；該月無狀態列則補 committed；
+│   │                                  #      閘門同 20（國定假日 / 活動日 / 假單 / pending 改班申請）；不跑 validator，報表 F 列出關卡 C 不足 8 天的 28 天區間供判斷
 │   └── Seed/                          # 一次性匯入工具（共用 RocDateParser 解民國年）
 │       ├── EmployeeImporter + EmployeeImportDtos + employee-import.json  # 員工人事資料（RUN_EMPLOYEE_IMPORT 旗標，IMPORT_UPLOAD_FILES 控制附件上傳）
 │       ├── ProjectImporter + ProjectImportDtos + project-import.json     # 專案資料（RUN_PROJECT_IMPORT 旗標，PROJECT_IMPORT_DRY_RUN 只印不寫；來源 reference/專案資料-115.07.29.xls；以 Code upsert、期別明細全量重建）
@@ -764,7 +767,7 @@ Api/
 │   │                                    月曆讀取／整月寫入／配額重算三個消費點共用此判準。**彈性休假日比照國定假日**（2026-09-29 改回；9/28 曾改為可排班，已撤銷）。
 │   │                                    日別解析 `ShiftScheduleReadService` 同步改為**國定假日優先於個人排班**（與月曆同一優先序），
 │   │                                    9/28–9/29 間殘留在彈性休假日上的例假／休假紀錄因此不會生效
-│   ├── ShiftScheduleValidator.cs      # 排班「能不能存」單一真相（純函式）：`例假 ≥4 天 ∧ 連續上班 ≤12 天 ∧ 任意 14 天內 ≥2 例假 ∧ 任意 28 天內 ≥8 休息日（例＋休＋國定假日，即四週正常工時 ≤160h，2026-10-28）` ⇒ 可存；跨月上下文前後各 `ContextDays`＝27 天；
+│   ├── ShiftScheduleValidator.cs      # 排班「能不能存」單一真相（純函式）：`例假 ≥4 天 ∧ 例＋休 ≤10 天（不含國定假日，2026-10-29）∧ 連續上班 ≤12 天 ∧ 任意 14 天內 ≥2 例假 ∧ 任意 28 天內 ≥8 休息日（例＋休＋國定假日，即四週正常工時 ≤160h，2026-10-28）` ⇒ 可存；跨月上下文前後各 `ContextDays`＝27 天；
 │   │                                    休假未排滿只警示，應排天數 `RequiredRestDaysFor(y, m, 已排例假)` ＝ 合計 8／9 − max(4, 例假)（多排的例假由休假轉入）。滾動 14 天視窗**跨月**（併入前後月已定案班表，次月未排則該側不檢核）。
 │   │                                    ⚠ 空白月曆第一次儲存必然被擋，為預期行為，UI 須一進畫面就提示
 │   ├── ShiftScheduleWindow.cs         # 排班開放期單一真相（純函式）：**每個月份開放期＝前三個月 10 日 ～ 前一個月 25 日**（2026-10-01 由「10–25 日只排次月」放寬為兩個月，2026-10-06 再延為三個月，常數 `OpenMonthsAhead`：10–25 日可排未來三個月、26 日起次月鎖定）／當月僅當日 08:30 前改當天／歷史唯讀／
