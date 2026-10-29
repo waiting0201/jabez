@@ -546,6 +546,9 @@ Api/
 │   │                                  #   20 指定員工的個人排班加一天休假日（@Commit 空跑開關，冪等可重跑；首例鄭宇婷 2026-11-27，班表已過開放期）：
 │   │                                  #      以姓名（或 @Email）定位，只 INSERT 一列 ShiftScheduleDays rest_day、不動 ShiftScheduleMonths.Status；
 │   │                                  #      國定假日 / 活動日預定人力 / 有假單 / 進行中改班申請 / 已是例假即中止；例＋休合計會多 1 天（validator 不擋）
+│   │                                  #   21 指定員工某月個人排班整批補登例假 / 休假（@Commit 空跑開關，冪等可重跑；首例鄭宇婷 2026-11，該月從未排定）：
+│   │                                  #      @Days 逐日 INSERT、既有同日別跳過、不同日別中止；該月無狀態列則補 committed；
+│   │                                  #      閘門同 20（國定假日 / 活動日 / 假單 / pending 改班申請）；不跑 validator，報表 F 列出關卡 C 不足 8 天的 28 天區間供判斷
 │   └── Seed/                          # 一次性匯入工具（共用 RocDateParser 解民國年）
 │       ├── EmployeeImporter + EmployeeImportDtos + employee-import.json  # 員工人事資料（RUN_EMPLOYEE_IMPORT 旗標，IMPORT_UPLOAD_FILES 控制附件上傳）
 │       ├── ProjectImporter + ProjectImportDtos + project-import.json     # 專案資料（RUN_PROJECT_IMPORT 旗標，PROJECT_IMPORT_DRY_RUN 只印不寫；來源 reference/專案資料-115.07.29.xls；以 Code upsert、期別明細全量重建）
