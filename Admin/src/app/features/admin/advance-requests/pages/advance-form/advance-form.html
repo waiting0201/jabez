@@ -286,7 +286,7 @@
                   </tr>
                 </thead>
                 <tbody formArrayName="items">
-                  @for (ctrl of itemControls; track $index; let i = $index) {
+                  @for (ctrl of itemControls; track ctrl; let i = $index) {
                     <tr [formGroupName]="i">
                       <td class="align-middle">
                         @if (isReadOnly) {
