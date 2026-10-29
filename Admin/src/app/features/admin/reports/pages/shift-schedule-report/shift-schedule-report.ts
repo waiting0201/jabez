@@ -99,7 +99,8 @@ export class ShiftScheduleReport implements OnInit {
     (this.data()?.dayStats ?? []).filter(d => d.noCoverage));
 
   ngOnInit(): void {
-    this.http.get<DeptLookup[]>(`${environment.apiUrl}/departments/lookup`)
+    // 只列可見部門：與後端名單同一套部門可見性判定，避免選了看不到的部門只得到空表
+    this.http.get<DeptLookup[]>(`${environment.apiUrl}/departments/lookup`, {params: {scope: 'visible'}})
       .subscribe({next: d => this.departments.set(d ?? []), error: () => {}});
 
     const now = new Date();

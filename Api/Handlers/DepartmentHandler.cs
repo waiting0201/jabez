@@ -2,6 +2,7 @@ using Jabez.Api.Common;
 using Jabez.Api.Data;
 using Jabez.Api.Models.Dtos;
 using Jabez.Api.Models.Entities;
+using Jabez.Api.Services;
 using Jabez.Api.Services.Dapper;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -9,7 +10,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Jabez.Api.Handlers;
 
-public sealed class DepartmentHandler(AppDbContext db, IDepartmentReadService reader)
+public sealed class DepartmentHandler(AppDbContext db, IDepartmentReadService reader, IProjectAccessResolver access)
 {
     public async Task<IActionResult> GetAllAsync()
     {
@@ -23,10 +24,23 @@ public sealed class DepartmentHandler(AppDbContext db, IDepartmentReadService re
     /// 比照 <c>/users/lookup</c>、<c>/job-titles/lookup</c> 的輕量讀取端點模式（見 backend-design.md §13）：
     /// 活動日排定、排班相關頁面只是要一個部門下拉，不該因此把「部門管理」的後台權限
     /// 強加給各部門協理。
+    ///
+    /// <c>?scope=visible</c>：只回呼叫者依部門可見性（<c>ProjectAccessScope</c>，即部門管理的
+    /// CanSeeAll / CanViewSiblings / CanViewDescendants / CanViewParent）看得到的部門，
+    /// 供「下拉選項須與資料範圍一致」的頁面使用（出勤排休總覽）。不帶參數維持全部部門。
     /// </summary>
-    public async Task<IActionResult> GetLookupAsync()
+    public async Task<IActionResult> GetLookupAsync(HttpRequest req)
     {
-        var items = await db.Departments.AsNoTracking()
+        var query = db.Departments.AsNoTracking();
+
+        if (string.Equals(req.Query["scope"], "visible", StringComparison.OrdinalIgnoreCase))
+        {
+            var scope = await access.ResolveAsync(req.HttpContext.User);
+            if (!scope.SeeAll)
+                query = query.Where(d => scope.AllowedDepartmentIds.Contains(d.Id));
+        }
+
+        var items = await query
             .OrderBy(d => d.ParentId ?? 0).ThenBy(d => d.Id)
             .Select(d => new DepartmentLookupDto(d.Id, d.Name, d.ParentId))
             .ToListAsync();

@@ -50,7 +50,7 @@
 
 | Method | Path | 說明 |
 |--------|------|------|
-| GET | `/departments/lookup` | 輕量部門清單（`id` / `name` / `parentId`），**免權限、登入即可**。供活動日、排班等頁面的部門下拉；比照 `/users/lookup`、`/job-titles/lookup` 的輕量讀取端點模式 —— 不該為了一個下拉就把「部門管理」的後台權限強加給各部門協理 |
+| GET | `/departments/lookup` | 輕量部門清單（`id` / `name` / `parentId`），**免權限、登入即可**。供活動日、排班等頁面的部門下拉；比照 `/users/lookup`、`/job-titles/lookup` 的輕量讀取端點模式 —— 不該為了一個下拉就把「部門管理」的後台權限強加給各部門協理。**`?scope=visible`** 只回呼叫者部門可見性涵蓋的部門（出勤排休總覽用），不帶則回全部 |
 | GET/POST | `/departments` | 部門列表 / 新增 |
 | GET/PUT/PATCH/DELETE | `/departments/{id}` | 部門 CRUD |
 | GET/POST | `/job-titles` | 職稱列表 / 新增 |
