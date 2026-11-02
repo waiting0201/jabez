@@ -70,12 +70,11 @@
             </svg>
             <div>
               <div class="fw-600">{{ data()?.editable ? '開放排班' : '目前無法編輯' }}</div>
-              <!-- 班表定案後的異動途徑（§3.5.2）：當日臨時調休以外一律走改班申請 -->
-              @if (data() && !data()!.editable) {
-                <a class="btn btn-sm btn-outline-primary mt-2" routerLink="/admin/shift-changes/new">
-                  提出改班申請
-                </a>
-              }
+              <!-- 班表定案後的異動途徑（§3.5.2）：當日臨時調休以外一律走改班申請。
+                   2026-11-02 起不分月份皆顯示 —— 原本只在不可編輯月份顯示，預設月份多半仍開放，同仁找不到入口 -->
+              <a class="btn btn-sm btn-outline-primary mt-2" routerLink="/admin/shift-changes/new">
+                提出改班申請
+              </a>
               <div class="text-secondary small">{{ data()?.editReason }}</div>
             </div>
           </div>
