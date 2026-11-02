@@ -9,10 +9,9 @@ namespace Jabez.Api.Functions;
 /// Cron 以 UTC 觸發，Service 內部以 <see cref="Common.Clock.Now"/>（台北時區）比對命中時點與週末。
 /// 選擇 UTC cron 而非 WEBSITE_TIME_ZONE / TZ 是為了相容 Linux Consumption Plan。
 ///
-/// Cron 由 app setting <c>AttendanceReminderCron</c> 控制，預設只跑：
-///   - 7-9 Taipei（= 23, 0, 1 UTC）
-///   - 16-18 Taipei（= 8, 9, 10 UTC）
-/// 其他時段不觸發以節省 Function 執行次數。
+/// Cron 由 app setting <c>AttendanceReminderCron</c> 控制，現值 <c>0 */1 23,0-13 * * *</c>
+/// ＝台北 07:00–21:59（2026-10 為新制個人化下班提醒放寬，原為 7-9 / 16-18）。
+/// 自訂上下班時段的合法範圍（<see cref="Common.ClockProfile.CustomStartEarliest"/> 等）依此推得，改 cron 時須一併確認。
 /// 週末由 Service 端過濾（cron 跨午夜時 day-of-week 無法在單一表達式中正確涵蓋週一至週五）。
 /// </summary>
 public sealed class AttendanceReminderFunction(
