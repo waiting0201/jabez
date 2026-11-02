@@ -62,13 +62,16 @@ public sealed class AutoShiftScheduleService(
         var monthStart = new DateTime(year, month, 1);
         var monthEnd   = monthStart.AddMonths(1).AddDays(-1);
 
-        // 逾期者＝在職、非超管，且該月沒有 committed 的整月狀態
+        // 逾期者＝在職、非超管、持有 shift-schedule:write，且該月沒有 committed 的整月狀態。
+        // 未開排班權限者（外聘、不打卡的負責人）本來就不排班，替他們寫班表只會換來一則
+        // 「系統已為您自動排班」的通知 —— 判準與排班提醒的收件人相同（ShiftScheduleReminderService）。
         var committed = db.ShiftScheduleMonths
             .Where(m => m.Year == year && m.Month == month && m.Status == ShiftScheduleMonthStatus.Committed)
             .Select(m => m.UserId);
 
         var query = db.Users.AsNoTracking()
-            .Where(u => u.Status == "active" && !u.IsSuperAdmin && !committed.Contains(u.Id));
+            .Where(u => u.Status == "active" && !u.IsSuperAdmin && !committed.Contains(u.Id)
+                     && u.UserRoles.Any(ur => ur.Role.RolePermissions.Any(rp => rp.Permission.Code == PermissionCodes.ShiftScheduleWrite)));
 
         if (onlyUserId is { } uid) query = query.Where(u => u.Id == uid);
 
