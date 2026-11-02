@@ -25,7 +25,7 @@
 |--------|------|------|
 | GET | `/users?page=1&pageSize=20&search=關鍵字&departmentId=9&status=active&hasLaborPension=true` | 取得使用者列表。`search` 選填，模糊比對**姓名** `Name`；`departmentId` 選填，篩選部門；`status` 選填，在職狀態（白名單 `active` / `inactive`，非法值忽略）；`hasLaborPension` 選填，勞退自提（`true`＝自提率 > 0、`false`＝自提率為 0 或 null，非布林值忽略，**無 `users:salary-read` 者送此參數回 403**，因可反推他人自提率）（四者可併用，與分頁參數正交，非數字的 `departmentId` 一律忽略）；**帶 `page` / `pageSize` 回 `PagedResult`，不帶則回平面陣列**（`pageSize` clamp 1~100，預設 20）。**欄位級權限**：無 `users:salary-read` 者的 8 個薪資欄（底薪 / 伙食費 / 加班費 / 2 種加給 / 勞健保覆寫 / 勞退自提率）回 `null` |
 | GET | `/users/lookup` | **輕量端點**：免 `users:read`，回 `{id, name, jobTitleId, status, departmentId, jobTitleLevel}`，供指定審核者下拉與「部門最高層級」判定（`jobTitleLevel` 數字越小越高） |
-| POST | `/users` | 新增使用者。**欄位級權限**：無 `users:salary-read` 者送的薪資欄一律忽略（存為 null），回應 DTO 亦抹除。**自訂上下班時段**（2026-09-30，新增 / 更新共用）：`hasCustomWorkHours=true` 時 `customWorkStartTime` / `customWorkEndTime`（HH:mm）必填，上班 07:30–09:30、下班 16:30–18:30 且晚於上班，否則 400；未勾選寫 null |
+| POST | `/users` | 新增使用者。**欄位級權限**：無 `users:salary-read` 者送的薪資欄一律忽略（存為 null），回應 DTO 亦抹除。**自訂上下班時段**（2026-09-30，新增 / 更新共用）：`hasCustomWorkHours=true` 時 `customWorkStartTime` / `customWorkEndTime`（HH:mm）必填，上班 07:00–12:00、下班 15:00–22:00 且晚於上班（2026-11-02 放寬，範圍跟隨 `AttendanceReminderCron` 台北 07:00–21:59），否則 400；未勾選寫 null |
 | GET | `/users/{id}` | 取得單一使用者。**欄位級權限**：同 `GET /users`，無 `users:salary-read` 者薪資欄回 `null` |
 | PUT/PATCH | `/users/{id}` | 更新使用者。**欄位級權限**：無 `users:salary-read` 者的薪資欄寫入一律忽略（既有值不變，不回 403），回應 DTO 亦抹除 |
 | DELETE | `/users/{id}` | 刪除使用者 |

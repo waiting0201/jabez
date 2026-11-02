@@ -135,13 +135,16 @@ public sealed record ClockProfile(
     public const int CustomClockOutGraceMinutes = 5;
 
     /// <summary>
-    /// 自訂時段的合法範圍。上下班提醒只在 <c>AttendanceReminderCron</c> 的 7–9 / 16–18 時段內執行，
-    /// 超出範圍的時段會永遠收不到提醒，故於員工資料存檔時擋下。
+    /// 自訂時段的合法範圍。上下班提醒只在 <c>AttendanceReminderCron</c>（現值 <c>0 */1 23,0-13 * * *</c>
+    /// ＝台北 07:00–21:59）內執行，超出範圍的時段會永遠收不到提醒，故於員工資料存檔時擋下。
+    /// 上班最晚 12:00：須早於 13:00 半天假交接，「上午請假」的判定才有意義。
+    /// ⚠ 改 cron 時要回頭確認此範圍；前端 user-form.html 的 input min / max 須同步。
+    /// （2026-11-02 由 07:30–09:30 / 16:30–18:30 放寬：賣店有同仁的排班超出原範圍而無法存檔）
     /// </summary>
-    public static readonly TimeOnly CustomStartEarliest = new(7, 30);
-    public static readonly TimeOnly CustomStartLatest   = new(9, 30);
-    public static readonly TimeOnly CustomEndEarliest   = new(16, 30);
-    public static readonly TimeOnly CustomEndLatest     = new(18, 30);
+    public static readonly TimeOnly CustomStartEarliest = new(7, 0);
+    public static readonly TimeOnly CustomStartLatest   = new(12, 0);
+    public static readonly TimeOnly CustomEndEarliest   = new(15, 0);
+    public static readonly TimeOnly CustomEndLatest     = new(22, 0);
 
     /// <summary>公司預設（現行新制規則）。</summary>
     public static readonly ClockProfile Company = new(

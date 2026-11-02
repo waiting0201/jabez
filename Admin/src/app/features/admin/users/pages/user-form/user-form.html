@@ -282,10 +282,10 @@
                   @if (form.value.hasCustomWorkHours) {
                     <div class="flex items-center gap-2 mt-2">
                       <input type="time" class="form-control" formControlName="customWorkStartTime"
-                             min="07:30" max="09:30" aria-label="上班時間">
+                             min="07:00" max="12:00" aria-label="上班時間">
                       <span class="text-muted">～</span>
                       <input type="time" class="form-control" formControlName="customWorkEndTime"
-                             min="16:30" max="18:30" aria-label="下班時間">
+                             min="15:00" max="22:00" aria-label="下班時間">
                     </div>
                   }
                   <div class="text-muted small mt-1">
