@@ -1510,8 +1510,8 @@ overtimeStartHint = computed<string>(() => {
 前端不重組規則，避免前後端判定漂移。
 
 **打卡送出流程（防機器人打卡，2026-10）**：四鈕共用 `performAction()`，按下後
-`Promise.all([取 GPS, 取挑戰碼, 取 Turnstile token])` → **GPS 選填（2026-10-11）**：取不到仍照常送出（右欄定位卡顯示黃色
-「無法取得定位（打卡仍有效）」、成功 toast 改為 warning）；`_getGps()` 先高精度 8 秒、失敗再以
+`Promise.all([取 GPS, 取挑戰碼, 取 Turnstile token])` → **GPS 必填（2026-11 恢復；2026-10-11～11 月初曾為選填）**：取不到即 error toast 並中止、不送出（右欄定位卡顯示紅色
+「無法取得定位，未完成打卡」＋開啟定位權限的說明）；`_getGps()` 先高精度 8 秒、失敗再以
 `enableHighAccuracy:false` + `maximumAge:300000` 降級一次（地下室改用 Wi-Fi／基地台定位），`PERMISSION_DENIED` 不重試 → 挑戰碼停留不足 `minWaitMs`
 時以「收到回應」起算補等（+300ms 緩衝）→ 送出時帶 `challengeToken`、`turnstileToken` 與 `accuracy`。
 Turnstile 走 `shared/services/turnstile.service.ts`：script **第一次呼叫才動態載入**、每次 render 新 widget 取得 token 後立即 remove

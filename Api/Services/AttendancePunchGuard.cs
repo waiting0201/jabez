@@ -14,7 +14,8 @@ namespace Jabez.Api.Services;
 /// 防機器人打卡（2026-10 hotfix，起因：正式站有人以排程腳本「登入 → 1 秒內打卡」、且不送 GPS）。
 ///
 /// 四道關卡，四個本人打卡動作（上班 / 下班 / 加班開始 / 加班結束）共用：
-///   1. ~~強制 GPS~~：2026-10-11 起改為選填（地下室等收不到定位處的同仁會完全無法打卡），有帶照常記錄。
+///   1. **強制 GPS**：座標缺漏、超出範圍或為 (0,0) 一律拒絕。2026-10-11 曾改為選填（地下室等收不到定位處的同仁
+///      會完全無法打卡），2026-11 依公司政策恢復必填；前端取定位失敗會先降級改用 Wi-Fi／基地台定位重試一次。
 ///   2. **Cloudflare Turnstile 人機驗證**（2026-10 新增，<see cref="ITurnstileVerifier"/>）：
 ///      依設定 <c>Turnstile:Mode</c> —— off 不驗證、log 只記錄結果一律放行（上線觀察期）、enforce 擋下 missing / failed。
 ///      **Cloudflare 連不到（unavailable）一律放行並記錄**：不能因外部服務故障讓全公司打不了卡，其餘關卡仍有效。
@@ -43,7 +44,6 @@ public sealed class AttendancePunchGuard(AppDbContext db, IConfiguration config,
     /// <summary>擋下原因代碼（寫入 AttendancePunchLog.BlockReason）</summary>
     public static class BlockReasons
     {
-        /// <summary>已停用（GPS 改為選填），保留供判讀既有紀錄</summary>
         public const string NoGps            = "no_gps";
         public const string ChallengeMissing = "challenge_missing";
         public const string ChallengeInvalid = "challenge_invalid";
@@ -99,7 +99,12 @@ public sealed class AttendancePunchGuard(AppDbContext db, IConfiguration config,
     private async Task<(string? Reason, string? Message)> EvaluateAsync(
         Guid userId, string action, ClockActionRequest body, AttendancePunchLog log, string? remoteIp)
     {
-        // 1. GPS 為選填（2026-10-11 取消強制），有帶就照常記錄於 log 與打卡紀錄
+        // 1. 強制 GPS（2026-11 依公司政策恢復；10/11–11/2 期間曾為選填）
+        if (body.Latitude is not { } lat || body.Longitude is not { } lng
+            || double.IsNaN(lat) || double.IsNaN(lng)
+            || lat is < -90 or > 90 || lng is < -180 or > 180
+            || (lat == 0 && lng == 0))
+            return (BlockReasons.NoGps, "無法取得定位，請開啟手機／瀏覽器的定位權限後再打卡。");
 
         // 2. Turnstile 人機驗證（unavailable 一律放行，見類別說明）
         log.TurnstileResult = await turnstile.VerifyAsync(body.TurnstileToken, action, remoteIp);
