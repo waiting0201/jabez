@@ -358,7 +358,7 @@ Api/
 │   │                                    cron `ShiftScheduleReminderCron` 現值 `0 0 1,4 * * *`＝**每天** UTC 01:00/04:00（台北 09:00/12:00），
 │   │                                    刻意由 Service 判斷「今天是不是那四個號碼」而非寫進 cron ——
 │   │                                    25 號是 12:00、其餘是 09:00，單一 cron 表達不出這種組合。
-│   │                                    **制度未切換時不推**（同仁還沒有排班功能可用）
+│   │                                    **制度未切換時不推**（同仁還沒有排班功能可用）；**收件人與 26 號自動排班對象皆限持有 `shift-schedule:write` 者**（2026-11，外聘 / 不排班的負責人不收提醒、不被自動排班）
 │   ├── DisasterDayOffFunction.cs      # **颱風假公告抓取 TimerTrigger（2026-10-23）**：cron `DisasterDayOffCron`（`0 */10 * * * *`），抓人事行政總處 nds.html → `DisasterDayOffService.SyncAsync`（自動建立 / 通知持 `disaster-days:write` 者；HR 取消過的不重建、改照常不自動撤銷）
 │   └── PaymentReminderFunction.cs     # TimerTrigger：每日 09:00 Taipei 跑撥款日將屆提醒；cron 由 `PaymentReminderCron` 控制；提前天數讀 `SystemSetting.PaymentReminderDaysBefore`，推給財務體系部門全員
 ├── Routing/

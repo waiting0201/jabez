@@ -12,13 +12,17 @@ namespace Jabez.Api.Services;
 ///
 /// | 時點 | 對象 | 內容 |
 /// |---|---|---|
-/// | 10 號 09:00 | 全員 | **第 3 個月**排班已開放填寫（附註次月 25 日截止） |
+/// | 10 號 09:00 | 全員（需排班者） | **第 3 個月**排班已開放填寫（附註次月 25 日截止） |
 /// | 20 號 09:00 | **次月尚未完成排班者** | 排班未完成提醒 |
 /// | 25 號 12:00 | 次月尚未完成排班者 | 今日 23:59:59 截止 |
 /// | 26 號 09:00 | **前一日被自動排班者** | 系統已為您自動排班 |
 ///
 /// 10 號的對象是第 3 個月：2026-10-06 起每個月份的開放期為「前三個月 10 日 ～ 前一個月 25 日」，
 /// 10 號新開放的是第 3 個月（次月與第 2 個月早已開放）。其餘三個時點仍針對次月。
+///
+/// 「需排班者」＝ 持有 <c>shift-schedule:write</c>（2026-11）。外聘、不打卡的負責人等未開排班權限的角色
+/// 本來就不排班，不該每月收到四則提醒；判準與自動排班的對象相同（<c>AutoShiftScheduleService</c>），
+/// 比照打卡提醒只推給持有 <c>attendances:write</c> 者。
 ///
 /// 同日去重：同一種提醒一天只推一次（沿用 <c>AttendanceReminderLogs</c> 的 batchStart 慣例，
 /// 以 <c>ReminderType</c> 區分槽別）。冷啟動延遲導致同一時點被跑兩次時靠它擋掉。
@@ -125,7 +129,8 @@ public sealed class ShiftScheduleReminderService(
     {
         var baseQuery = db.Users.AsNoTracking()
             .Where(u => u.Status == "active" && !u.IsSuperAdmin
-                     && u.LineUserId != null && u.LineUserId != "");
+                     && u.LineUserId != null && u.LineUserId != ""
+                     && u.UserRoles.Any(ur => ur.Role.RolePermissions.Any(rp => rp.Permission.Code == PermissionCodes.ShiftScheduleWrite)));
 
         // 「已完成排班」＝ ShiftScheduleMonths 有該月且狀態為 committed
         var committed = db.ShiftScheduleMonths.AsNoTracking()
