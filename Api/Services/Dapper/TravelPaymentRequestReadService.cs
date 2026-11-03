@@ -24,9 +24,12 @@ public sealed class TravelPaymentRequestReadService(IDbConnection db, IInstallme
         LEFT JOIN TravelPaymentRequestItems ti ON ti.TravelPaymentRequestId = tpr.Id
         """;
 
-    public async Task<PagedResult<TravelPaymentRequestDto>> GetPagedAsync(int page, int pageSize, Guid? userId = null)
+    public async Task<PagedResult<TravelPaymentRequestDto>> GetPagedAsync(int page, int pageSize, Guid? userId = null, bool? closed = null)
     {
-        var whereClause = userId.HasValue ? "WHERE EmployeeId = @UserId" : "";
+        var conditions = new List<string>();
+        if (userId.HasValue) conditions.Add("EmployeeId = @UserId");
+        if (ClosedListFilter.Clause(ClosedListFilter.TravelPaymentRequest, closed) is { } closedClause) conditions.Add(closedClause);
+        var whereClause = conditions.Count > 0 ? "WHERE " + string.Join(" AND ", conditions) : "";
         var countSql = $"SELECT COUNT(*) FROM TravelPaymentRequests {whereClause}";
         var sql = $"""
             WITH PagedIds AS (

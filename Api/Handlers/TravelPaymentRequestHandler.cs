@@ -68,7 +68,7 @@ public sealed class TravelPaymentRequestHandler(
         Guid? filterUserId = user?.IsSuperAdmin == true ? null : userId;
         int page     = int.TryParse(req.Query["page"],     out var p)  ? Math.Max(1, p)         : 1;
         int pageSize = int.TryParse(req.Query["pageSize"], out var ps) ? Math.Clamp(ps, 1, 100) : 20;
-        var result = await reader.GetPagedAsync(page, pageSize, filterUserId);
+        var result = await reader.GetPagedAsync(page, pageSize, filterUserId, ClosedListFilter.Parse(req.Query["closed"]));
         return new OkObjectResult(ApiResponse.Ok(result));
     }
 

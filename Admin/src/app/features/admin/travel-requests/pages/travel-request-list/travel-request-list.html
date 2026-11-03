@@ -12,6 +12,8 @@
     </a>
   </div>
 
+  <app-closed-list-tabs [active]="activeTab()" [hint]="closedHint" (tabChange)="switchTab($event)" />
+
   <div class="card border-0 shadow-sm">
     <div class="card-body p-0">
       <div class="table-responsive">
@@ -73,7 +75,7 @@
               </tr>
             } @empty {
               <tr>
-                <td colspan="9" class="text-center text-muted py-4">尚無出差預支申請。</td>
+                <td colspan="9" class="text-center text-muted py-4">{{ activeTab() === 'closed' ? '尚無已結案的出差預支申請。' : '尚無進行中的出差預支申請。' }}</td>
               </tr>
             }
           </tbody>

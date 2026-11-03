@@ -1583,11 +1583,12 @@
                         <!-- 送單時被跳過的關卡不會留下簽核紀錄，與「還沒輪到」的灰圈長得一樣，故明確標示 -->
                         <div class="text-muted small mt-1">已跳過</div>
                       }
+                      <app-step-return-history [history]="task.returnHistory" [stepOrder]="step.stepOrder"
+                                               [currentRecord]="getRecord(task.approvalRecords, step.stepOrder)" />
                     </div>
                   </li>
                 }
               </ol>
-              <app-return-history [history]="task.returnHistory" [flow]="task.flow" />
             </div>
           </div>
         }

@@ -510,7 +510,7 @@ model 皆宣告為 `requestNo: string | null`：
   3. **已跳過** —— 序號小於目前關卡卻無簽核紀錄者（送單時被跳過不留 `ApprovalRecord`），灰字「已跳過」，與「尚未輪到」區分；關卡名稱**不**列人名（這張單不會再回頭走）。
   4. **尚未輪到** —— 灰圈 + 關卡名稱 + 人名（誰會簽後面幾關，送出當下就看得到）。
 - `stepReviewers` 來源一律是 `ApprovalTask.stepReviewers`（後端 `GET /approval-tasks/{appType}/{id}` 於 pending 時逐關解析），**前端不自行推算誰能簽**；detail 頁綁 `task.stepReviewers ?? []`，form 頁存在 `stepReviewers` 欄位。後端沒帶回時（非 pending 單）一律不顯示人名，也不誤報「查無可簽核人員」。
-- **退回 / 拒絕歷程**（2026-11）：Input `returnHistory`（detail 頁綁 `task.returnHistory ?? []`），由子元件 [`<app-return-history>`](../Admin/src/app/shared/components/return-history.ts) 畫在時間軸下方（上框線分隔、黃 / 紅 badge + 審核者（部門 · 職稱）+「第 N 關 · 關卡名 · 時間」+ 原因）；無資料不渲染。時間軸只呈現本輪，歷次退回原因只看這一塊。
+- **退回 / 拒絕歷程**（2026-11）：Input `returnHistory`（detail 頁綁 `task.returnHistory ?? []`），由子元件 [`<app-step-return-history>`](../Admin/src/app/shared/components/return-history.ts) 畫在**每一關的內容下方**（左側黃色細線、標題「歷次退回」、結果 · 審核者（部門 · 職稱）· 時間 + 原因），以 `stepOrder` / `roundNo` 篩出該關；`currentRecord` 為本輪該關紀錄，若是退回 / 拒絕則略過歷程最新一筆避免重複；該關無資料不渲染。
 - 清單（請款申請 / 簽核作業）狀態欄另掛「曾退回 N 次」徽章（`bg-warning-subtle text-warning-emphasis`，`returnCount` 為 0 / 缺值不顯示）。
 - ⚠ [approval-task-review](../Admin/src/app/features/admin/approval-tasks/pages/approval-task-review/approval-task-review.html) 另有一份**內嵌**時間軸（審核頁需與審核表單同頁佈局），改動時**兩處必須同步**。
 
@@ -550,6 +550,13 @@ switchTab(tab: 'tab1' | 'tab2') {
   // optional: lazy load
 }
 ```
+
+### 個人清單「進行中 / 已結案」頁籤（2026-11）
+
+六個個人申請清單（請款 / 預支 / 預支沖銷 / 出差請款 / 出差預支 / 出差預支沖銷）共用 [`<app-closed-list-tabs>`](../Admin/src/app/shared/components/closed-list-tabs.ts)：
+放在頁首與清單卡片之間，`[active]` / `[hint]`（已結案頁籤旁的判定說明）/ `(tabChange)`。各清單頁以 `activeTab` signal 併入分頁 `computed`，
+切頁籤回第 1 頁並以 `router.navigate([], {queryParams: {tab}, replaceUrl: true})` 寫進網址（`?tab=closed`），初值讀 `route.snapshot`；
+service `getPaged(page, pageSize, closed)` 一律帶 `closed`。空清單文字依頁籤顯示「尚無進行中 / 已結案的 XX」。
 
 ### 主頁籤 + 子狀態列（兩層 pill）
 

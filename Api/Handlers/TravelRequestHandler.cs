@@ -68,7 +68,9 @@ public sealed class TravelRequestHandler(
         Guid? filterUserId = user?.IsSuperAdmin == true ? null : userId;
         int page     = int.TryParse(req.Query["page"],     out var p)  ? Math.Max(1, p)         : 1;
         int pageSize = int.TryParse(req.Query["pageSize"], out var ps) ? Math.Clamp(ps, 1, 100) : 20;
-        var result = await reader.GetPagedAsync(page, pageSize, filterUserId, isHolidayTravel);
+        // 假日執行活動無結案概念，不吃 closed
+        bool? closed = isHolidayTravel ? null : ClosedListFilter.Parse(req.Query["closed"]);
+        var result = await reader.GetPagedAsync(page, pageSize, filterUserId, isHolidayTravel, closed);
         return new OkObjectResult(ApiResponse.Ok(result));
     }
 

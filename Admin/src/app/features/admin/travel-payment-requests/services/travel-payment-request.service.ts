@@ -10,8 +10,8 @@ import {environment} from '@/environments/environment';
 export class TravelPaymentRequestService {
   private http = inject(HttpClient);
 
-  getPaged(page: number, pageSize: number): Observable<PagedResult<TravelPaymentRequest>> {
-    return this.http.get<PagedResult<TravelPaymentRequest>>(`${environment.apiUrl}/travel-payment-requests`, {params: {page, pageSize}});
+  getPaged(page: number, pageSize: number, closed = false): Observable<PagedResult<TravelPaymentRequest>> {
+    return this.http.get<PagedResult<TravelPaymentRequest>>(`${environment.apiUrl}/travel-payment-requests`, {params: {page, pageSize, closed}});
   }
 
   getById(id: number): Observable<TravelPaymentRequest> {

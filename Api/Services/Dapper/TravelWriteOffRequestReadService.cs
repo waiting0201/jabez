@@ -37,9 +37,12 @@ public sealed class TravelWriteOffRequestReadService(IDbConnection db) : ITravel
         LEFT JOIN TravelWriteOffItems twi ON twi.TravelWriteOffRecordId = two.Id
         """;
 
-    public async Task<PagedResult<TravelWriteOffRequestDto>> GetPagedAsync(int page, int pageSize, Guid? userId = null)
+    public async Task<PagedResult<TravelWriteOffRequestDto>> GetPagedAsync(int page, int pageSize, Guid? userId = null, bool? closed = null)
     {
-        var userFilter = userId.HasValue ? "WHERE SubmittedById = @UserId" : "";
+        var conditions = new List<string>();
+        if (userId.HasValue) conditions.Add("SubmittedById = @UserId");
+        if (ClosedListFilter.Clause(ClosedListFilter.TravelWriteOffRecord, closed) is { } closedClause) conditions.Add(closedClause);
+        var userFilter = conditions.Count > 0 ? "WHERE " + string.Join(" AND ", conditions) : "";
         var countSql = $"SELECT COUNT(*) FROM TravelWriteOffRecords {userFilter}";
         var sql = $"""
             WITH PagedIds AS (

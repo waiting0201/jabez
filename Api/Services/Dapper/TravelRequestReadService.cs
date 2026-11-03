@@ -34,12 +34,13 @@ public sealed class TravelRequestReadService(IDbConnection db, IInstallmentReadS
         return GroupToTravelRequests(rows);
     }
 
-    public async Task<PagedResult<TravelRequestDto>> GetPagedAsync(int page, int pageSize, Guid? userId = null, bool? isHolidayTravel = null)
+    public async Task<PagedResult<TravelRequestDto>> GetPagedAsync(int page, int pageSize, Guid? userId = null, bool? isHolidayTravel = null, bool? closed = null)
     {
         // 動態組合 WHERE 條件
         var conditions = new List<string>();
         if (userId.HasValue)         conditions.Add("EmployeeId = @UserId");
         if (isHolidayTravel.HasValue) conditions.Add("IsHolidayTravel = @IsHolidayTravel");
+        if (ClosedListFilter.Clause(ClosedListFilter.TravelRequest, closed) is { } closedClause) conditions.Add(closedClause);
         var whereClause = conditions.Count > 0 ? "WHERE " + string.Join(" AND ", conditions) : "";
 
         var countSql = $"SELECT COUNT(*) FROM TravelRequests {whereClause}";
