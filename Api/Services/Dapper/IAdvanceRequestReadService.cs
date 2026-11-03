@@ -5,7 +5,7 @@ namespace Jabez.Api.Services.Dapper;
 
 public interface IAdvanceRequestReadService
 {
-    Task<PagedResult<AdvanceRequestDto>> GetPagedAsync(int page, int pageSize, Guid? userId = null);
+    Task<PagedResult<AdvanceRequestDto>> GetPagedAsync(int page, int pageSize, Guid? userId = null, bool? closed = null);
     Task<AdvanceRequestDto?>             GetByIdAsync(int id);
 
     /// <summary>某預支單關聯的預審單（依 RoundNo、單號排序）。</summary>

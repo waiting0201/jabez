@@ -47,9 +47,12 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
         return GroupToPaymentRequests(rows);
     }
 
-    public async Task<PagedResult<PaymentRequestDto>> GetPagedAsync(int page, int pageSize, Guid? userId = null)
+    public async Task<PagedResult<PaymentRequestDto>> GetPagedAsync(int page, int pageSize, Guid? userId = null, bool? closed = null)
     {
-        var userFilter = userId.HasValue ? "WHERE SubmittedById = @UserId" : "";
+        var conditions = new List<string>();
+        if (userId.HasValue) conditions.Add("SubmittedById = @UserId");
+        if (ClosedListFilter.Clause(ClosedListFilter.PaymentRequest, closed) is { } closedClause) conditions.Add(closedClause);
+        var userFilter = conditions.Count > 0 ? "WHERE " + string.Join(" AND ", conditions) : "";
         var countSql = $"SELECT COUNT(*) FROM PaymentRequests {userFilter}";
         var sql = $"""
             WITH PagedIds AS (

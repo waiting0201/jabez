@@ -1,74 +1,68 @@
 import {Component, computed, input} from '@angular/core';
 import {DatePipe} from '@angular/common';
-import {ApprovalFlow, ApprovalReturnLog} from '../../features/admin/approval-tasks/models/approval-task.model';
+import {ApprovalRecord, ApprovalReturnLog} from '../../features/admin/approval-tasks/models/approval-task.model';
 import {roundLabel} from '../../features/admin/advance-requests/models/advance-request.model';
 
 /**
- * 退回 / 拒絕歷程（放在「簽核流程」卡片內、時間軸下方）。
- * 退回後重送時簽核紀錄會整批重來，時間軸只看得到這一輪；本區塊列出歷次「誰、在哪一關、為何」退回或拒絕，
- * 讓已簽過的人再收到同一張單時知道前因。無歷程時整塊不渲染。
+ * 單一關卡的歷次退回 / 拒絕紀錄（放在簽核流程時間軸每一關的內容下方）。
+ * 退回後重送時簽核紀錄會整批重來，時間軸只看得到這一輪；這裡把該關過去「誰、何時、為何」退回列出來，
+ * 讓已簽過的人再收到同一張單時知道前因。該關無歷程時不渲染。
+ *
+ * 去重：本輪該關若正是「退回 / 拒絕」（單子停在 returned / rejected），時間軸上方已列出這一筆，
+ * 歷程裡最新那筆就是它，故略過。
  */
 @Component({
-  selector: 'app-return-history',
+  selector: 'app-step-return-history',
   standalone: true,
   imports: [DatePipe],
   template: `
     @if (items().length) {
-      <div class="border-top mt-6 pt-4">
-        <div class="flex items-center gap-2 fw-600 mb-3">
-          <svg class="sa-icon text-[--yellow]" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#rotate-ccw"></use></svg>
-          退回 / 拒絕歷程
-          <span class="badge bg-[--bg-elevated] text-[--text-muted]" style="font-size:.7rem">{{ items().length }} 次</span>
-        </div>
-        <ol class="list-none p-0 mb-0">
-          @for (log of items(); track $index; let last = $last) {
-            <li class="flex items-start gap-3" [class.mb-4]="!last">
-              <span class="badge rounded-pill shrink-0 mt-px"
-                    [class.bg-warning]="log.action === 'returned'"
-                    [class.bg-danger]="log.action === 'rejected'"
-                    style="font-size:.7rem">
-                {{ log.action === 'returned' ? '退回修改' : '已拒絕' }}
-              </span>
-              <div class="grow min-w-0">
-                <div class="small">
-                  <span class="fw-500">{{ log.reviewedBy || '—' }}</span>
-                  @if (log.reviewerDepartmentName || log.reviewerJobTitle) {
-                    <span class="text-muted">（{{ log.reviewerDepartmentName }}{{ log.reviewerDepartmentName && log.reviewerJobTitle ? ' · ' : '' }}{{ log.reviewerJobTitle }}）</span>
-                  }
-                  @if (log.isEscalated && log.onBehalfOf) {
-                    <span class="badge bg-[--bg-elevated] text-[--accent] ms-1" style="font-size:.7rem">代理 {{ log.onBehalfOf }}</span>
-                  } @else if (log.isEscalated) {
-                    <span class="badge bg-[--bg-elevated] text-[--purple] ms-1" style="font-size:.7rem">升級審核</span>
-                  }
-                </div>
-                <div class="text-muted small mt-1">
-                  {{ stepLabel(log) }} · {{ log.reviewedAt | date:'yyyy-MM-dd HH:mm' }}
-                </div>
-                @if (log.reviewNote) {
-                  <div class="small mt-1 break-words">「{{ log.reviewNote }}」</div>
-                }
-              </div>
-            </li>
-          }
-        </ol>
+      <div class="mt-2 ps-3" style="border-left: 2px solid var(--yellow)">
+        <div class="text-muted small mb-1">歷次退回</div>
+        @for (log of items(); track $index) {
+          <div class="small" [class.mt-2]="!$first">
+            <span [class]="log.action === 'returned' ? 'text-[--yellow]' : 'text-danger'">
+              {{ log.action === 'returned' ? '退回修改' : '已拒絕' }}
+            </span>
+            · {{ log.reviewedBy || '—' }}
+            @if (log.reviewerDepartmentName || log.reviewerJobTitle) {
+              <span class="text-muted">（{{ log.reviewerDepartmentName }}{{ log.reviewerDepartmentName && log.reviewerJobTitle ? ' · ' : '' }}{{ log.reviewerJobTitle }}）</span>
+            }
+            @if (log.isEscalated && log.onBehalfOf) {
+              <span class="badge bg-[--bg-elevated] text-[--accent] ms-1" style="font-size:.7rem">代理 {{ log.onBehalfOf }}</span>
+            } @else if (log.isEscalated) {
+              <span class="badge bg-[--bg-elevated] text-[--purple] ms-1" style="font-size:.7rem">升級審核</span>
+            }
+            <span class="text-muted">
+              · {{ log.reviewedAt | date:'yyyy-MM-dd HH:mm' }}
+              @if (showRound() && (log.roundNo ?? 1) > 1) { · {{ roundLabel(log.roundNo) }} }
+            </span>
+            @if (log.reviewNote) {
+              <div class="break-words">「{{ log.reviewNote }}」</div>
+            }
+          </div>
+        }
       </div>
     }
   `,
 })
-export class ReturnHistory {
+export class StepReturnHistory {
   history = input<ApprovalReturnLog[] | null | undefined>([]);
-  flow = input<ApprovalFlow | null | undefined>(null);
+  stepOrder = input.required<number>();
+  /** 只看某批次（追加預支）；null＝不分批次 */
+  roundNo = input<number | null>(null);
+  /** 本輪該關的簽核紀錄（用於去重，見類別註解） */
+  currentRecord = input<ApprovalRecord | null | undefined>(null);
+  /** 不分批次顯示時，追加批次的紀錄加註批次標籤 */
+  readonly showRound = computed(() => this.roundNo() === null);
 
-  readonly items = computed(() => this.history() ?? []);
+  protected readonly roundLabel = roundLabel;
 
-  /** 「第 2 關 · 總監」；追加預支另冠批次標籤 */
-  stepLabel(log: ApprovalReturnLog): string {
-    const step = this.flow()?.steps.find(s => s.stepOrder === log.stepOrder);
-    const name = !step ? ''
-      : step.useApplicantDesignated ? '指定審核'
-      : step.useDirectSupervisor ? '上層級'
-      : (step.jobTitleName ?? '');
-    const base = `第 ${log.stepOrder} 關${name ? ' · ' + name : ''}`;
-    return (log.roundNo ?? 1) > 1 ? `${roundLabel(log.roundNo)} ${base}` : base;
-  }
+  readonly items = computed(() => {
+    const round = this.roundNo();
+    const list = (this.history() ?? []).filter(l =>
+      l.stepOrder === this.stepOrder() && (round === null || (l.roundNo ?? 1) === round));
+    const rec = this.currentRecord();
+    return rec && rec.action !== 'approved' ? list.slice(0, -1) : list;
+  });
 }

@@ -26,9 +26,12 @@ public sealed class AdvanceRequestReadService(IDbConnection db, IInstallmentRead
         LEFT JOIN AdvanceRequestItems ai ON ai.AdvanceRequestId = ar.Id
         """;
 
-    public async Task<PagedResult<AdvanceRequestDto>> GetPagedAsync(int page, int pageSize, Guid? userId = null)
+    public async Task<PagedResult<AdvanceRequestDto>> GetPagedAsync(int page, int pageSize, Guid? userId = null, bool? closed = null)
     {
-        var userFilter = userId.HasValue ? "WHERE SubmittedById = @UserId" : "";
+        var conditions = new List<string>();
+        if (userId.HasValue) conditions.Add("SubmittedById = @UserId");
+        if (ClosedListFilter.Clause(ClosedListFilter.AdvanceRequest, closed) is { } closedClause) conditions.Add(closedClause);
+        var userFilter = conditions.Count > 0 ? "WHERE " + string.Join(" AND ", conditions) : "";
         var countSql = $"SELECT COUNT(*) FROM AdvanceRequests {userFilter}";
         var sql = $"""
             WITH PagedIds AS (

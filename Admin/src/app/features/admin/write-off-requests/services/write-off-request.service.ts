@@ -11,8 +11,8 @@ export class WriteOffRequestService {
   private http = inject(HttpClient);
   private base = `${environment.apiUrl}/write-off-requests`;
 
-  getPaged(page: number, pageSize: number): Observable<PagedResult<WriteOffRequest>> {
-    return this.http.get<PagedResult<WriteOffRequest>>(this.base, {params: {page, pageSize}});
+  getPaged(page: number, pageSize: number, closed = false): Observable<PagedResult<WriteOffRequest>> {
+    return this.http.get<PagedResult<WriteOffRequest>>(this.base, {params: {page, pageSize, closed}});
   }
 
   getById(id: number): Observable<WriteOffRequest> {

@@ -1,5 +1,5 @@
 import {Component, computed, inject, signal} from '@angular/core';
-import {RouterLink} from '@angular/router';
+import {ActivatedRoute, Router, RouterLink} from '@angular/router';
 import {DatePipe, DecimalPipe} from '@angular/common';
 import {toSignal, toObservable} from '@angular/core/rxjs-interop';
 import {switchMap} from 'rxjs/operators';
@@ -17,16 +17,30 @@ import {
 } from '../../../approval-tasks/models/approval-task.model';
 import {PagedResult} from '../../../../../shared/models/paged-result.model';
 import {AuthService} from '@core/auth/services/auth.service';
+import {ClosedListTab, ClosedListTabs} from '../../../../../shared/components/closed-list-tabs';
 import {HasPermissionDirective} from '@shared/directives/has-permission.directive';
 
 @Component({
   selector: 'app-payment-list',
   templateUrl: './payment-list.html',
-  imports: [RouterLink, DecimalPipe, DatePipe, HasPermissionDirective],
+  imports: [RouterLink, ClosedListTabs, DecimalPipe, DatePipe, HasPermissionDirective],
 })
 export class PaymentList {
   private service = inject(PaymentRequestService);
   private auth = inject(AuthService);
+  private router = inject(Router);
+  private route  = inject(ActivatedRoute);
+
+  /** 進行中 / 已結案（2026-11）：存在網址 ?tab=closed，從詳情頁按上一頁會回到原頁籤 */
+  activeTab = signal<ClosedListTab>(this.route.snapshot.queryParamMap.get('tab') === 'closed' ? 'closed' : 'open');
+  readonly closedHint = '財務已填妥全部各期實際撥款日的請款';
+
+  switchTab(tab: ClosedListTab) {
+    if (this.activeTab() === tab) return;
+    this.activeTab.set(tab);
+    this.page.set(1);
+    this.router.navigate([], {relativeTo: this.route, queryParams: {tab: tab === 'closed' ? 'closed' : null}, replaceUrl: true});
+  }
 
   canWrite()  { return this.auth.hasPermission('payment-requests:write'); }
   canDelete() { return this.auth.hasPermission('payment-requests:delete'); }
@@ -36,8 +50,8 @@ export class PaymentList {
   private refresh = signal(0);
 
   private result = toSignal(
-    toObservable(computed(() => ({ page: this.page(), refresh: this.refresh() }))).pipe(
-      switchMap(({ page }) => this.service.getPaged(page, this.PAGE_SIZE))
+    toObservable(computed(() => ({page: this.page(), refresh: this.refresh(), tab: this.activeTab()}))).pipe(
+      switchMap(({page, tab}) => this.service.getPaged(page, this.PAGE_SIZE, tab === 'closed'))
     ),
     {initialValue: {items: [], totalCount: 0, page: 1, pageSize: 20, totalPages: 1} as PagedResult<PaymentRequest>}
   );

@@ -1,13 +1,13 @@
 import {Component, computed, input} from '@angular/core';
 import {DatePipe} from '@angular/common';
 import {ApprovalFlow, ApprovalRecord, ApprovalReturnLog, PendingReviewer, StepReviewers} from '../../features/admin/approval-tasks/models/approval-task.model';
-import {ReturnHistory} from './return-history';
+import {StepReturnHistory} from './return-history';
 import {roundLabel} from '../../features/admin/advance-requests/models/advance-request.model';
 
 @Component({
   selector: 'app-approval-timeline',
   standalone: true,
-  imports: [DatePipe, ReturnHistory],
+  imports: [DatePipe, StepReturnHistory],
   template: `
     @if (flow()) {
       <div class="card border-0 shadow-sm mt-6">
@@ -104,12 +104,13 @@ import {roundLabel} from '../../features/admin/advance-requests/models/advance-r
                   } @else if (isSkippedStep(step.stepOrder, round)) {
                     <div class="text-muted small mt-1">已跳過</div>
                   }
+                  <app-step-return-history [history]="returnHistory()" [stepOrder]="step.stepOrder" [roundNo]="round"
+                                           [currentRecord]="getRecord(step.stepOrder, round)" />
                 </div>
               </li>
             }
           </ol>
           }
-          <app-return-history [history]="returnHistory()" [flow]="flow()" />
         </div>
       </div>
     }
@@ -124,7 +125,7 @@ export class ApprovalTimeline {
   currentRoundNo = input(1);
   /** 各關卡實際可簽核的人（後端解析；某關為空陣列＝該關查無可簽核人員）*/
   stepReviewers = input<StepReviewers[]>([]);
-  /** 退回 / 拒絕歷程（重送不清，見 <app-return-history>）*/
+  /** 退回 / 拒絕歷程（重送不清；各關下方以 <app-step-return-history> 顯示）*/
   returnHistory = input<ApprovalReturnLog[]>([]);
 
   protected readonly roundLabel = roundLabel;

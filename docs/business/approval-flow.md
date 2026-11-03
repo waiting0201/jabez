@@ -538,8 +538,9 @@ RefundDue = max(0, 前次已沖銷 + 本次沖銷 − 預支總額)
 在 [ApprovalTaskHandler.ProcessReviewAsync](../../Api/Handlers/ApprovalTaskHandler.cs) 遇 `returned` / `rejected` 時多寫一列
 （關卡 / 批次 / 審核者姓名・部門・職稱**快照** / 代理・升級 / 時間 / 原因），**只增不改、重送不清**；
 與簽核判定（自動代簽、去重、PDF 簽名欄）完全無關，故不影響任何既有流程。
-`GET /approval-tasks/{appType}/{id}` 一律回 `returnHistory[]`（舊→新），前端 `<app-return-history>`
-顯示在「簽核流程」卡片內、時間軸下方（簽核詳情頁內嵌時間軸與共用 `<app-approval-timeline>` 皆有）；無歷程時不顯示。
+`GET /approval-tasks/{appType}/{id}` 一律回 `returnHistory[]`（舊→新），前端 `<app-step-return-history>`
+顯示在時間軸**被退回的那一關底下**（「歷次退回」小區塊：結果 · 審核者（部門 · 職稱）· 時間 + 原因；簽核詳情頁內嵌時間軸與共用 `<app-approval-timeline>` 皆有）；
+該關無歷程不顯示。單子目前停在 returned / rejected 時，該關最新一筆已由時間軸本身列出，歷程略過它不重複。
 
 - `ReviewedById` 刻意無 FK、另存姓名快照：審核者離職 / 被刪後歷程仍看得懂，也不必加進 UserHandler 的硬刪除清洗。
 - 刪申請單時與 `ApprovalRecords` 一併清除（11 個 Handler 的 DeleteAsync）；追加預支批次駁回回滾（`AdvanceSupplementService.RollbackAsync`）**不清**，留作歷程。

@@ -28,8 +28,8 @@ export class PaymentRequestService {
     return this.http.get<PaymentRequest[]>(`${environment.apiUrl}/payment-requests`);
   }
 
-  getPaged(page: number, pageSize: number): Observable<PagedResult<PaymentRequest>> {
-    return this.http.get<PagedResult<PaymentRequest>>(`${environment.apiUrl}/payment-requests`, {params: {page, pageSize}});
+  getPaged(page: number, pageSize: number, closed = false): Observable<PagedResult<PaymentRequest>> {
+    return this.http.get<PagedResult<PaymentRequest>>(`${environment.apiUrl}/payment-requests`, {params: {page, pageSize, closed}});
   }
 
   getById(id: number): Observable<PaymentRequest> {

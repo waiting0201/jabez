@@ -1,5 +1,5 @@
 import {Component, computed, effect, inject, signal} from '@angular/core';
-import {RouterLink} from '@angular/router';
+import {ActivatedRoute, Router, RouterLink} from '@angular/router';
 import {DatePipe, DecimalPipe} from '@angular/common';
 import {toSignal, toObservable} from '@angular/core/rxjs-interop';
 import {switchMap} from 'rxjs/operators';
@@ -7,6 +7,7 @@ import {WriteOffRequestService} from '../../services/write-off-request.service';
 import {WriteOffRequest, APPROVAL_STATUS_LABELS, APPROVAL_STATUS_CLASSES} from '../../models/write-off-request.model';
 import {PagedResult} from '../../../../../shared/models/paged-result.model';
 import {AuthService} from '@core/auth/services/auth.service';
+import {ClosedListTab, ClosedListTabs} from '../../../../../shared/components/closed-list-tabs';
 import {HasPermissionDirective} from '@shared/directives/has-permission.directive';
 
 interface WriteOffGroup {
@@ -23,11 +24,24 @@ interface WriteOffGroup {
 @Component({
   selector: 'app-write-off-list',
   templateUrl: './write-off-list.html',
-  imports: [RouterLink, DecimalPipe, DatePipe, HasPermissionDirective],
+  imports: [RouterLink, ClosedListTabs, DecimalPipe, DatePipe, HasPermissionDirective],
 })
 export class WriteOffList {
   private service = inject(WriteOffRequestService);
   private auth = inject(AuthService);
+  private router = inject(Router);
+  private route  = inject(ActivatedRoute);
+
+  /** 進行中 / 已結案（2026-11）：存在網址 ?tab=closed，從詳情頁按上一頁會回到原頁籤 */
+  activeTab = signal<ClosedListTab>(this.route.snapshot.queryParamMap.get('tab') === 'closed' ? 'closed' : 'open');
+  readonly closedHint = '所屬預支單已結案的沖銷';
+
+  switchTab(tab: ClosedListTab) {
+    if (this.activeTab() === tab) return;
+    this.activeTab.set(tab);
+    this.page.set(1);
+    this.router.navigate([], {relativeTo: this.route, queryParams: {tab: tab === 'closed' ? 'closed' : null}, replaceUrl: true});
+  }
 
   canWrite()  { return this.auth.hasPermission('write-off-requests:write'); }
   canDelete() { return this.auth.hasPermission('write-off-requests:delete'); }
@@ -37,8 +51,8 @@ export class WriteOffList {
   private refresh = signal(0);
 
   private result = toSignal(
-    toObservable(computed(() => ({page: this.page(), refresh: this.refresh()}))).pipe(
-      switchMap(({page}) => this.service.getPaged(page, this.PAGE_SIZE))
+    toObservable(computed(() => ({page: this.page(), refresh: this.refresh(), tab: this.activeTab()}))).pipe(
+      switchMap(({page, tab}) => this.service.getPaged(page, this.PAGE_SIZE, tab === 'closed'))
     ),
     {initialValue: {items: [], totalCount: 0, page: 1, pageSize: 20, totalPages: 1} as PagedResult<WriteOffRequest>}
   );

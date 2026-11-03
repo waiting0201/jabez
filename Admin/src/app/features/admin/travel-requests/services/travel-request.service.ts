@@ -14,8 +14,8 @@ export class TravelRequestService {
     return this.http.get<TravelRequest[]>(`${environment.apiUrl}/travel-requests`);
   }
 
-  getPaged(page: number, pageSize: number): Observable<PagedResult<TravelRequest>> {
-    return this.http.get<PagedResult<TravelRequest>>(`${environment.apiUrl}/travel-requests`, {params: {page, pageSize}});
+  getPaged(page: number, pageSize: number, closed = false): Observable<PagedResult<TravelRequest>> {
+    return this.http.get<PagedResult<TravelRequest>>(`${environment.apiUrl}/travel-requests`, {params: {page, pageSize, closed}});
   }
 
   getById(id: number): Observable<TravelRequest> {

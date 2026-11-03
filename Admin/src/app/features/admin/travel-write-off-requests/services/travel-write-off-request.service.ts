@@ -10,8 +10,8 @@ export class TravelWriteOffRequestService {
   private http = inject(HttpClient);
   private base = `${environment.apiUrl}/travel-write-off-requests`;
 
-  getPaged(page: number, pageSize: number): Observable<PagedResult<TravelWriteOffRequest>> {
-    return this.http.get<PagedResult<TravelWriteOffRequest>>(this.base, {params: {page, pageSize}});
+  getPaged(page: number, pageSize: number, closed = false): Observable<PagedResult<TravelWriteOffRequest>> {
+    return this.http.get<PagedResult<TravelWriteOffRequest>>(this.base, {params: {page, pageSize, closed}});
   }
 
   getById(id: number): Observable<TravelWriteOffRequest> {

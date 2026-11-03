@@ -11,8 +11,8 @@ export class AdvanceRequestService {
   private http = inject(HttpClient);
   private base = `${environment.apiUrl}/advance-requests`;
 
-  getPaged(page: number, pageSize: number): Observable<PagedResult<AdvanceRequest>> {
-    return this.http.get<PagedResult<AdvanceRequest>>(this.base, {params: {page, pageSize}});
+  getPaged(page: number, pageSize: number, closed = false): Observable<PagedResult<AdvanceRequest>> {
+    return this.http.get<PagedResult<AdvanceRequest>>(this.base, {params: {page, pageSize, closed}});
   }
 
   getById(id: number): Observable<AdvanceRequest> {
