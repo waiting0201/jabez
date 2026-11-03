@@ -46,13 +46,15 @@ public sealed class TravelRequestHandler(
     /// 已建立的草稿在切換後會卡住無法送簽，屬預期行為（改提加班申請）。
     ///
     /// 切換日為 null（尚未切換）時完全不擋，故本階段部署不改變任何現行行為。
+    /// 切換後另有寬限期（<see cref="HolidayTravelRetirement.GraceUntil"/>，補申請切換前的活動），
+    /// 寬限期內送簽另限活動日期須早於切換日（見 <see cref="SubmitAsync"/>）。
     /// </summary>
     private async Task<IActionResult?> GuardHolidayTravelRetiredAsync(bool isHolidayTravel)
     {
         if (!isHolidayTravel) return null;
 
         var switchDate = await scheduleProvider.GetSwitchDateAsync();
-        if (!WorkdayHours.IsFlexible(Clock.Now, switchDate)) return null;
+        if (!HolidayTravelRetirement.IsRetired(Clock.Now, switchDate)) return null;
 
         return new BadRequestObjectResult(ApiResponse.Fail(
             "〈假日執行活動申請〉已隨四週彈性工時上線退場，不再受理新增與送簽；"
@@ -597,6 +599,16 @@ public sealed class TravelRequestHandler(
 
         if (item.ApprovalStatus != "draft" && item.ApprovalStatus != "returned")
             throw AppException.BadRequest("Only draft or returned travel requests can be submitted.");
+
+        // 退場寬限期只為補申請切換前的活動；切換日當天起的假日出勤一律改提〈加班申請〉
+        if (isHolidayTravel)
+        {
+            var switchDate = await scheduleProvider.GetSwitchDateAsync();
+            if (HolidayTravelRetirement.InGrace(Clock.Now, switchDate) && item.EndDate.Date >= switchDate!.Value.Date)
+                return new BadRequestObjectResult(ApiResponse.Fail(
+                    $"〈假日執行活動申請〉僅補受理 {switchDate.Value:yyyy/MM/dd} 以前的活動；"
+                  + "此後的假日出勤請改提〈加班申請〉。"));
+        }
 
         // 送簽時才取號：單號日期＝送簽日，草稿不佔號。
         // 退回（returned）重送時已有單號，不可重新配號，否則已流通的單號會被改掉。

@@ -27,9 +27,9 @@ export class HolidayTravelRequestList {
    * 〈假日執行活動申請〉已隨四週彈性工時退場（§8）：**只關寫入口、保留唯讀**。
    * 列表與詳情照常可看（薪資的假日津貼取數也原封不動，移除會讓歷史月份金額憑空消失），
    * 但不再提供新增與編輯。後端 `TravelRequestHandler.GuardHolidayTravelRetiredAsync` 才是真正的閘門，
-   * 此處只是不要讓使用者點進去才被擋。切換日未設定時 `isFlexibleActive` 為 false，一切照舊。
+   * 此處只是不要讓使用者點進去才被擋。讀後端 `isHolidayTravelRetired`（含切換後寬限期），未退場時一切照舊。
    */
-  readonly retired = computed(() => this.workMode.mode()?.isFlexibleActive ?? false);
+  readonly retired = computed(() => this.workMode.mode()?.isHolidayTravelRetired ?? false);
 
   constructor() {
     void this.workMode.load();

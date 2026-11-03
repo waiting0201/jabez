@@ -8,6 +8,8 @@ export interface WorkMode {
   flexibleWorkStartDate: string | null;
   /** 以**今天**判斷是否已生效。只供 UI 開關使用，不可用於資料解讀（見下方註解） */
   isFlexibleActive: boolean;
+  /** 〈假日執行活動申請〉是否已退場（後端含切換後寬限期判斷，前端不得自行以 isFlexibleActive 推算） */
+  isHolidayTravelRetired: boolean;
   /** 專案工時佔比上線日（yyyy-MM-dd，各環境 app setting）；null ＝ 未設定、不啟用 */
   projectAllocationStartDate: string | null;
   /** 以今天判斷專案工時是否已上線（工時總表選單等 UI 開關用） */
@@ -52,7 +54,7 @@ export class WorkModeService {
       .catch(() => {
         // 退回「尚未切換」：讓既有入口維持可見，而不是因一次失敗就整個消失
         const fallback: WorkMode = {
-          flexibleWorkStartDate: null, isFlexibleActive: false,
+          flexibleWorkStartDate: null, isFlexibleActive: false, isHolidayTravelRetired: false,
           projectAllocationStartDate: null, isProjectAllocationActive: false,
         };
         this.mode.set(fallback);

@@ -48,6 +48,8 @@ public sealed class SettingsHandler(AppDbContext db, IProjectAllocationSchedule 
         {
             flexibleWorkStartDate = switchDate,
             isFlexibleActive      = WorkdayHours.IsFlexible(Clock.Now, switchDate),
+            // 〈假日執行活動申請〉是否已退場（含切換後寬限期，單一真相 HolidayTravelRetirement）
+            isHolidayTravelRetired = HolidayTravelRetirement.IsRetired(Clock.Now, switchDate),
             // 專案工時佔比上線日（app setting，非 SystemSetting）；同樣只供 UI 開關（例如工時總表選單）
             projectAllocationStartDate = allocationSchedule.StartDate?.ToString("yyyy-MM-dd"),
             isProjectAllocationActive  = allocationSchedule.IsActiveToday,
