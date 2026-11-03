@@ -1,4 +1,5 @@
 using Jabez.Api.Common;
+using Jabez.Api.Services;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
@@ -14,7 +15,10 @@ namespace Jabez.Api.Handlers;
 /// 報價單 OCR Handler：接收圖片並透過 Google Gemini API 辨識報價單 / 估價單行項目。
 /// 回傳結果為陣列（每個行項目一筆），包含品項名稱、金額、備註。
 /// </summary>
-public sealed class QuoteOcrHandler(IConfiguration config, ILogger<QuoteOcrHandler> logger)
+public sealed class QuoteOcrHandler(
+    IConfiguration      config,
+    GeminiUsageRecorder usageRecorder,
+    ILogger<QuoteOcrHandler> logger)
 {
     private static readonly HttpClient _http = new()
     {
@@ -179,6 +183,7 @@ public sealed class QuoteOcrHandler(IConfiguration config, ILogger<QuoteOcrHandl
             }
 
             geminiResp = JsonSerializer.Deserialize<GeminiResponse>(respBody, CamelOpts);
+            await usageRecorder.RecordAsync(GeminiUsageSources.QuoteOcr, model, geminiResp?.UsageMetadata);
         }
         catch (TaskCanceledException)
         {
@@ -287,6 +292,9 @@ public sealed class QuoteOcrHandler(IConfiguration config, ILogger<QuoteOcrHandl
     {
         [JsonPropertyName("candidates")]
         public List<GeminiCandidate>? Candidates { get; set; }
+
+        [JsonPropertyName("usageMetadata")]
+        public GeminiUsageMetadata? UsageMetadata { get; set; }
     }
 
     private sealed class GeminiCandidate

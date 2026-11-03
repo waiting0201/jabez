@@ -1,4 +1,5 @@
 using Jabez.Api.Common;
+using Jabez.Api.Services;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
@@ -15,7 +16,10 @@ namespace Jabez.Api.Handlers;
 /// 一張圖片或 PDF 只辨識一張（2026-10-20 關閉一圖多張展開，多張請分開拍 / 上傳）；
 /// 回傳仍為陣列以維持 API 契約，但最多 1 筆。
 /// </summary>
-public sealed class InvoiceOcrHandler(IConfiguration config, ILogger<InvoiceOcrHandler> logger)
+public sealed class InvoiceOcrHandler(
+    IConfiguration      config,
+    GeminiUsageRecorder usageRecorder,
+    ILogger<InvoiceOcrHandler> logger)
 {
     private static readonly HttpClient _http = new()
     {
@@ -206,6 +210,7 @@ public sealed class InvoiceOcrHandler(IConfiguration config, ILogger<InvoiceOcrH
             }
 
             geminiResp = JsonSerializer.Deserialize<GeminiResponse>(respBody, CamelOpts);
+            await usageRecorder.RecordAsync(GeminiUsageSources.InvoiceOcr, model, geminiResp?.UsageMetadata);
         }
         catch (TaskCanceledException)
         {
@@ -402,6 +407,9 @@ public sealed class InvoiceOcrHandler(IConfiguration config, ILogger<InvoiceOcrH
     {
         [JsonPropertyName("candidates")]
         public List<GeminiCandidate>? Candidates { get; set; }
+
+        [JsonPropertyName("usageMetadata")]
+        public GeminiUsageMetadata? UsageMetadata { get; set; }
     }
 
     private sealed class GeminiCandidate

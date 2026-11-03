@@ -9,6 +9,8 @@ import {AttendanceService} from '../../services/attendance.service';
 import {LineQuotaService} from '../../services/line-quota.service';
 import {TurnstileService} from '@/app/shared/services/turnstile.service';
 import {LineQuota} from '../../models/line-quota.model';
+import {GeminiUsageService} from '../../services/gemini-usage.service';
+import {GEMINI_SOURCE_LABELS, GeminiUsage} from '../../models/gemini-usage.model';
 import {OvertimeRequestService} from '@features/admin/overtime-requests/services/overtime-request.service';
 import {OvertimeRequest} from '@features/admin/overtime-requests/models/overtime-request.model';
 import {TodayAttendance, ClockActionType, ProjectAllocationInput, ActiveLeave, SHIFT_DAY_TYPE_LABELS} from '../../models/attendance.model';
@@ -30,6 +32,7 @@ export class Dashboard implements OnInit, OnDestroy {
   private modal = inject(NgbModal);
   private overtimeService = inject(OvertimeRequestService);
   private lineQuotaService = inject(LineQuotaService);
+  private geminiUsageService = inject(GeminiUsageService);
   private turnstile = inject(TurnstileService);
   private disasterService = inject(DisasterDayService);
 
@@ -73,6 +76,10 @@ export class Dashboard implements OnInit, OnDestroy {
   lineQuota = signal<LineQuota | null>(null);
   /** 用量查詢失敗（LINE API 不可用 / Token 無效），給卡片顯示提示用 */
   lineQuotaFailed = signal(false);
+
+  /** Gemini 本月使用量（系統自行累計，權限同 LINE 用量卡片） */
+  geminiUsage = signal<GeminiUsage | null>(null);
+  geminiUsageFailed = signal(false);
 
   /** 今日本人工作地縣市停班（颱風假）；沒有則 null。打卡鈕照常可按（出勤照平日計薪） */
   disasterToday = signal<MyDisasterDayOff | null>(null);
@@ -196,6 +203,10 @@ export class Dashboard implements OnInit, OnDestroy {
     return 'bg-success';
   });
 
+  geminiSourceLabel(source: string): string {
+    return GEMINI_SOURCE_LABELS[source] ?? source;
+  }
+
   leaveTypeLabel(type: string): string {
     return (LEAVE_TYPE_LABELS as Record<string, string>)[type] ?? type;
   }
@@ -224,6 +235,10 @@ export class Dashboard implements OnInit, OnDestroy {
       this.lineQuotaService.getQuota().subscribe({
         next: q => this.lineQuota.set(q),
         error: () => this.lineQuotaFailed.set(true),
+      });
+      this.geminiUsageService.getUsage().subscribe({
+        next: u => this.geminiUsage.set(u),
+        error: () => this.geminiUsageFailed.set(true),
       });
     }
   }

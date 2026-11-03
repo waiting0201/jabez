@@ -374,6 +374,7 @@
 | POST | `/line/unbind` | 解除 LINE 綁定 |
 | GET | `/line/binding-status` | 查詢當前用戶 LINE 綁定狀態 |
 | GET | `/line/quota` | 查詢 LINE Messaging API 月度推播用量（`type` / `limit` / `used` / `remaining`），需 `line-quota:read` 權限；Dashboard「LINE 推播用量」卡片使用 |
+| GET | `/gemini/usage` | 本月 Gemini 呼叫次數與 token 合計（系統自行累計的 OCR 呼叫，含依來源分組），權限沿用 `line-quota:read`；Dashboard「Gemini 使用量」卡片使用（2026-11） |
 
 ## 檔案代理（Blob Storage）
 

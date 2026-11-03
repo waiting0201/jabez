@@ -321,6 +321,58 @@
             }
           </div>
         </div>
+
+        <!-- Gemini 使用量（權限同上；Gemini 無用量查詢 API，數字為系統自行累計的 OCR 呼叫） -->
+        <div class="card border-0 shadow-sm mt-4">
+          <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600">
+            <svg class="sa-icon text-primary" style="stroke: currentColor">
+              <use href="/assets/icons/sprite.svg#cpu"></use>
+            </svg>
+            Gemini 使用量
+          </div>
+          <div class="card-body">
+            @if (geminiUsage(); as g) {
+              <div class="flex items-center justify-between mb-2">
+                <span class="small text-muted">本月呼叫次數</span>
+                <span class="fw-600 font-monospace">{{ g.calls | number }} 次</span>
+              </div>
+              <div class="flex items-center justify-between mb-2">
+                <span class="small text-muted">本月 token（輸入 / 輸出）</span>
+                <span class="font-monospace small">{{ g.inputTokens | number }} / {{ g.outputTokens | number }}</span>
+              </div>
+              @for (s of g.sources; track s.source) {
+                <div class="flex items-center justify-between mb-1">
+                  <span class="small text-muted">・{{ geminiSourceLabel(s.source) }}</span>
+                  <span class="small font-monospace">{{ s.calls | number }} 次</span>
+                </div>
+              }
+              <p class="small text-muted mt-2 mb-3">僅統計本系統的發票 / 報價單辨識；實際費用與餘額以 Google 帳單為準。</p>
+            } @else if (geminiUsageFailed()) {
+              <div class="flex items-center gap-2 mb-3" style="color: var(--yellow)">
+                <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#alert-triangle"></use></svg>
+                <span class="small fw-500">無法取得使用量</span>
+              </div>
+            } @else {
+              <p class="small text-muted mb-3">載入中…</p>
+            }
+            <div class="flex flex-col gap-2">
+              <a href="https://aistudio.google.com/usage" target="_blank" rel="noopener"
+                 class="btn btn-outline-primary btn-sm w-100 flex items-center justify-center gap-2">
+                <svg class="sa-icon" style="stroke: currentColor">
+                  <use href="/assets/icons/sprite.svg#external-link"></use>
+                </svg>
+                前往 Google AI Studio 用量
+              </a>
+              <a href="https://console.cloud.google.com/billing" target="_blank" rel="noopener"
+                 class="btn btn-outline-primary btn-sm w-100 flex items-center justify-center gap-2">
+                <svg class="sa-icon" style="stroke: currentColor">
+                  <use href="/assets/icons/sprite.svg#credit-card"></use>
+                </svg>
+                前往 Google Cloud 帳單 / 儲值
+              </a>
+            </div>
+          </div>
+        </div>
       }
     </div>
   </div>

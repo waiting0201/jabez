@@ -72,6 +72,19 @@ LINE Messaging API 採每月「免費 + 加購」配額制（type=`limited`）�
 
 **type=none**（無上限方案）時：卡片只顯示「此 LINE 帳號為無上限方案」+ 連結，省略進度條。
 
+### Gemini 使用量卡片（2026-11 新增）
+
+LINE 卡片正下方另有 **Gemini 使用量** 卡片，**權限沿用 `line-quota:read`**（同一批人看得到，不另立權限碼）。
+
+- Gemini 的 API key **查不到用量或餘額**（帳單在 Google Cloud Billing、後付制），故改由**系統自行累計**：
+  發票 OCR（`InvoiceOcrHandler`）與報價單 OCR（`QuoteOcrHandler`）每次**成功**呼叫 Gemini，由 `GeminiUsageRecorder`
+  依回應的 `usageMetadata` 寫一列 `GeminiUsageLog`（輸入＝`promptTokenCount`、輸出＝`candidatesTokenCount + thoughtsTokenCount`）。
+  記錄失敗只寫 log、不影響 OCR。
+- 卡片顯示**本月**（台北時間 1 號起）呼叫次數、輸入 / 輸出 token、依來源（發票辨識 / 報價單辨識）分列的次數，
+  走 `GET /gemini/usage`（`GeminiUsageHandler` → `GeminiUsageReadService`）。
+- **只統計本系統的呼叫、自上線日起算、不估算金額**（各模型單價不同且會調整）；實際費用與餘額以 Google 帳單為準。
+- 兩顆外部連結：[Google AI Studio 用量](https://aistudio.google.com/usage)、[Google Cloud 帳單 / 儲值](https://console.cloud.google.com/billing)。
+
 ## 涉及元件
 
 | 元件 | 說明 |
@@ -89,7 +102,9 @@ LINE Messaging API 採每月「免費 + 加購」配額制（type=`limited`）�
 | 前端 `LineQuotaService` | `features/dashboard/services/line-quota.service.ts`（Dashboard 用量卡片） |
 | 前端 `ProfileDropdown` | 三態綁定 UI（未綁定 / 已綁定未加好友 / 已綁定為好友） |
 | 前端 `LineBindCallback` | OAuth callback 頁面 |
-| 前端 `Dashboard` | LINE 推播用量卡片（位於定位資訊下方，`canViewLineQuota()` 守門） |
+| 前端 `Dashboard` | LINE 推播用量卡片（位於定位資訊下方，`canViewLineQuota()` 守門）＋ 其下的 Gemini 使用量卡片（同一守門） |
+| `GeminiUsageLog` / `GeminiUsageRecorder` / `GeminiUsageHandler` / `GeminiUsageReadService` | Gemini 使用量自行累計（OCR 寫入、`GET /gemini/usage` 讀取） |
+| 前端 `GeminiUsageService` | `features/dashboard/services/gemini-usage.service.ts`（Dashboard Gemini 卡片） |
 
 ## LINE 設定
 

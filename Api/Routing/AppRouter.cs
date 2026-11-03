@@ -57,6 +57,7 @@ public sealed class AppRouter(
     CalendarDayHandler              calendarDays,
     FileHandler                     files,
     LineHandler                     line,
+    GeminiUsageHandler              geminiUsage,
     TravelPaymentRequestHandler     travelPaymentRequests,
     AttendanceReminderAdminHandler  attendanceReminderAdmin,
     AttendanceReminderLogHandler    attendanceReminderLogs,
@@ -541,6 +542,7 @@ public sealed class AppRouter(
             ("POST",   ["line", "unbind"])            => await line.UnbindAsync(req),
             ("GET",    ["line", "binding-status"])    => await line.GetStatusAsync(req),
             ("GET",    ["line", "quota"])             => await line.GetQuotaAsync(req),
+            ("GET",    ["gemini", "usage"])           => await geminiUsage.GetUsageAsync(req),
 
             // ── 404 ────────────────────────────────────────────────────────────
             _ => new NotFoundObjectResult(
@@ -857,6 +859,8 @@ public sealed class AppRouter(
 
             // LINE — bind / unbind / binding-status 為個人帳號操作，登入即可；quota 屬機敏營運資訊，需 line-quota:read
             ("GET",    ["line", "quota"])                => PermissionCodes.LineQuotaRead,
+            // Gemini 使用量與 LINE 推播用量同一張卡片區、同一批人看（打卡頁）
+            ("GET",    ["gemini", "usage"])              => PermissionCodes.LineQuotaRead,
 
             _ => null
         };
