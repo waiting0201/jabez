@@ -91,4 +91,6 @@ export interface PaymentRequest {
   paymentStatus?: import('../../approval-tasks/models/approval-task.model').PaymentInstallmentStatus;
   // 整單批次附件（照片 / PDF），僅一般請款使用
   attachments?: import('../../approval-tasks/models/approval-task.model').AttachmentItem[];
+  /** 曾被退回修改次數（重送不歸零；清單「曾退回 N 次」徽章） */
+  returnCount?: number;
 }

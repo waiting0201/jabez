@@ -9,6 +9,7 @@ import {EMPTY, Observable, catchError, tap} from 'rxjs';
 import {FilePreviewModal, PreviewFileData} from '../../../../../shared/components/file-preview-modal';
 import {PreReviewItemsReadonly} from '../../../../../shared/components/pre-review-items-readonly';
 import {LinkedPreReviews} from '../../../../../shared/components/linked-pre-reviews';
+import {ReturnHistory} from '../../../../../shared/components/return-history';
 import {FilePreviewLoader} from '../../../../../shared/services/file-preview-loader';
 import {AttachmentsList} from '../../../../../shared/components/attachments-list';
 import {InstallmentsEditorComponent} from '../../../../../shared/components/installments-editor';
@@ -64,7 +65,7 @@ import {ShiftMonthCalendar} from '../../../../../shared/components/shift-month-c
 @Component({
   selector: 'app-approval-task-review',
   templateUrl: './approval-task-review.html',
-  imports: [RouterLink, ReactiveFormsModule, AsyncPipe, DatePipe, DecimalPipe, FilePreviewModal, AttachmentsList, InstallmentsEditorComponent, WriteOffSummaryComponent, WriteOffReturnedInfo, ClosureInfoCardComponent, ScrollIntoViewDirective, ShiftMonthCalendar, AdvanceItemsReadonlyComponent, PriorWriteOffsComponent, CategorySubtotalsComponent, PreReviewItemsReadonly, LinkedPreReviews],
+  imports: [RouterLink, ReactiveFormsModule, AsyncPipe, DatePipe, DecimalPipe, FilePreviewModal, AttachmentsList, InstallmentsEditorComponent, WriteOffSummaryComponent, WriteOffReturnedInfo, ClosureInfoCardComponent, ScrollIntoViewDirective, ShiftMonthCalendar, AdvanceItemsReadonlyComponent, PriorWriteOffsComponent, CategorySubtotalsComponent, PreReviewItemsReadonly, LinkedPreReviews, ReturnHistory],
 })
 export class ApprovalTaskReview implements OnInit {
   private service           = inject(ApprovalTaskService);

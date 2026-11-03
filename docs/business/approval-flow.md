@@ -528,6 +528,25 @@ RefundDue = max(0, 前次已沖銷 + 本次沖銷 − 預支總額)
 `BuildLaterFixedStepScopes` 同一套「只認固定池」的判準）；找不到安全落點的單一律不動，交人工處理。
 腳本不發通知，推進後需自行告知新的審核者。
 
+## 退回 / 拒絕歷程（2026-11 新增）
+
+**問題：** 退回後重送時，各申請 Handler 的 `SubmitAsync` 會把 `ApprovalRecords` 整批清掉（2026-10 安全修正：
+殘留的舊 approved 會被誤判「此人已審過」而自動代簽），於是重送後時間軸只剩這一輪，
+已簽過的人再收到同一張單時完全看不出「上次誰、在哪一關、為什麼退回」。
+
+**做法：** 新增獨立表 `ApprovalReturnLogs`（[ApprovalReturnLog](../../Api/Models/Entities/ApprovalReturnLog.cs)），
+在 [ApprovalTaskHandler.ProcessReviewAsync](../../Api/Handlers/ApprovalTaskHandler.cs) 遇 `returned` / `rejected` 時多寫一列
+（關卡 / 批次 / 審核者姓名・部門・職稱**快照** / 代理・升級 / 時間 / 原因），**只增不改、重送不清**；
+與簽核判定（自動代簽、去重、PDF 簽名欄）完全無關，故不影響任何既有流程。
+`GET /approval-tasks/{appType}/{id}` 一律回 `returnHistory[]`（舊→新），前端 `<app-return-history>`
+顯示在「簽核流程」卡片內、時間軸下方（簽核詳情頁內嵌時間軸與共用 `<app-approval-timeline>` 皆有）；無歷程時不顯示。
+
+- `ReviewedById` 刻意無 FK、另存姓名快照：審核者離職 / 被刪後歷程仍看得懂，也不必加進 UserHandler 的硬刪除清洗。
+- 刪申請單時與 `ApprovalRecords` 一併清除（11 個 Handler 的 DeleteAsync）；追加預支批次駁回回滾（`AdvanceSupplementService.RollbackAsync`）**不清**，留作歷程。
+- **清單徽章「曾退回 N 次」**：只計 `returned`（拒絕為終局狀態，狀態欄已看得出）。請款申請清單由 `PaymentRequestReadService.BaseSql` 子查詢帶回 `PaymentRequestDto.ReturnCount`；
+  簽核作業清單（`GET /approval-tasks`）於切頁後**只對本頁**以 `(ApplicationType, Id)` 一次 GroupBy 補 `ApprovalTaskDto.ReturnCount`（各類型 Id 各自編號，只比 Id 會張冠李戴）。徽章樣式 `bg-warning-subtle text-warning-emphasis`，0 次不顯示。
+- 上線 migration 會把當下仍存在於 `ApprovalRecords` 的退回 / 拒絕紀錄回填（停在 returned 的單、已拒絕的單）；**已重送過的舊單無從回填**。
+
 ## 申請人指定審核模式（UseApplicantDesignated）
 
 `ApprovalStep` 新增 `UseApplicantDesignated`（bool, 預設 false）欄位，啟用時審核者由申請人在表單中**依序指定多人**。

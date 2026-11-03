@@ -72,7 +72,8 @@ public sealed record PaymentRequestDto(
     string?          VendorTaxId = null,
     InstallmentDto[]? Installments = null,
     string?          PaymentStatus = null,
-    AttachmentDto[]? Attachments = null);
+    AttachmentDto[]? Attachments = null,
+    int              ReturnCount = 0);   // 曾被退回修改次數（ApprovalReturnLogs，重送不清；清單徽章用）
 
 public sealed record CreatePaymentRequestRequest(
     string              Type,
@@ -303,7 +304,25 @@ public sealed record ApprovalTaskDto(
     StepReviewersDto[]?         StepReviewers           = null,  // 各關卡實際可簽核的人（僅 pending 單計算）
     // ⚠ 本 record 是**位置參數**，新欄位一律加在最後 ——
     //    插在中間會讓 PaymentRequestReadService 裡 11 個 new ApprovalTaskDto(...) 的佔位 null 全部要重排。
-    ShiftChangeTaskDetailDto?   ShiftChangeDetail       = null);  // 改班申請詳情
+    ShiftChangeTaskDetailDto?   ShiftChangeDetail       = null,   // 改班申請詳情
+    ApprovalReturnLogDto[]?     ReturnHistory           = null,   // 退回 / 拒絕歷程（僅單筆詳情補上，舊→新）
+    int                         ReturnCount             = 0);     // 曾被退回修改次數（清單徽章用，僅列表端點補上）
+
+/// <summary>
+/// 退回 / 拒絕歷程一列（簽核流程卡下方顯示）。來源為 ApprovalReturnLogs，重送時不會被清掉，
+/// 故已簽過的人再收到同一張單時看得到歷次「誰、在哪一關、為何」退回。
+/// </summary>
+public sealed record ApprovalReturnLogDto(
+    int      StepOrder,
+    int      RoundNo,
+    string   Action,                  // "returned" | "rejected"
+    string   ReviewedBy,
+    string?  ReviewerJobTitle,
+    string?  ReviewerDepartmentName,
+    string?  OnBehalfOf,
+    bool     IsEscalated,
+    DateTime ReviewedAt,
+    string?  ReviewNote);
 
 /// <summary>
 /// 一個簽核關卡的可簽核者（簽核流程時間軸用）。

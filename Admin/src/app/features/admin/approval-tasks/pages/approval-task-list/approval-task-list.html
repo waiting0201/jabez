@@ -273,6 +273,9 @@
                     @if (isClosed(t)) {
                       <span class="badge bg-elevated text-secondary">已結案</span>
                     }
+                    @if (t.returnCount) {
+                      <span class="badge bg-warning-subtle text-warning-emphasis" title="點進詳情，於簽核流程下方可看歷次退回原因">曾退回 {{ t.returnCount }} 次</span>
+                    }
                   </div>
                 </td>
                 <td class="text-muted small hidden lg:table-cell">{{ t.submittedAt | date:'yyyy-MM-dd' }}</td>

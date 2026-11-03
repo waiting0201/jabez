@@ -29,6 +29,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<TravelRequest>     TravelRequests     { get; set; }
     public DbSet<TravelRequestItem> TravelRequestItems { get; set; }
     public DbSet<ApprovalRecord>   ApprovalRecords   { get; set; }
+    public DbSet<ApprovalReturnLog> ApprovalReturnLogs { get; set; }
     public DbSet<OvertimeRequest>  OvertimeRequests  { get; set; }
     public DbSet<OvertimeRequestProject> OvertimeRequestProjects { get; set; }
     public DbSet<AttendanceRecord> AttendanceRecords { get; set; }

@@ -266,6 +266,8 @@ public sealed class OvertimeRequestHandler(
         // 註：OvertimeRequestProjects 有真 FK + Cascade，由 DB 連帶刪除，無須手動處理。
         db.ApprovalRecords.RemoveRange(
             await db.ApprovalRecords.Where(r => r.ApplicationType == "overtime" && r.ApplicationId == item.Id).ToListAsync());
+        db.ApprovalReturnLogs.RemoveRange(
+            await db.ApprovalReturnLogs.Where(r => r.ApplicationType == "overtime" && r.ApplicationId == item.Id).ToListAsync());
         db.EscalationOverrides.RemoveRange(
             await db.EscalationOverrides.Where(o => o.ApplicationType == "overtime" && o.ApplicationId == item.Id).ToListAsync());
         db.RequestDesignatedReviewers.RemoveRange(

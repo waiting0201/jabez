@@ -225,6 +225,8 @@ public sealed class LeaveRevocationHandler(
         // 多型關聯無 FK，須手動清除審核足跡
         db.ApprovalRecords.RemoveRange(
             await db.ApprovalRecords.Where(r => r.ApplicationType == AppType && r.ApplicationId == intId).ToListAsync());
+        db.ApprovalReturnLogs.RemoveRange(
+            await db.ApprovalReturnLogs.Where(r => r.ApplicationType == AppType && r.ApplicationId == intId).ToListAsync());
         db.EscalationOverrides.RemoveRange(
             await db.EscalationOverrides.Where(o => o.ApplicationType == AppType && o.ApplicationId == intId).ToListAsync());
         db.RequestDesignatedReviewers.RemoveRange(

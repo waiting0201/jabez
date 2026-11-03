@@ -396,6 +396,8 @@ public sealed class TravelPaymentRequestHandler(
         // 一併清除此申請單的審核流程足跡（多型關聯無 FK，須手動刪除，否則殘留列會擋住使用者刪除）
         db.ApprovalRecords.RemoveRange(
             await db.ApprovalRecords.Where(r => r.ApplicationType == AppType && r.ApplicationId == item.Id).ToListAsync());
+        db.ApprovalReturnLogs.RemoveRange(
+            await db.ApprovalReturnLogs.Where(r => r.ApplicationType == AppType && r.ApplicationId == item.Id).ToListAsync());
         db.EscalationOverrides.RemoveRange(
             await db.EscalationOverrides.Where(o => o.ApplicationType == AppType && o.ApplicationId == item.Id).ToListAsync());
         db.RequestDesignatedReviewers.RemoveRange(
