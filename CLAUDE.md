@@ -422,7 +422,7 @@ Api/
 │   ├── InsuranceBracketHandler.cs    # 勞健保級距 CRUD
 │   ├── PayrollHandler.cs             # 人事薪資查詢（月薪計算）；GetMineAsync = GET /me/payroll 員工讀自己近 N 個月薪資（免 payroll:read，逐月呼叫帶 employeeId 的同一支計算，依 HireDate 擋掉到職前月份，months clamp 1~24）
 │   ├── LineHandler.cs                # LINE 帳號綁定/解綁 + 月度推播用量查詢（line-quota:read）
-│   ├── GeminiUsageHandler.cs         # **Gemini 使用量**（2026-11，`GET /gemini/usage`，權限沿用 `line-quota:read`）：Gemini 無用量 API，由兩支 OCR Handler 經 `Services/GeminiUsageRecorder` 每次成功呼叫寫 `GeminiUsageLog`（usageMetadata token 數），打卡頁 LINE 卡片下方顯示本月次數 / token ＋ AI Studio 用量與 Google Cloud 帳單連結，見 [docs/business/line-integration.md](docs/business/line-integration.md)
+│   ├── GeminiUsageHandler.cs         # **Gemini 使用量**（2026-11，`GET /gemini/usage`，權限沿用 `line-quota:read`）：Gemini 無用量 API，由兩支 OCR Handler 經 `Services/GeminiUsageRecorder` 每次成功呼叫寫 `GeminiUsageLog`（usageMetadata token 數），打卡頁 LINE 卡片下方顯示本月次數 / token ＋ Google AI Studio 用量連結，見 [docs/business/line-integration.md](docs/business/line-integration.md)
 │   ├── AttendanceReminderAdminHandler.cs # 打卡提醒手動觸發（Superadmin，除錯用）
 │   ├── AttendanceReminderLogHandler.cs   # 打卡提醒推播紀錄查詢（Superadmin）
 │   ├── PaymentReminderLogHandler.cs      # 撥款提醒推播紀錄查詢 + 手動觸發（Superadmin）
