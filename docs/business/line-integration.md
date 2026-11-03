@@ -83,7 +83,7 @@ LINE 卡片正下方另有 **Gemini 使用量** 卡片，**權限沿用 `line-qu
 - 卡片顯示**本月**（台北時間 1 號起）呼叫次數、輸入 / 輸出 token、依來源（發票辨識 / 報價單辨識）分列的次數，
   走 `GET /gemini/usage`（`GeminiUsageHandler` → `GeminiUsageReadService`）。
 - **只統計本系統的呼叫、自上線日起算、不估算金額**（各模型單價不同且會調整）；實際費用與餘額以 Google 帳單為準。
-- 兩顆外部連結：[Google AI Studio 用量](https://aistudio.google.com/usage)、[Google Cloud 帳單 / 儲值](https://console.cloud.google.com/billing)。
+- 外部連結只有一顆：[Google AI Studio 用量](https://aistudio.google.com/usage)（2026-11-03 移除 Google Cloud 帳單連結）。
 
 ## 涉及元件
 
