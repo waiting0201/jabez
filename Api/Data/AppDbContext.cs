@@ -35,6 +35,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<AttendanceRecord> AttendanceRecords { get; set; }
     public DbSet<AttendanceProjectAllocation> AttendanceProjectAllocations { get; set; }
     public DbSet<AttendancePunchLog> AttendancePunchLogs { get; set; }
+    public DbSet<GeminiUsageLog> GeminiUsageLogs { get; set; }
     public DbSet<LoginAttempt> LoginAttempts { get; set; }
     public DbSet<AttendanceAuditLog> AttendanceAuditLogs { get; set; }
     public DbSet<UserAuditLog> UserAuditLogs { get; set; }

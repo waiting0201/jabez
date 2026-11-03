@@ -177,6 +177,8 @@ var host = new HostBuilder()
         services.AddScoped<IAutoShiftScheduleService, AutoShiftScheduleService>();
         services.AddScoped<ITravelPaymentRequestReadService, TravelPaymentRequestReadService>();
         services.AddScoped<IAttendanceReminderLogReadService, AttendanceReminderLogReadService>();
+        services.AddScoped<IGeminiUsageReadService, GeminiUsageReadService>();
+        services.AddScoped<GeminiUsageRecorder>();
         services.AddScoped<IEmployeeProfileReadService, EmployeeProfileReadService>();
         services.AddScoped<IInstallmentReadService, InstallmentReadService>();
         services.AddScoped<IPaymentReminderReadService, PaymentReminderReadService>();
@@ -225,6 +227,7 @@ var host = new HostBuilder()
         services.AddScoped<CalendarDayHandler>();
         services.AddScoped<FileHandler>();
         services.AddScoped<LineHandler>();
+        services.AddScoped<GeminiUsageHandler>();
         services.AddScoped<TravelPaymentRequestHandler>();
         services.AddScoped<AttendanceReminderAdminHandler>();
         services.AddScoped<AttendanceReminderLogHandler>();
