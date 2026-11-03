@@ -25,7 +25,7 @@ export class HolidayTravelDetail implements OnInit {
    * 真正的閘門在後端 `TravelRequestHandler.GuardHolidayTravelRetiredAsync`，
    * 此處只是不要讓使用者點了才被擋。切換日未設定時恆為 false，一切照舊。
    */
-  readonly retired = computed(() => this.workMode.mode()?.isFlexibleActive ?? false);
+  readonly retired = computed(() => this.workMode.mode()?.isHolidayTravelRetired ?? false);
 
   private service     = inject(HolidayTravelRequestService);
   private pdfService  = inject(HolidayTravelPdfService);

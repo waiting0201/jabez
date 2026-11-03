@@ -11,7 +11,7 @@ import {WorkModeService} from '@shared/services/work-mode.service';
  * 本守衛只是避免使用者直接打網址進到表單、填完才在送出時被擋。
  *
  * ⚠ 導向**列表**而非 403：這不是權限不足，是功能退場，導到 403 會讓人以為自己被降權。
- * 切換日未設定時 `isFlexibleActive` 為 false，守衛直接放行，故本階段部署不改變任何現行行為。
+ * 判定讀後端的 `isHolidayTravelRetired`（含切換後的退場寬限期），切換日未設定或寬限期內皆放行。
  */
 export const holidayTravelRetiredGuard: CanActivateFn = async () => {
   const workMode = inject(WorkModeService);
@@ -19,7 +19,7 @@ export const holidayTravelRetiredGuard: CanActivateFn = async () => {
   const toastr   = inject(ToastrService);
 
   const mode = await workMode.load();
-  if (!mode.isFlexibleActive) return true;
+  if (!mode.isHolidayTravelRetired) return true;
 
   toastr.info('假日執行活動申請已退場，假日出勤請改提〈加班申請〉。', '功能已停用');
   return router.createUrlTree(['/admin/holiday-travel-requests']);

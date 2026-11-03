@@ -236,6 +236,28 @@ public static class WorkdayHours
 }
 
 /// <summary>
+/// 〈假日執行活動申請〉退場判定（四週彈性工時 §8）的單一真相：後端寫入閘門與 <c>GET /work-mode</c> 共用。
+///
+/// 以**今天**判斷（制度開關，非資料解讀）。<see cref="GraceUntil"/> 為退場寬限期：
+/// 2026-11-03 客戶交辦 —— 10/31（切換前最後一個週六）辦了不少假日活動，11/2 已關閉來不及補申請，
+/// 故延至 11/5（四）當日結束再關。寬限期內只受理**活動日期在切換日之前**的單（見 TravelRequestHandler.SubmitAsync），
+/// 切換後的假日出勤仍一律走〈加班申請〉。過了寬限日自動關閉，不需再部署；日後可整段移除。
+/// </summary>
+public static class HolidayTravelRetirement
+{
+    /// <summary>寬限期最後一天（含當日）。</summary>
+    public static readonly DateTime GraceUntil = new(2026, 11, 5);
+
+    /// <summary>是否已退場（不再受理新增 / 編輯 / 送簽）。</summary>
+    public static bool IsRetired(DateTime now, DateTime? switchDate) =>
+        WorkdayHours.IsFlexible(now, switchDate) && now.Date > GraceUntil;
+
+    /// <summary>是否正處於寬限期（已切換、但尚未過寬限日）。</summary>
+    public static bool InGrace(DateTime now, DateTime? switchDate) =>
+        WorkdayHours.IsFlexible(now, switchDate) && now.Date <= GraceUntil;
+}
+
+/// <summary>
 /// 一組「每日工作時段」。四週彈性工時上線後系統內同時存在新舊兩套（舊單不遷移），
 /// 故時段不能再是編譯期 const int —— 且新制午休 12:30 本來就表達不了整點。
 /// 取得方式一律走 <see cref="WorkdayHours.For"/>。
