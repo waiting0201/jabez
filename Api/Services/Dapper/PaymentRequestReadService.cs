@@ -27,6 +27,9 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
                sub.Name AS SubmittedBy, pr.CreatedAt, pr.SubmittedAt,
                pr.ReviewedAt, pr.ReviewNote, pr.Reason,
                pr.VendorId, ven.Name AS VendorName, ven.TaxId AS VendorTaxId,
+               (SELECT COUNT(*) FROM ApprovalReturnLogs rl
+                WHERE rl.ApplicationType = 'payment_request' AND rl.ApplicationId = pr.Id
+                  AND rl.Action = 'returned') AS ReturnCount,
                ii.Id AS InvId, ii.FileName, ii.InvoiceNo, ii.Amount AS InvAmount, ii.ItemName AS InvItemName, ii.Note AS InvNote, ii.FileUrl AS InvFileUrl, ii.InvoiceDate AS InvInvoiceDate
         FROM PaymentRequests pr
         LEFT JOIN Projects proj   ON pr.ProjectId    = proj.Id
@@ -2069,6 +2072,7 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
             null,                                  // DesignatedReviewers 以 null 回傳
             (int?)x.pr.VendorId,
             (string?)x.pr.VendorName,
-            (string?)x.pr.VendorTaxId));
+            (string?)x.pr.VendorTaxId,
+            ReturnCount: (int)x.pr.ReturnCount));
     }
 }

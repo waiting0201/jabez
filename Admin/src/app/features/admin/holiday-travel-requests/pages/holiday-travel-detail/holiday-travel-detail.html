@@ -149,6 +149,7 @@
       <app-approval-timeline
         [flow]="task.flow ?? null"
         [approvalRecords]="task.approvalRecords"
+        [returnHistory]="task.returnHistory ?? []"
         [currentStepOrder]="task.currentStepOrder"
         [stepReviewers]="task.stepReviewers ?? []"
         [status]="task.status" />

@@ -566,6 +566,8 @@ public sealed class TravelRequestHandler(
         var appType = item.IsHolidayTravel ? "holiday_travel" : "travel";
         db.ApprovalRecords.RemoveRange(
             await db.ApprovalRecords.Where(r => r.ApplicationType == appType && r.ApplicationId == item.Id).ToListAsync());
+        db.ApprovalReturnLogs.RemoveRange(
+            await db.ApprovalReturnLogs.Where(r => r.ApplicationType == appType && r.ApplicationId == item.Id).ToListAsync());
         db.EscalationOverrides.RemoveRange(
             await db.EscalationOverrides.Where(o => o.ApplicationType == appType && o.ApplicationId == item.Id).ToListAsync());
         db.RequestDesignatedReviewers.RemoveRange(

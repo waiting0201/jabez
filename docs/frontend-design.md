@@ -510,6 +510,8 @@ model 皆宣告為 `requestNo: string | null`：
   3. **已跳過** —— 序號小於目前關卡卻無簽核紀錄者（送單時被跳過不留 `ApprovalRecord`），灰字「已跳過」，與「尚未輪到」區分；關卡名稱**不**列人名（這張單不會再回頭走）。
   4. **尚未輪到** —— 灰圈 + 關卡名稱 + 人名（誰會簽後面幾關，送出當下就看得到）。
 - `stepReviewers` 來源一律是 `ApprovalTask.stepReviewers`（後端 `GET /approval-tasks/{appType}/{id}` 於 pending 時逐關解析），**前端不自行推算誰能簽**；detail 頁綁 `task.stepReviewers ?? []`，form 頁存在 `stepReviewers` 欄位。後端沒帶回時（非 pending 單）一律不顯示人名，也不誤報「查無可簽核人員」。
+- **退回 / 拒絕歷程**（2026-11）：Input `returnHistory`（detail 頁綁 `task.returnHistory ?? []`），由子元件 [`<app-return-history>`](../Admin/src/app/shared/components/return-history.ts) 畫在時間軸下方（上框線分隔、黃 / 紅 badge + 審核者（部門 · 職稱）+「第 N 關 · 關卡名 · 時間」+ 原因）；無資料不渲染。時間軸只呈現本輪，歷次退回原因只看這一塊。
+- 清單（請款申請 / 簽核作業）狀態欄另掛「曾退回 N 次」徽章（`bg-warning-subtle text-warning-emphasis`，`returnCount` 為 0 / 缺值不顯示）。
 - ⚠ [approval-task-review](../Admin/src/app/features/admin/approval-tasks/pages/approval-task-review/approval-task-review.html) 另有一份**內嵌**時間軸（審核頁需與審核表單同頁佈局），改動時**兩處必須同步**。
 
 ---

@@ -26,6 +26,7 @@
 | `ApprovalStepException` | **簽核步驟例外指定審核名單**（`ApprovalStepId` + `UserId`）：名單內的申請人送單時，該步驟改為「由申請人自行指定審核者」；與 `UseApplicantDesignated` 互斥。唯一索引 `(ApprovalStepId, UserId)`；FK→ApprovalStep **Cascade**、FK→Users **NO_ACTION（已納入 UserHandler.DeleteAsync 清洗清單）** |
 | `ApprovalStepDesignatedJobTitle` | **例外指定審核的限定職稱**（`ApprovalStepId` + `JobTitleId`）：例外命中的申請人只能從這些職稱的人員中指定審核者；空＝不限職稱（不另設 bool 旗標）。僅例外步驟有意義（原生 `UseApplicantDesignated` 或無例外名單時由 ApprovalHandler 一律清空）。唯一索引 `(ApprovalStepId, JobTitleId)`；FK→ApprovalStep **Cascade**、FK→JobTitles **NO_ACTION（避免多重級聯路徑，已納入 JobTitleHandler.DeleteAsync 清洗）** |
 | `ApprovalRecord` | 簽核動作記錄（含 OnBehalfOfUserId 代理標記、IsEscalated 升級標記、`RoundNo` 簽核批次：僅 advance 追加預支會 > 1，其餘申請類型恆為 1） |
+| `ApprovalReturnLog` | 退回 / 拒絕歷程（2026-11）：每次退回修改 / 拒絕一列，只增不改、**重送時不清**（ApprovalRecords 會被清）；審核者姓名 / 部門 / 職稱快照、`ReviewedById` 無 FK；多型 (ApplicationType, ApplicationId)，刪申請單時一併清除 |
 | `EscalationOverride` | 升級審核指派（記錄被指派的升級/代理審核者，審核完成後清除） |
 | `Project` | 專案主檔（含 **DepartmentId 必填**、ContractAmount 契約金額、BusinessAmount 業務執行金額、RemainingAmount 剩餘金額（系統導入時剩餘預算，選填）；實收金額為衍生值，由 `SUM(ProjectPaymentSchedules.DepositAmount)` 即時計算） |
 | `ProjectPaymentSchedule` | 專案請款期別明細（一期一筆：請款/發票/入帳日期與金額、扣款備註；扣款金額 = 發票 − 入帳，前端計算不存 DB） |

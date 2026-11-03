@@ -137,7 +137,22 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
 
         var allTasks = (await reader.GetApprovalTasksAsync(jobTitleId, deptId, status, reviewerUserId, paymentStatus, applicationType, submittedByUserId, directorStepDeptId, directorScope, dateFrom, dateTo, directorReviewedOn, reviewedScope)).ToList();
         int total = allTasks.Count;
-        var items = allTasks.Skip((page - 1) * pageSize).Take(pageSize);
+        var items = allTasks.Skip((page - 1) * pageSize).Take(pageSize).ToList();
+
+        // 「曾退回 N 次」徽章：只查本頁，以 (類型, Id) 對回（各類型 Id 各自編號，須兩者一起比）
+        var pageIds = items.Select(t => t.Id).Distinct().ToList();
+        if (pageIds.Count > 0)
+        {
+            var returnCounts = (await db.ApprovalReturnLogs.AsNoTracking()
+                    .Where(l => l.Action == "returned" && pageIds.Contains(l.ApplicationId))
+                    .GroupBy(l => new { l.ApplicationType, l.ApplicationId })
+                    .Select(g => new { g.Key.ApplicationType, g.Key.ApplicationId, Count = g.Count() })
+                    .ToListAsync())
+                .ToDictionary(x => (x.ApplicationType, x.ApplicationId), x => x.Count);
+            items = [.. items.Select(t => returnCounts.TryGetValue((t.ApplicationType, t.Id), out var c)
+                ? t with { ReturnCount = c } : t)];
+        }
+
         int totalPages = (int)Math.Ceiling((double)total / pageSize);
         var result = new PagedResult<ApprovalTaskDto>(items, total, page, pageSize, Math.Max(1, totalPages));
         return new OkObjectResult(ApiResponse.Ok(result));
@@ -241,6 +256,17 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
                 task = task with { StepReviewers = [.. stepReviewers] };
             }
         }
+
+        // ── 退回 / 拒絕歷程：重送會清掉 ApprovalRecords，歷次退回原因只能從這張表取 ──
+        var returnHistory = await db.ApprovalReturnLogs.AsNoTracking()
+            .Where(l => l.ApplicationType == task.ApplicationType && l.ApplicationId == intId)
+            .OrderBy(l => l.ReviewedAt).ThenBy(l => l.Id)
+            .Select(l => new ApprovalReturnLogDto(
+                l.StepOrder, l.RoundNo, l.Action, l.ReviewerName,
+                l.ReviewerJobTitle, l.ReviewerDepartmentName, l.OnBehalfOfName,
+                l.IsEscalated, l.ReviewedAt, l.ReviewNote))
+            .ToArrayAsync();
+        task = task with { ReturnHistory = returnHistory };
 
         return new OkObjectResult(ApiResponse.Ok(task));
     }
@@ -1226,6 +1252,35 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
             OnBehalfOfUserId = escalation?.OnBehalfOfUserId,
             IsEscalated      = escalation is not null,
         });
+
+        // 退回 / 拒絕另留一筆歷程：重送時 ApprovalRecords 會被整批清掉，不另存就看不出誰、為何退回
+        if (action is "returned" or "rejected")
+        {
+            var reviewerSnap = await db.Users.AsNoTracking()
+                .Where(u => u.Id == reviewerId)
+                .Select(u => new { u.Name, JobTitle = u.JobTitle!.Name, Department = u.Department!.Name })
+                .FirstOrDefaultAsync();
+            var onBehalfOfName = escalation?.OnBehalfOfUserId is Guid obuId
+                ? await db.Users.AsNoTracking().Where(u => u.Id == obuId).Select(u => u.Name).FirstOrDefaultAsync()
+                : null;
+
+            db.ApprovalReturnLogs.Add(new ApprovalReturnLog
+            {
+                ApplicationType        = applicationType,
+                ApplicationId          = applicationId,
+                StepOrder              = currentStepOrder,
+                RoundNo                = roundNo,
+                Action                 = action,
+                ReviewedById           = reviewerId,
+                ReviewerName           = reviewerSnap?.Name ?? string.Empty,
+                ReviewerJobTitle       = reviewerSnap?.JobTitle,
+                ReviewerDepartmentName = reviewerSnap?.Department,
+                OnBehalfOfName         = onBehalfOfName,
+                IsEscalated            = escalation is not null,
+                ReviewedAt             = Clock.Now,
+                ReviewNote             = reviewNote?.Trim(),
+            });
+        }
 
         // 清除已使用的升級指派
         if (escalation is not null)

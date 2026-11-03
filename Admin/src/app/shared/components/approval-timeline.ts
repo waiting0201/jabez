@@ -1,12 +1,13 @@
 import {Component, computed, input} from '@angular/core';
 import {DatePipe} from '@angular/common';
-import {ApprovalFlow, ApprovalRecord, PendingReviewer, StepReviewers} from '../../features/admin/approval-tasks/models/approval-task.model';
+import {ApprovalFlow, ApprovalRecord, ApprovalReturnLog, PendingReviewer, StepReviewers} from '../../features/admin/approval-tasks/models/approval-task.model';
+import {ReturnHistory} from './return-history';
 import {roundLabel} from '../../features/admin/advance-requests/models/advance-request.model';
 
 @Component({
   selector: 'app-approval-timeline',
   standalone: true,
-  imports: [DatePipe],
+  imports: [DatePipe, ReturnHistory],
   template: `
     @if (flow()) {
       <div class="card border-0 shadow-sm mt-6">
@@ -108,6 +109,7 @@ import {roundLabel} from '../../features/admin/advance-requests/models/advance-r
             }
           </ol>
           }
+          <app-return-history [history]="returnHistory()" [flow]="flow()" />
         </div>
       </div>
     }
@@ -122,6 +124,8 @@ export class ApprovalTimeline {
   currentRoundNo = input(1);
   /** 各關卡實際可簽核的人（後端解析；某關為空陣列＝該關查無可簽核人員）*/
   stepReviewers = input<StepReviewers[]>([]);
+  /** 退回 / 拒絕歷程（重送不清，見 <app-return-history>）*/
+  returnHistory = input<ApprovalReturnLog[]>([]);
 
   protected readonly roundLabel = roundLabel;
 

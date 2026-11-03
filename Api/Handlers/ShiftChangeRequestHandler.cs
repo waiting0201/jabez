@@ -244,6 +244,8 @@ public sealed class ShiftChangeRequestHandler(
         // 多型關聯無 FK，必須手動清 —— 殘列會掛著 ReviewerId 擋住日後刪使用者
         db.ApprovalRecords.RemoveRange(
             await db.ApprovalRecords.Where(r => r.ApplicationType == AppType && r.ApplicationId == intId).ToListAsync());
+        db.ApprovalReturnLogs.RemoveRange(
+            await db.ApprovalReturnLogs.Where(r => r.ApplicationType == AppType && r.ApplicationId == intId).ToListAsync());
         db.EscalationOverrides.RemoveRange(
             await db.EscalationOverrides.Where(o => o.ApplicationType == AppType && o.ApplicationId == intId).ToListAsync());
         db.RequestDesignatedReviewers.RemoveRange(

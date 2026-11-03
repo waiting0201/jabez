@@ -601,6 +601,24 @@ export interface ApprovalTask {
   submittedBySignatureUrl?: string;  // 申請人簽名檔 URL
   /** 各關卡實際可簽核的人（僅 pending 單有值；某關為空陣列＝該關查無可簽核人員，單子會卡住） */
   stepReviewers?: StepReviewers[];
+  /** 退回 / 拒絕歷程（舊→新）。重送不會清掉，已簽過的人再收到同一張單時看得到歷次退回原因 */
+  returnHistory?: ApprovalReturnLog[];
+  /** 曾被退回修改次數（僅清單端點帶回；「曾退回 N 次」徽章） */
+  returnCount?: number;
+}
+
+/** 退回 / 拒絕歷程一列（後端 ApprovalReturnLogs，與 approvalRecords 不同：重送時不清） */
+export interface ApprovalReturnLog {
+  stepOrder: number;
+  roundNo: number;
+  action: 'returned' | 'rejected';
+  reviewedBy: string;
+  reviewerJobTitle?: string;
+  reviewerDepartmentName?: string;
+  onBehalfOf?: string;
+  isEscalated: boolean;
+  reviewedAt: Date;
+  reviewNote?: string;
 }
 
 /** 一個簽核關卡的可簽核者（簽核流程時間軸把人名印在關卡名稱上） */
