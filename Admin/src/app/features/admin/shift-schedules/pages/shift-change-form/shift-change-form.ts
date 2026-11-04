@@ -12,6 +12,16 @@ import {
   ApprovalStatus,
 } from '../../../payment-requests/models/payment-request.model';
 import {ShiftMonthCalendar, lockedCellMessage} from '../../../../../shared/components/shift-month-calendar/shift-month-calendar';
+import {DesignatedReviewersPicker, DesignatedReviewerPayload} from '../../../../../shared/components/designated-reviewers-picker/designated-reviewers-picker';
+import {DesignatedReviewer} from '../../../leave-requests/models/leave-request.model';
+import {ApprovalService} from '../../../approvals/services/approval.service';
+import {ApprovalFlowStepSummary} from '../../../approvals/models/approval.model';
+import {UserService} from '../../../users/services/user.service';
+import {UserLookup} from '../../../users/models/user.model';
+import {JobTitleService} from '../../../job-titles/services/job-title.service';
+import {JobTitleLookup} from '../../../job-titles/models/job-title.model';
+import {DepartmentService} from '../../../departments/services/department.service';
+import {Department} from '../../../departments/models/department.model';
 
 type Mode = 'new' | 'edit' | 'view';
 
@@ -27,17 +37,25 @@ type Mode = 'new' | 'edit' | 'view';
  *
  * ⚠ **核准後才寫入班表**：送簽期間原班表完全不動，所以這頁顯示的「現況」
  * 一直是真正生效中的班表，不會因為有單在跑而變動。
+ *
+ * 指定審核者（2026-11 補上，原本是全站唯一缺的一支）：流程含「申請人指定審核」步驟時才顯示，
+ * 主要用於「例外指定審核」—— 例如部門協理自己送單時第一關就是本人，改由他指定執行長。
+ * 寫法比照銷假申請 leave-revocation-form。
  */
 @Component({
   selector: 'app-shift-change-form',
   templateUrl: './shift-change-form.html',
-  imports: [CommonModule, FormsModule, ShiftMonthCalendar],
+  imports: [CommonModule, FormsModule, ShiftMonthCalendar, DesignatedReviewersPicker],
 })
 export class ShiftChangeForm implements OnInit, OnDestroy {
   private svc = inject(ShiftChangeService);
   private route = inject(ActivatedRoute);
   private router = inject(Router);
   private toastr = inject(ToastrService);
+  private approvalSvc = inject(ApprovalService);
+  private userSvc = inject(UserService);
+  private jobTitleSvc = inject(JobTitleService);
+  private deptSvc = inject(DepartmentService);
 
   readonly dayTypeLabels = DAY_TYPE_LABELS;
   readonly statusLabels = APPROVAL_STATUS_LABELS;
@@ -56,6 +74,15 @@ export class ShiftChangeForm implements OnInit, OnDestroy {
 
   existing = signal<ShiftChangeRequest | null>(null);
   view = signal<ShiftChangeMonthView | null>(null);
+
+  /** 指定審核者（`/approval-items/active` 已依呼叫者套用例外名單與限定職稱） */
+  designatedSteps = signal<ApprovalFlowStepSummary[]>([]);
+  allUsers = signal<UserLookup[]>([]);
+  jobTitles = signal<JobTitleLookup[]>([]);
+  departments = signal<Department[]>([]);
+  pickerInitial = signal<DesignatedReviewer[]>([]);
+  private pickerPayload: DesignatedReviewerPayload[] = [];
+  private suppressedSteps: number[] = [];
 
   /** 使用者挑的異動：date → 目標日別 */
   private picked = signal<Record<string, ShiftDayType>>({});
@@ -110,6 +137,7 @@ export class ShiftChangeForm implements OnInit, OnDestroy {
   ngOnInit(): void {
     this.mode.set((this.route.snapshot.data['mode'] as Mode) ?? 'new');
     const id = Number(this.route.snapshot.paramMap.get('id'));
+    if (this.mode() !== 'view') this.loadDesignatedSteps();
 
     if (this.mode() === 'new') {
       // 預設看次月：改班的情境就是「已定案的次月班表要調整」
@@ -129,6 +157,22 @@ export class ShiftChangeForm implements OnInit, OnDestroy {
     if (this.previewTimer) clearTimeout(this.previewTimer);
   }
 
+  private loadDesignatedSteps(): void {
+    this.approvalSvc.getActiveByType('shift_change').subscribe(flow => {
+      const designated = (flow?.steps ?? []).filter(s => s.useApplicantDesignated);
+      this.designatedSteps.set(designated);
+      if (designated.length === 0) return;
+      this.userSvc.getLookup().subscribe({next: users => this.allUsers.set(users)});
+      this.jobTitleSvc.getLookup().subscribe({next: jts => this.jobTitles.set(jts)});
+      if (designated.some(s => s.designatedRequiresDepartment)) {
+        this.deptSvc.getAll().subscribe({next: d => this.departments.set(d)});
+      }
+    });
+  }
+
+  onPickerChange(payload: DesignatedReviewerPayload[]): void { this.pickerPayload = payload; }
+  onSuppressedSteps(steps: number[]): void { this.suppressedSteps = steps; }
+
   private loadExisting(id: number): void {
     this.loading.set(true);
     this.svc.getById(id).subscribe({
@@ -140,6 +184,7 @@ export class ShiftChangeForm implements OnInit, OnDestroy {
         this.picked.set(Object.fromEntries(
           (res.dates ?? []).map(d => [dateKey(d.date), d.toDayType])));
         this.view.set(res.view ?? null);
+        this.pickerInitial.set(res.designatedReviewers ?? []);
         this.loading.set(false);
       },
       error: err => {
@@ -235,9 +280,22 @@ export class ShiftChangeForm implements OnInit, OnDestroy {
       this.toastr.warning('調整後班表不符合排班規範，請先依提示修正');
       return;
     }
+    // 流程含「申請人指定審核」步驟時，每個 designated step 至少需要 1 位指定審核者（被抑制者除外）
+    if (submit) {
+      for (const step of this.designatedSteps()) {
+        if (this.suppressedSteps.includes(step.stepOrder)) continue;
+        if (!this.pickerPayload.some(p => p.approvalStepOrder === step.stepOrder)) {
+          this.toastr.warning(`此簽核流程的步驟 ${step.stepOrder} 需由申請人指定審核者，請先選擇`);
+          return;
+        }
+      }
+    }
 
     this.saving.set(true);
-    const payload = {year: this.year(), month: this.month(), reason: this.reason().trim(), dates};
+    const payload = {
+      year: this.year(), month: this.month(), reason: this.reason().trim(), dates,
+      designatedReviewers: this.pickerPayload.length > 0 ? this.pickerPayload : undefined,
+    };
 
     // create 成功後記住 id，送簽失敗時重送走 update 而非再建一張（全站申請表單共同規範）
     const id = this.requestId();
