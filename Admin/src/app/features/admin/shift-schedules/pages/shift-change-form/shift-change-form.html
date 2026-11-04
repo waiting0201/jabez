@@ -154,6 +154,41 @@
         </div>
       </div>
 
+      <!-- 指定審核者：流程含「申請人指定審核」步驟（含例外指定審核）時才出現 -->
+      @if (!readOnly() && designatedSteps().length > 0) {
+        <div class="card border-0 shadow-sm mb-4">
+          <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600">
+            <svg class="sa-icon text-primary" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#users"></use></svg>
+            指定審核者
+          </div>
+          <div class="card-body">
+            <app-designated-reviewers-picker
+              [designatedSteps]="designatedSteps()"
+              [users]="allUsers()"
+              [jobTitles]="jobTitles()"
+              [departments]="departments()"
+              [initial]="pickerInitial()"
+              (reviewersChange)="onPickerChange($event)"
+              (suppressedStepsChange)="onSuppressedSteps($event)" />
+          </div>
+        </div>
+      } @else if (readOnly() && existing()?.designatedReviewers?.length) {
+        <div class="card border-0 shadow-sm mb-4">
+          <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600">
+            <svg class="sa-icon text-primary" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#users"></use></svg>
+            指定審核者
+          </div>
+          <div class="card-body">
+            <label class="form-label fw-500">指定審核者（依序審核）</label>
+            <ol class="mb-0 ps-4">
+              @for (dr of existing()!.designatedReviewers!; track $index) {
+                <li class="small">{{ dr.reviewerName ?? '—' }}</li>
+              }
+            </ol>
+          </div>
+        </div>
+      }
+
       @if (!readOnly()) {
         <div class="flex flex-wrap items-center gap-2">
           <button type="button" class="btn btn-primary" [disabled]="!canSubmit() || saving()" (click)="save(true)">

@@ -1,4 +1,6 @@
 import {ShiftDayType, ShiftScheduleDay, ShiftScheduleValidation} from './shift-schedule.model';
+import {DesignatedReviewer} from '../../leave-requests/models/leave-request.model';
+import {DesignatedReviewerPayload} from '../../../../shared/components/designated-reviewers-picker/designated-reviewers-picker';
 
 /** 改班申請的單日明細：哪一天、從什麼改成什麼 */
 export interface ShiftChangeDate {
@@ -38,7 +40,7 @@ export interface ShiftChangeRequest {
   approvalItemId?: number | null;
   currentStepOrder?: number | null;
   dates?: ShiftChangeDate[];
-  designatedReviewers?: unknown[];
+  designatedReviewers?: DesignatedReviewer[];
   /** 套用後整月月曆 + 系統檢核（詳情端點才有） */
   view?: ShiftChangeMonthView | null;
 }
@@ -67,5 +69,5 @@ export interface SaveShiftChangeRequest {
   month: number;
   reason: string;
   dates: {date: string; toDayType: ShiftDayType}[];
-  designatedReviewers?: unknown[];
+  designatedReviewers?: DesignatedReviewerPayload[];
 }
