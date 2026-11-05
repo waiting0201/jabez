@@ -216,11 +216,15 @@
                     </div>
                   </div>
                   <div class="col-12 col-md-4">
-                    <label class="form-label fw-500">加班費</label>
+                    <div class="form-check mb-2">
+                      <input class="form-check-input" type="checkbox" formControlName="showOvertimePay" id="showOvertimePay">
+                      <label class="form-check-label fw-500" for="showOvertimePay">加班費(免稅)</label>
+                    </div>
                     <div class="input-group">
                       <span class="input-group-text">NT$</span>
                       <input type="number" class="form-control" formControlName="overtimePay" placeholder="例如：0" min="0">
                     </div>
+                    <div class="text-muted small mt-1">勾選＝薪資明細列出此項；未勾選僅隱藏，金額仍計入實領</div>
                   </div>
                   <!-- 2 種加給：自動同步自最新生效 SalaryAdjustmentRecord，亦可手動覆寫 -->
                   <div class="col-12 col-md-4">
@@ -259,9 +263,9 @@
                   <label class="form-label fw-500">出勤型態</label>
                   <div class="form-check mt-2">
                     <input class="form-check-input" type="checkbox" formControlName="isShiftWorker" id="isShiftWorker">
-                    <label class="form-check-label" for="isShiftWorker">排班制（六日與國定假日視為工作日）</label>
+                    <label class="form-check-label" for="isShiftWorker">賣店/營業所排班人員</label>
                   </div>
-                  <div class="text-muted small mt-1">賣店 / 營業所等排班人員請勾選，請假天數不再扣除六日與國定假日</div>
+                  <div class="text-muted small mt-1">賣店 / 營業所等排班人員請勾選</div>
                 </div>
                 <div class="col-12 col-md-4">
                   <label class="form-label fw-500">工作地縣市（覆寫部門）</label>

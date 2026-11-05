@@ -220,12 +220,16 @@ public sealed class PayrollHandler(IPayrollReadService reader, AppDbContext db, 
                 """
             : "";
 
+        // 「加班費(免稅)」列：員工設定 ShowOvertimePay=false 時不列（只藏顯示，金額仍計入應發 / 實領）
+        var overtimePayRow = emp.ShowOvertimePay
+            ? $"<tr><td style=\"padding:8px 12px\">加班費(免稅)</td><td style=\"padding:8px 12px;text-align:right\">{fmt(emp.OvertimePay)}</td></tr>\n            "
+            : "";
+
         // 動態加項列：有值才顯示，斑馬色維持
         var earningsRows = $"""
             <tr><td style="padding:8px 12px">底薪{parentalNote}</td><td style="padding:8px 12px;text-align:right">{fmt(emp.BaseSalary)}</td></tr>
             <tr style="background:#FDFAF5"><td style="padding:8px 12px">伙食費</td><td style="padding:8px 12px;text-align:right">{fmt(emp.MealAllowance)}</td></tr>
-            <tr><td style="padding:8px 12px">加班費</td><td style="padding:8px 12px;text-align:right">{fmt(emp.OvertimePay)}</td></tr>
-            <tr style="background:#FDFAF5"><td style="padding:8px 12px">加班費（加班申請 {emp.CalculatedOvertimeHours.ToString("0.#")} 小時）</td><td style="padding:8px 12px;text-align:right">{fmt(emp.CalculatedOvertimePay)}</td></tr>
+            {overtimePayRow}<tr style="background:#FDFAF5"><td style="padding:8px 12px">加班費（加班申請 {emp.CalculatedOvertimeHours.ToString("0.#")} 小時）</td><td style="padding:8px 12px;text-align:right">{fmt(emp.CalculatedOvertimePay)}</td></tr>
             """;
         // 2 種加給（值為 0 不顯示）
         var allowanceRows = new (string Label, decimal Value)[]

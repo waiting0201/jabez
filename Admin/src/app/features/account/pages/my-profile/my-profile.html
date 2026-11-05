@@ -154,10 +154,12 @@
                   <div class="form-label fw-500 text-muted small">伙食費</div>
                   <div>{{ u.mealAllowance != null ? ('NT$ ' + (u.mealAllowance | number:'1.0-0')) : '—' }}</div>
                 </div>
-                <div class="col-12 col-md-4">
-                  <div class="form-label fw-500 text-muted small">加班費</div>
-                  <div>{{ u.overtimePay != null ? ('NT$ ' + (u.overtimePay | number:'1.0-0')) : '—' }}</div>
-                </div>
+                @if (u.showOvertimePay !== false) {
+                  <div class="col-12 col-md-4">
+                    <div class="form-label fw-500 text-muted small">加班費(免稅)</div>
+                    <div>{{ u.overtimePay != null ? ('NT$ ' + (u.overtimePay | number:'1.0-0')) : '—' }}</div>
+                  </div>
+                }
                 <div class="col-12 col-md-4">
                   <div class="form-label fw-500 text-muted small">勞保（員工負擔）</div>
                   <div>{{ u.laborInsuranceOverride != null ? ('NT$ ' + (u.laborInsuranceOverride | number:'1.0-0')) : '—（依級距）' }}</div>
@@ -819,7 +821,7 @@
                     <tr>
                       <th>年月</th>
                       <th class="text-end">底薪</th>
-                      <th class="text-end">加班費</th>
+                      <th class="text-end">加班費(免稅)</th>
                       <th class="text-end">加班費(加班申請)</th>
                       <th class="text-end">假日津貼</th>
                       <th class="text-end">勞保費</th>
@@ -838,7 +840,7 @@
                           }
                         </td>
                         <td class="text-end">{{ m.payroll.baseSalary | number:'1.0-0' }}</td>
-                        <td class="text-end">{{ m.payroll.overtimePay | number:'1.0-0' }}</td>
+                        <td class="text-end">{{ m.payroll.showOvertimePay === false ? '—' : (m.payroll.overtimePay | number:'1.0-0') }}</td>
                         <td class="text-end">{{ m.payroll.calculatedOvertimePay | number:'1.0-0' }}</td>
                         <td class="text-end">{{ m.payroll.holidayAllowance | number:'1.0-0' }}</td>
                         <td class="text-end text-danger">-{{ m.payroll.laborInsurance | number:'1.0-0' }}</td>
@@ -855,7 +857,7 @@
                       @if (expandedKey() === monthKey(m)) {
                         <tr>
                           <td colspan="9" class="p-4 bg-[var(--bg-elevated)]">
-                            <app-payroll-detail-card [payroll]="m.payroll" [showNetSalary]="true" />
+                            <app-payroll-detail-card [payroll]="m.payroll" [showNetSalary]="true" [forEmployee]="true" />
                           </td>
                         </tr>
                       }

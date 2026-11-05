@@ -355,6 +355,8 @@ public sealed class UserHandler(AppDbContext db, IUserReadService reader, IEmail
             MealAllowance = decimal.TryParse(form["mealAllowance"], out var ma) ? ma : null,
             OvertimePay   = decimal.TryParse(form["overtimePay"], out var op) ? op : null,
             SendPaySlip   = form["sendPaySlip"] == "true",
+            // 未帶 key（無薪資權限者的表單不送）＝ 預設顯示
+            ShowOvertimePay = !form.ContainsKey("showOvertimePay") || form["showOvertimePay"] == "true",
             CompensatoryOpeningHours = decimal.TryParse(form["compensatoryOpeningHours"], out var coh) ? coh : 0m,
             IsShiftWorker = form["isShiftWorker"] == "true",
             CustomWorkStartTime = customStart,
@@ -384,6 +386,7 @@ public sealed class UserHandler(AppDbContext db, IUserReadService reader, IEmail
             user.BaseSalary                       = null;
             user.MealAllowance                    = null;
             user.OvertimePay                      = null;
+            user.ShowOvertimePay                  = true;
             user.OtherAllowance                   = null;
             user.AdjustmentDifference             = null;
             user.HealthInsuranceOverride          = null;
@@ -558,6 +561,8 @@ public sealed class UserHandler(AppDbContext db, IUserReadService reader, IEmail
                 user.MealAllowance = decimal.TryParse(form["mealAllowance"], out var ma) ? ma : null;
             if (form.ContainsKey("overtimePay"))
                 user.OvertimePay = decimal.TryParse(form["overtimePay"], out var op) ? op : null;
+            if (form.ContainsKey("showOvertimePay"))
+                user.ShowOvertimePay = form["showOvertimePay"] == "true";
             if (form.ContainsKey("healthInsuranceOverride"))
                 user.HealthInsuranceOverride = decimal.TryParse(form["healthInsuranceOverride"], out var hio) ? hio : null;
             if (form.ContainsKey("laborInsuranceOverride"))
@@ -878,6 +883,8 @@ public sealed class UserHandler(AppDbContext db, IUserReadService reader, IEmail
             if (Changed(form, "baseSalary",               user.BaseSalary)
              || Changed(form, "mealAllowance",            user.MealAllowance)
              || Changed(form, "overtimePay",              user.OvertimePay)
+             || (form.ContainsKey("showOvertimePay")
+                 && (form["showOvertimePay"] == "true") != user.ShowOvertimePay)
              || Changed(form, "healthInsuranceOverride",  user.HealthInsuranceOverride)
              || Changed(form, "laborInsuranceOverride",   user.LaborInsuranceOverride)
              || Changed(form, "otherAllowance",           user.OtherAllowance)

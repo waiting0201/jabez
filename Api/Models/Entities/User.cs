@@ -33,6 +33,9 @@ public class User
     public decimal?  OtherAllowance       { get; set; }   // 其他加給
     public decimal?  AdjustmentDifference { get; set; }   // 代扣代付款（識別字沿用 AdjustmentDifference，未改欄位名）
     public bool      SendPaySlip     { get; set; }   // 是否寄送薪資表
+    // 薪資明細（畫面 / PDF / 薪資信）是否列出「加班費(免稅)」這一行。
+    // **只控制顯示**：OvertimePay 不論勾選與否都照常計入實領（2026-11-05 業務決議）
+    public bool      ShowOvertimePay { get; set; } = true;
 
     // 期初補休時數：系統上線前（115/1~6/30）以紙本累計、匯入系統的補休時數；
     // 設定於 116/6/30 前未休完即歸零（到期日為固定常數，見 Common/CompensatoryBalance.OpeningExpiry）
