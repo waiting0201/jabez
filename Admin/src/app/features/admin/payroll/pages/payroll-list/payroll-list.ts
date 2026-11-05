@@ -136,12 +136,19 @@ export class PayrollList implements OnInit {
         p.totalParentalLeaveDays, '', p.totalNetSalary,
       ];
 
-      const aoa: (string | number)[][] = [[summary], [], headers, ...rows, totalRow];
+      // 假日執行活動已退場：2026-12 起的月份拿掉「假日活動天數 / 假日津貼」兩欄（仍有金額時保留，判定在後端）。
+      // 以欄名過濾、千分位例外也改以欄名對應，避免刪欄讓下方 rawNumberCols 的硬編索引位移。
+      const droppedHeaders = p.showHolidayAllowance === false ? new Set(['假日活動天數', '假日津貼']) : new Set<string>();
+      const keepIdx = headers.map((h, i) => droppedHeaders.has(h) ? -1 : i).filter(i => i >= 0);
+      const pick = <T>(arr: T[]) => keepIdx.map(i => arr[i]);
+      const outHeaders = pick(headers);
+
+      const aoa: (string | number)[][] = [[summary], [], outHeaders, ...rows.map(pick), pick(totalRow)];
       const ws = XLSX.utils.aoa_to_sheet(aoa);
 
       // 欄寬（單位：字元）— 中文字佔 2 格，故不能直接用 header.length
       const displayWidth = (t: string) => [...t].reduce((n, ch) => n + (ch.charCodeAt(0) > 0x2e80 ? 2 : 1), 0);
-      ws['!cols'] = headers.map(h => ({wch: Math.max(displayWidth(h) + 2, 10)}));
+      ws['!cols'] = outHeaders.map(h => ({wch: Math.max(displayWidth(h) + 2, 10)}));
 
       // 數字格式：金額欄套千分位；天數 / 口數 / 自提率維持 General
       //（'#,##0.##' 會讓整數顯示成「6.」多一個小數點，故不套）
@@ -151,11 +158,13 @@ export class PayrollList implements OnInit {
       // （2026-10 於家庭照顧假扣薪後插入「颱風假不給薪天數 / 颱風假扣薪」，其後每一欄 +2。）
       // 依序為：假日活動天數 11、國定假日出勤天數 13、補休未休完時數 15、
       //         健保眷屬口數 22、事假 23、病假 25、生理假 27、家庭照顧假 29、颱風假不給薪天數 31、勞退自提率 35、育嬰留停天數 37。
-      const rawNumberCols = new Set([11, 13, 15, 22, 23, 25, 27, 29, 31, 35, 37]);
+      // 索引對應「完整欄位」的 headers；輸出前換算成欄名，再對到實際輸出（可能刪欄）的 outHeaders 位置
+      const rawNumberNames = new Set([11, 13, 15, 22, 23, 25, 27, 29, 31, 35, 37].map(i => headers[i]));
+      const rawNumberCols = new Set(outHeaders.map((h, i) => rawNumberNames.has(h) ? i : -1).filter(i => i >= 0));
       const headerRowIdx = 2;
       const lastRowIdx = aoa.length - 1;
       for (let r = headerRowIdx + 1; r <= lastRowIdx; r++) {
-        for (let c = 4; c < headers.length; c++) {
+        for (let c = 4; c < outHeaders.length; c++) {
           if (rawNumberCols.has(c)) continue;
           const cell = ws[XLSX.utils.encode_cell({r, c})];
           if (cell && typeof cell.v === 'number') cell.z = '#,##0';

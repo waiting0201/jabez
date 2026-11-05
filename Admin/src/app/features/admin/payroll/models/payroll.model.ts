@@ -11,6 +11,8 @@ export interface EmployeePayroll {
   overtimePay: number;
   /** 薪資明細是否列出「加班費(免稅)」這一行（員工設定；只控制顯示，overtimePay 仍計入實領） */
   showOvertimePay: boolean;
+  /** 是否顯示「假日執行活動天數 / 假日津貼」（假日執行活動已退場：2026-12 起的薪資月份為 false，仍有金額時為 true） */
+  showHolidayAllowance: boolean;
   /** 加班申請試算加班費（上月加班、已核准且選「加班費」者的快照合計；與手填 overtimePay 併存） */
   calculatedOvertimePay: number;
   calculatedOvertimeHours: number;
@@ -87,6 +89,8 @@ export interface MonthlyPayroll {
   totalPublicHolidayDoublePay: number;
   totalCompensatorySettlementAmount: number;
   totalHolidayAllowance: number;
+  /** 該月任一員工需顯示假日津貼 → 總表欄位 / 匯出欄位保留 */
+  showHolidayAllowance: boolean;
   totalOtherAddition: number;
   totalLaborInsurance: number;
   totalHealthInsurance: number;

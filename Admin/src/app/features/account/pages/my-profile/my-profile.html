@@ -842,7 +842,7 @@
                         <td class="text-end">{{ m.payroll.baseSalary | number:'1.0-0' }}</td>
                         <td class="text-end">{{ m.payroll.showOvertimePay === false ? '—' : (m.payroll.overtimePay | number:'1.0-0') }}</td>
                         <td class="text-end">{{ m.payroll.calculatedOvertimePay | number:'1.0-0' }}</td>
-                        <td class="text-end">{{ m.payroll.holidayAllowance | number:'1.0-0' }}</td>
+                        <td class="text-end">{{ m.payroll.showHolidayAllowance === false ? '—' : (m.payroll.holidayAllowance | number:'1.0-0') }}</td>
                         <td class="text-end text-danger">-{{ m.payroll.laborInsurance | number:'1.0-0' }}</td>
                         <td class="text-end text-danger">-{{ m.payroll.healthInsurance | number:'1.0-0' }}</td>
                         <td class="text-end fw-600" [class.text-danger]="m.payroll.netSalary < 0">
@@ -857,7 +857,7 @@
                       @if (expandedKey() === monthKey(m)) {
                         <tr>
                           <td colspan="9" class="p-4 bg-[var(--bg-elevated)]">
-                            <app-payroll-detail-card [payroll]="m.payroll" [showNetSalary]="true" [forEmployee]="true" />
+                            <app-payroll-detail-card [payroll]="m.payroll" [showNetSalary]="true" />
                           </td>
                         </tr>
                       }

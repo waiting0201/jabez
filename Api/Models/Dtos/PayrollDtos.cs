@@ -65,7 +65,10 @@ public sealed record EmployeePayrollDto(
     decimal   DisasterDeduction  = 0m,
     // 薪資明細（畫面 / PDF / 薪資信）是否列出「加班費(免稅)」（OvertimePay）這一行。
     // **只控制顯示**，OvertimePay 仍照常計入 NetSalary；總表 / Excel 匯出不受影響。
-    bool      ShowOvertimePay    = true);
+    bool      ShowOvertimePay    = true,
+    // 是否顯示「假日執行活動天數 / 假日津貼」：薪資月份 < 2026-12 或該員當月仍有假日津貼
+    //（假日執行活動已退場，單一真相 PayrollReadService.HolidayAllowanceHiddenFrom）
+    bool      ShowHolidayAllowance = true);
 
 /// <summary>請假明細（用於薪資頁面顯示）</summary>
 public sealed record LeaveDetailDto(
@@ -99,7 +102,9 @@ public sealed record MonthlyPayrollDto(
     decimal TotalCalculatedOvertimePay      = 0m,
     decimal TotalPublicHolidayDoublePay     = 0m,
     decimal TotalCompensatorySettlementAmount = 0m,
-    decimal TotalDisasterDeduction            = 0m);
+    decimal TotalDisasterDeduction            = 0m,
+    // 該月任一員工需顯示假日津貼 → 總表 / 匯出保留該欄
+    bool    ShowHolidayAllowance              = true);
 
 /// <summary>
 /// 員工自助查詢：單月薪資紀錄（Payroll 為當月即時重算結果，非月結快照）
