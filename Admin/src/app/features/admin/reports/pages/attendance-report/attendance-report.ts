@@ -9,6 +9,7 @@ import {dayToRange, FilterMode, monthToRange, shiftDateString, snapToIsoWeek, to
 import {formatLeaveDaySegment, LEAVE_TYPE_LABELS, LeaveType} from '@/app/features/admin/leave-requests/models/leave-request.model';
 import {HasPermissionDirective} from '@shared/directives/has-permission.directive';
 import {AuthService} from '@/app/core/auth/services/auth.service';
+import {ToastrService} from 'ngx-toastr';
 import * as XLSX from 'xlsx';
 
 export interface AttendanceRecordRow {
@@ -116,6 +117,7 @@ export class AttendanceReport implements OnInit {
   private sanitizer = inject(DomSanitizer);
   private attendanceService = inject(AttendanceService);
   private auth = inject(AuthService);
+  private toastr = inject(ToastrService);
 
   /**
    * 是否可編輯該列：必須有打卡紀錄，且**不是自己的紀錄**（Superadmin 除外）。
@@ -502,23 +504,33 @@ export class AttendanceReport implements OnInit {
     const nextDay = this.addDays(dateStr, 1);
     const endDate = (start: string, end: string) => (start && end <= start ? nextDay : dateStr);
 
+    // 時分沒被改動的欄位一律送回原始值（含秒數）。表單只有 HH:mm，若照表單重組會把 09:31:40 截成 09:31:00，
+    // 後端便判定「時間被改了」→ 只填備註也會標成人工調整、重算遲到早退與加班結算，並對歷史異常值套用時間窗檢查而存不了。
+    const pick = (value: string, raw: string | null, build: () => string): string | null => {
+      if (!value) return null;
+      return raw && this.toTimeInput(raw) === value ? raw : build();
+    };
+
     const body = {
-      clockInTime: form.clockIn ? `${dateStr}T${form.clockIn}:00` : null,
-      clockOutTime: form.clockOut ? `${endDate(form.clockIn, form.clockOut)}T${form.clockOut}:00` : null,
-      overtimeStartTime: form.overtimeStart ? `${dateStr}T${form.overtimeStart}:00` : null,
-      overtimeEndTime: form.overtimeEnd ? `${endDate(form.overtimeStart, form.overtimeEnd)}T${form.overtimeEnd}:00` : null,
+      clockInTime: pick(form.clockIn, record.rawClockIn, () => `${dateStr}T${form.clockIn}:00`),
+      clockOutTime: pick(form.clockOut, record.rawClockOut, () => `${endDate(form.clockIn, form.clockOut)}T${form.clockOut}:00`),
+      overtimeStartTime: pick(form.overtimeStart, record.rawOvertimeStart, () => `${dateStr}T${form.overtimeStart}:00`),
+      overtimeEndTime: pick(form.overtimeEnd, record.rawOvertimeEnd, () => `${endDate(form.overtimeStart, form.overtimeEnd)}T${form.overtimeEnd}:00`),
       remark: form.remark?.trim() || null,
     };
 
     this.attendanceService.update(record.id, body).subscribe({
       next: () => {
         this.saving.set(false);
+        this.toastr.success('出缺勤紀錄已更新。');
         this.closeEdit();
         this.fetchData();   // 停留在當前頁，不重置頁碼
       },
       error: (err) => {
         console.error('[AttendanceReport] saveEdit error:', err);
         this.saving.set(false);
+        // 後端的擋存原因（不可改自己、職級須高於對方、時間窗…）必須讓使用者看到，否則畫面只是「按了沒反應」
+        this.toastr.error(err.error?.message || '儲存失敗，請稍後再試。', '無法儲存');
       },
     });
   }
