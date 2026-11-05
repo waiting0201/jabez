@@ -68,6 +68,18 @@ public sealed class PaymentRequestHandler(
         return new OkObjectResult(ApiResponse.Ok(item));
     }
 
+    /// <summary>
+    /// 受款人名稱（type=other 專用）：必填、去頭尾空白、上限 100 字；其餘類型一律回 null。
+    /// </summary>
+    private static (string? Value, string? Error) ResolvePayeeName(string type, string raw)
+    {
+        if (type != "other") return (null, null);
+        var name = raw.Trim();
+        if (name.Length == 0)  return (null, "「其他」請款請填寫受款人。");
+        if (name.Length > 100) return (null, "受款人名稱不可超過 100 字。");
+        return (name, null);
+    }
+
     public async Task<IActionResult> CreateAsync(HttpRequest req)
     {
         // BUG-04: SubmittedById 由 JWT 中的 sub claim 決定，不信任客戶端傳入的值
@@ -110,6 +122,11 @@ public sealed class PaymentRequestHandler(
         {
             vendorId = null;
         }
+
+        // type=other 時受款人名稱必填（申請人自填，非廠商主檔）；其他類型強制清空
+        var (payeeName, payeeError) = ResolvePayeeName(type, form["payeeName"].ToString());
+        if (payeeError is not null)
+            return new BadRequestObjectResult(ApiResponse.Fail(payeeError));
 
         // 指定審核者存在性驗證
         if (designatedReviewers is { Length: > 0 })
@@ -164,6 +181,7 @@ public sealed class PaymentRequestHandler(
             Type          = type,
             ProjectId     = projectId,
             VendorId      = vendorId,
+            PayeeName     = payeeName,
             Reason        = string.IsNullOrWhiteSpace(reason) ? null : reason.Trim(),
             SubmittedById = submittedById,   // 強制使用 JWT 身分
             TotalAmount   = invoices.Sum(i => i.Amount),
@@ -274,6 +292,15 @@ public sealed class PaymentRequestHandler(
             {
                 pr.VendorId = null;
             }
+        }
+
+        // 受款人名稱：帶了 payeeName 或 type 就依當前 type 重算（非 other 一律清空）
+        if (form.ContainsKey("payeeName") || form.ContainsKey("type"))
+        {
+            var (payeeName, payeeError) = ResolvePayeeName(pr.Type, form["payeeName"].ToString());
+            if (payeeError is not null)
+                return new BadRequestObjectResult(ApiResponse.Fail(payeeError));
+            pr.PayeeName = payeeName;
         }
 
         // 指定審核者整組替換（提供時才更新）

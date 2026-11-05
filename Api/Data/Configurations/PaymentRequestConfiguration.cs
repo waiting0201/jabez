@@ -36,6 +36,10 @@ public class PaymentRequestConfiguration : IEntityTypeConfiguration<PaymentReque
         builder.Property(pr => pr.ReviewNote)
                .HasMaxLength(1000);
 
+        // 受款人名稱（type=other 自填；廠商請款走 VendorId）
+        builder.Property(pr => pr.PayeeName)
+               .HasMaxLength(100);
+
         builder.HasOne(pr => pr.Project)
                .WithMany(p => p.PaymentRequests)
                .HasForeignKey(pr => pr.ProjectId)

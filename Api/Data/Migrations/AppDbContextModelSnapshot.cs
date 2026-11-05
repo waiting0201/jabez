@@ -3607,6 +3607,10 @@ namespace Jabez.Api.Data.Migrations
                         .HasColumnType("int")
                         .HasDefaultValue(1);
 
+                    b.Property<string>("PayeeName")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
                     b.Property<int>("ProjectId")
                         .HasColumnType("int");
 

@@ -173,12 +173,12 @@
                       <div class="text-muted small mb-1">總金額</div>
                       <span class="fw-600 fs-5">{{ d.totalAmount | number:'1.0-0' }}</span>
                     </div>
-                    @if (d.paymentType === 'vendor') {
+                    @if (d.paymentType === 'vendor' || d.paymentType === 'other') {
                       <div class="col-12 col-md-8">
-                        <div class="text-muted small mb-1">廠商</div>
+                        <div class="text-muted small mb-1">廠商/受款人</div>
                         <span class="fw-500">
-                          {{ d.vendorName || '—' }}
-                          @if (d.vendorTaxId) { <span class="text-muted">（{{ d.vendorTaxId }}）</span> }
+                          {{ (d.paymentType === 'vendor' ? d.vendorName : d.payeeName) || '—' }}
+                          @if (d.paymentType === 'vendor' && d.vendorTaxId) { <span class="text-muted">（{{ d.vendorTaxId }}）</span> }
                         </span>
                       </div>
                     }

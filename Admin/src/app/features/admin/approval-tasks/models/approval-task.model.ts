@@ -121,6 +121,8 @@ export interface PaymentTaskDetail {
   installments?: InstallmentDto[];
   paymentStatus?: PaymentInstallmentStatus;
   attachments?: AttachmentItem[];
+  /** 受款人名稱（僅 type=other，申請人自填） */
+  payeeName?: string | null;
 }
 
 export interface LeaveTaskDetail {

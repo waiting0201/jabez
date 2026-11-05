@@ -82,6 +82,12 @@
               <div class="fw-500">{{ t.submittedBy || '—' }}</div>
             </div>
           }
+          @if (r.type === 'other') {
+            <div class="col-6 col-md-3">
+              <div class="text-muted small">廠商/受款人</div>
+              <div class="fw-500">{{ r.payeeName || '—' }}</div>
+            </div>
+          }
           @if (r.reason) {
             <div class="col-12">
               <div class="text-muted small">說明</div>
