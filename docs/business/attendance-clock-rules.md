@@ -457,7 +457,7 @@ Excel 匯出於時間後加註「（系統補卡）」，以區分本人打卡�
 送件條件（Create / Update / Submit 皆驗，`OvertimeRequestGuard.EnsurePostHocAsync`）：
 
 1. **須於加班日後一個工作日 23:59:59 前提出**（2026-10-19 依客戶規則改，原為「今天或昨天」）：截止日＝加班日之後第一個**公司工作日**（`WorkCalendarHelper.NextCompanyWorkingDayAsync`，行事曆 `IsHoliday` 優先、含國定假日 / 彈性休假日，未匯入年度退回六日；**不看個人排班**）。例：10/19（一）加班 → 10/20 前；週五或六日加班 → 下週一前；遇國定假日 / 連假順延至假後第一個工作日。加班日不可晚於今天；以 `Clock.Today` 判定，草稿放到逾期再送簽會被擋。事後申請**不套**一般加班單的 7 天補登期限（長假後第一個工作日可能超過 7 天）。`post-hoc-context` 回 `deadline` 供表單顯示，日期選擇器放寬到 14 天前、可否申請以後端判定為準。
-2. 當日 `AttendanceRecord` 存在、`ClockOutTime` 非空且 `IsClockOutAuto = false`（**須親自打下班卡**，系統補卡不算）。
+2. 當日 `AttendanceRecord` 存在、`ClockOutTime` 非空且 `IsClockOutAuto = false`（**須親自打下班卡**，系統補卡不算）。**例外：該員當日非上班日**（`ResolveDayTypeAsync` ≠ `work`：休假日 / 國定假日 / 舊制行事曆假日，2026-11-05）**不要求出缺勤紀錄與下班卡** —— 休假日加班本來就不打上下班卡，原規則會把這類補申請整批擋掉。
 3. 當日尚無加班打卡（`OvertimeStartTime` / `OvertimeEndTime` 皆空）；已有者走正常申請或由 HR 補正。
 4. 實際起訖必填；訖 > 起；起 ≥ 加班日 00:00；訖 < 隔日 06:00（`OvertimeSettlementService.CrossDayEndCutoffHour`）；**訖 ≤ 現在**（2026-10-19 補：不可申報尚未發生的時段，否則當天提早下班即可預報當晚加班、核准當下就寫入出缺勤並結算；前端同步擋送出）。
 5. 專案時數合計（`EstimatedHours`）≤「起訖時數扣除與正常上班時段重疊」（`ComputeSettled` / `RegularWindowFor`，捨去到 0.1 小時）。
@@ -466,6 +466,7 @@ Excel 匯出於時間後加註「（系統補卡）」，以區分本人打卡�
 終局核准時（單筆、批次、Superadmin 自動核准、全自審自動核准同一條路徑，`PostHocOvertimeService`）：
 
 - 寫入 `OvertimeStartTime` / `OvertimeEndTime` ＝ 申請單 `ActualStartTime` / `ActualEndTime`、綁 `OvertimeRequestId`、標 `IsManuallyAdjusted`。**上班卡 / 下班卡一律不動**。
+- 當日**無出缺勤紀錄**（僅休假日可能）→ 建立只含加班時間的紀錄（比照休假日打加班開始卡）。
 - 寫一筆 `AttendanceAuditLog`，修改人為核准者、`ModifiedByName` ＝ `系統（事後加班核准 {單號}）`。
 - 以起訖直接結算 `SettledHours`（再同步加班費快照與補休 lot）。
 - 核准當下若該日已出現（非本單的）加班打卡 → 400，請 HR 處理後再核准。舊「補加班」回填單沒有起訖，核准時**不**自動寫入（維持原狀）。

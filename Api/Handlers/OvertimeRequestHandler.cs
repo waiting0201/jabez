@@ -514,15 +514,12 @@ public sealed class OvertimeRequestHandler(
             return new BadRequestObjectResult(ApiResponse.Fail("請提供有效的加班日期。"));
         var day = date.Date;
 
-        var (eligible, reason, record, deadline) = await OvertimeRequestGuard.EvaluatePostHocEligibilityAsync(db, calendarReader, userId, day);
+        var (eligible, reason, record, deadline) = await OvertimeRequestGuard.EvaluatePostHocEligibilityAsync(db, calendarReader, shiftSchedule, userId, day);
 
-        DateTime? regularEnd = null;
-        if (record is not null)
-        {
-            var dayType  = await shiftSchedule.ResolveDayTypeAsync(userId, day);
-            var schedule = await scheduleProvider.ForAsync(day);
-            regularEnd   = OvertimeSettlement.RegularWindowFor(day, dayType, schedule)?.End;
-        }
+        // 非上班日 RegularWindowFor 回 null，故不必以「有無紀錄」為前提（休假日事後申請可無出缺勤紀錄）
+        var dayType    = await shiftSchedule.ResolveDayTypeAsync(userId, day);
+        var schedule   = await scheduleProvider.ForAsync(day);
+        DateTime? regularEnd = OvertimeSettlement.RegularWindowFor(day, dayType, schedule)?.End;
 
         return new OkObjectResult(ApiResponse.Ok(new OvertimePostHocContextDto(
             eligible,
