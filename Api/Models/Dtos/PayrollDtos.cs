@@ -62,7 +62,10 @@ public sealed record EmployeePayrollDto(
     // 颱風假不給薪扣薪（天然災害停班）：未出勤、未請假的工作日 × 日薪（全天 1、半天 0.5）。
     // 給薪的颱風假恆為 0。計入 NetSalary 的扣項。
     decimal   DisasterUnpaidDays = 0m,
-    decimal   DisasterDeduction  = 0m);
+    decimal   DisasterDeduction  = 0m,
+    // 薪資明細（畫面 / PDF / 薪資信）是否列出「加班費(免稅)」（OvertimePay）這一行。
+    // **只控制顯示**，OvertimePay 仍照常計入 NetSalary；總表 / Excel 匯出不受影響。
+    bool      ShowOvertimePay    = true);
 
 /// <summary>請假明細（用於薪資頁面顯示）</summary>
 public sealed record LeaveDetailDto(

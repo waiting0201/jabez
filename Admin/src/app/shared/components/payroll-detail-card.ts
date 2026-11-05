@@ -57,10 +57,19 @@ import {LEAVE_TYPE_LABELS, LeaveType, formatLeaveDuration} from '../../features/
               <td class="ps-6">伙食費</td>
               <td class="text-right pe-4">{{ e.mealAllowance | number:'1.0-0' }}</td>
             </tr>
-            <tr>
-              <td class="ps-6">加班費</td>
-              <td class="text-right pe-4">{{ e.overtimePay | number:'1.0-0' }}</td>
-            </tr>
+            <!-- 加班費(免稅)：員工設定 showOvertimePay=false 時，員工端不列這一行（只藏顯示，金額仍計入實領）；
+                 管理端照列並加註，避免人事對帳時少一筆 -->
+            @if (e.showOvertimePay !== false || !forEmployee()) {
+              <tr>
+                <td class="ps-6">
+                  加班費(免稅)
+                  @if (e.showOvertimePay === false) {
+                    <span class="text-muted text-xs">員工薪資明細不顯示</span>
+                  }
+                </td>
+                <td class="text-right pe-4">{{ e.overtimePay | number:'1.0-0' }}</td>
+              </tr>
+            }
             <tr>
               <td class="ps-6">
                 加班費（加班申請）
@@ -229,6 +238,8 @@ export class PayrollDetailCard {
 
   /** 是否在表尾附上「實領薪水」與育嬰留停負數警語（唯讀情境用；payroll-form 有自己的即時預覽卡片） */
   showNetSalary = input(false);
+  /** 員工自助檢視（my-profile）：依 showOvertimePay 隱藏「加班費(免稅)」列；管理端維持顯示並加註 */
+  forEmployee = input(false);
 
   getLeaveTypeLabel(type: string): string {
     return (LEAVE_TYPE_LABELS as Record<string, string>)[type] ?? type;

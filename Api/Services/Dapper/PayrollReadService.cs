@@ -22,7 +22,7 @@ public sealed class PayrollReadService(IDbConnection db, IDisasterPayrollService
         //    同時取出健保眷屬人數（HealthInsuranceDependents）與保費覆蓋欄位
         const string employeeSql = """
             SELECT u.Id AS EmployeeId, u.Name AS EmployeeName,
-                   u.Email, u.SendPaySlip,
+                   u.Email, u.SendPaySlip, u.ShowOvertimePay,
                    d.Name AS DepartmentName, jt.Name AS JobTitleName,
                    u.HireDate, u.BaseSalary, u.MealAllowance, u.OvertimePay,
                    u.OtherAllowance, u.AdjustmentDifference,
@@ -515,7 +515,8 @@ public sealed class PayrollReadService(IDbConnection db, IDisasterPayrollService
                 compSettlementAmount,
                 compSettlementNote,
                 disasterUnpaidDays,
-                disasterDeduction));
+                disasterDeduction,
+                (bool)emp.ShowOvertimePay));
         }
 
         return new MonthlyPayrollDto(

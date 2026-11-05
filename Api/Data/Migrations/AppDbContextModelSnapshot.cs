@@ -7348,6 +7348,9 @@ namespace Jabez.Api.Data.Migrations
                     b.Property<bool>("SendPaySlip")
                         .HasColumnType("bit");
 
+                    b.Property<bool>("ShowOvertimePay")
+                        .HasColumnType("bit");
+
                     b.Property<string>("SignatureUrl")
                         .HasMaxLength(500)
                         .HasColumnType("nvarchar(500)");
@@ -7405,6 +7408,7 @@ namespace Jabez.Api.Data.Migrations
                             PasswordHash = "$2a$11$hBaZunc8xtFIsRVh738SJuHisvnVAsIODyfkzLxjMN.is7jZn3K7e",
                             SecurityStamp = new Guid("00000000-0000-0000-0000-000000000000"),
                             SendPaySlip = false,
+                            ShowOvertimePay = true,
                             Status = "active",
                             UpdatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc)
                         },
@@ -7432,6 +7436,7 @@ namespace Jabez.Api.Data.Migrations
                             PasswordHash = "$2a$11$uanLV/06EWO8c4vt4h0gv.NwFEDxbAzLGfO7M1wvbeyZW0oScGCqy",
                             SecurityStamp = new Guid("00000000-0000-0000-0000-000000000000"),
                             SendPaySlip = false,
+                            ShowOvertimePay = true,
                             Status = "active",
                             UpdatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc)
                         },
@@ -7459,6 +7464,7 @@ namespace Jabez.Api.Data.Migrations
                             PasswordHash = "$2a$11$jnbTwU3kFJLXuVyQecTy4e1rMkMfsBa191aEHHZswHpLcI2jRnJzW",
                             SecurityStamp = new Guid("00000000-0000-0000-0000-000000000000"),
                             SendPaySlip = false,
+                            ShowOvertimePay = true,
                             Status = "active",
                             UpdatedAt = new DateTime(2024, 2, 10, 0, 0, 0, 0, DateTimeKind.Utc)
                         },
@@ -7486,6 +7492,7 @@ namespace Jabez.Api.Data.Migrations
                             PasswordHash = "$2a$11$zq1cZo7mM27tuI.W4ZwbKuu5rn3PBsBeP7IzdEPw8i1ynhJJltP5m",
                             SecurityStamp = new Guid("00000000-0000-0000-0000-000000000000"),
                             SendPaySlip = false,
+                            ShowOvertimePay = true,
                             Status = "active",
                             UpdatedAt = new DateTime(2024, 3, 5, 0, 0, 0, 0, DateTimeKind.Utc)
                         },
@@ -7513,6 +7520,7 @@ namespace Jabez.Api.Data.Migrations
                             PasswordHash = "$2a$11$yNJIPqp5rr/PhDhajQJwIOoQ88yVQbJQLuU.tRPOmH4/xEmlsPb3i",
                             SecurityStamp = new Guid("00000000-0000-0000-0000-000000000000"),
                             SendPaySlip = false,
+                            ShowOvertimePay = true,
                             Status = "active",
                             UpdatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc)
                         },
@@ -7542,6 +7550,7 @@ namespace Jabez.Api.Data.Migrations
                             PasswordHash = "$2a$11$J5eke3qMONqpznSkAUKQ9OaIwKYOv52VqF2cu.fSU3qtKiYaS7NLO",
                             SecurityStamp = new Guid("00000000-0000-0000-0000-000000000000"),
                             SendPaySlip = false,
+                            ShowOvertimePay = true,
                             Status = "active",
                             UpdatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc)
                         },
@@ -7571,6 +7580,7 @@ namespace Jabez.Api.Data.Migrations
                             PasswordHash = "$2a$11$FXRjg2SgqKby.WL/hEMkoupv3pl/iffpeyvBxRjF0qY51SFwClWiK",
                             SecurityStamp = new Guid("00000000-0000-0000-0000-000000000000"),
                             SendPaySlip = false,
+                            ShowOvertimePay = true,
                             Status = "active",
                             UpdatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc)
                         },
@@ -7600,6 +7610,7 @@ namespace Jabez.Api.Data.Migrations
                             PasswordHash = "$2a$11$QajMz1QlJ4W.w.EdwzAH6eRQjThAHAbtYK09WM0RfOehln.FKH8ym",
                             SecurityStamp = new Guid("00000000-0000-0000-0000-000000000000"),
                             SendPaySlip = false,
+                            ShowOvertimePay = true,
                             Status = "active",
                             UpdatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc)
                         },
@@ -7627,6 +7638,7 @@ namespace Jabez.Api.Data.Migrations
                             PasswordHash = "$2a$11$UVOY3lj8t7A4YnxhKBAigedGTYYIkBfFxl3bmBaUuBxq0JEs54k6e",
                             SecurityStamp = new Guid("00000000-0000-0000-0000-000000000000"),
                             SendPaySlip = false,
+                            ShowOvertimePay = true,
                             Status = "active",
                             UpdatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc)
                         },
@@ -7654,6 +7666,7 @@ namespace Jabez.Api.Data.Migrations
                             PasswordHash = "$2a$11$2v7wVtBf77gz0vuZ/jZGseOQ2dvureuLomMb5HVECKoBNO3wcyzYy",
                             SecurityStamp = new Guid("00000000-0000-0000-0000-000000000000"),
                             SendPaySlip = false,
+                            ShowOvertimePay = true,
                             Status = "active",
                             UpdatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc)
                         });

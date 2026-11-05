@@ -32,7 +32,7 @@ const MAX_FILE_BYTES = 1 * 1024 * 1024; // 1 MB
  * 與後端 Api/Common/PayrollFieldAccess.cs 的 Mask 一一對應 —— 新增薪資欄位時兩邊都要改。
  */
 const SALARY_CONTROLS = [
-  'baseSalary', 'mealAllowance', 'overtimePay',
+  'baseSalary', 'mealAllowance', 'overtimePay', 'showOvertimePay',
   'otherAllowance', 'adjustmentDifference',
   'healthInsuranceOverride', 'laborInsuranceOverride', 'laborPensionSelfContributionRate',
 ] as const;
@@ -177,6 +177,7 @@ export class UserForm implements OnInit {
     baseSalary:   [null as number | null],
     mealAllowance: [null as number | null],
     overtimePay:   [null as number | null],
+    showOvertimePay: [true],
     sendPaySlip:   [false],
     compensatoryOpeningHours: [null as number | null],
     isShiftWorker: [false],
@@ -286,6 +287,7 @@ export class UserForm implements OnInit {
           baseSalary:    user.baseSalary ?? null,
           mealAllowance: user.mealAllowance ?? null,
           overtimePay:   user.overtimePay ?? null,
+          showOvertimePay: user.showOvertimePay ?? true,
           sendPaySlip:   user.sendPaySlip ?? false,
           compensatoryOpeningHours: user.compensatoryOpeningHours ?? null,
           isShiftWorker: user.isShiftWorker ?? false,

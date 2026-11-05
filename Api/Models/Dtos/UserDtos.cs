@@ -48,7 +48,9 @@ public sealed record UserDto(
     string?   CustomWorkStartTime = null,
     string?   CustomWorkEndTime   = null,
     // 個人工作地縣市代碼（TaiwanCounties；null ＝ 沿用所屬部門）。天然災害停班（颱風假）依此套用
-    string?   WorkCounty = null);
+    string?   WorkCounty = null,
+    // 薪資明細是否列出「加班費(免稅)」（User.OvertimePay）這一行；只影響顯示，金額仍計入實領
+    bool      ShowOvertimePay = true);
 
 public sealed record CreateUserRequest(
     string    Name,

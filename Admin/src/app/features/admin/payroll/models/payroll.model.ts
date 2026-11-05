@@ -9,6 +9,8 @@ export interface EmployeePayroll {
   baseSalary: number;
   mealAllowance: number;
   overtimePay: number;
+  /** 薪資明細是否列出「加班費(免稅)」這一行（員工設定；只控制顯示，overtimePay 仍計入實領） */
+  showOvertimePay: boolean;
   /** 加班申請試算加班費（上月加班、已核准且選「加班費」者的快照合計；與手填 overtimePay 併存） */
   calculatedOvertimePay: number;
   calculatedOvertimeHours: number;

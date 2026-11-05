@@ -30,6 +30,8 @@ export interface User {
   mealAllowance?: number;
   overtimePay?: number;
   sendPaySlip?: boolean;
+  /** 薪資明細是否列出「加班費(免稅)」（只控制顯示，金額仍計入實領；預設 true） */
+  showOvertimePay?: boolean;
   /** 期初補休時數（系統上線前累計，116/6/30 到期歸零） */
   compensatoryOpeningHours?: number;
   /** 排班制員工（賣店 / 營業所）：六日與國定假日視為工作日，可請六日的假 */
