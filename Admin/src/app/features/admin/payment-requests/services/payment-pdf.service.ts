@@ -75,7 +75,8 @@ export class PaymentPdfService {
       };
 
       const submitDate = fmtDT(task.submittedAt);
-      const payerLabel = d.paymentType === 'vendor' ? '請款人：' : '受款人：';
+      // 廠商請款 / 其他：受款人另列於「受款人資訊」表，申請人標「請款人」；一般請款的受款人即申請人本人
+      const payerLabel = d.paymentType === 'vendor' || d.paymentType === 'other' ? '請款人：' : '受款人：';
       lv(payerLabel, task.submittedBy, mx, y, true);
       lv('申請日期：', submitDate, pw - mx - 55, y, true);
 
@@ -136,8 +137,8 @@ export class PaymentPdfService {
         body: bodyRows,
       });
 
-      // ── 受款人資訊（僅廠商請款顯示）──
-      if (d.paymentType === 'vendor') {
+      // ── 受款人資訊（廠商請款：廠商主檔四列；其他：申請人自填的受款人名稱一列）──
+      if (d.paymentType === 'vendor' || d.paymentType === 'other') {
         const dash = (v?: string | null) => (v?.trim() || '—');
         const vendorTableY = (doc as any).lastAutoTable.finalY + 6;
         autoTable(doc, {
@@ -168,11 +169,13 @@ export class PaymentPdfService {
             3: {cellWidth: cw * 0.36},
           },
           head: [[{content: '受款人資訊', colSpan: 4, styles: {halign: 'center'}}]],
-          body: [
+          body: d.paymentType === 'vendor' ? [
             ['廠商名稱', dash(d.vendorName), '統　　編', dash(d.vendorTaxId)],
             ['聯　絡　人', dash(d.vendorContactPerson), '聯絡電話', dash(d.vendorPhone)],
             ['帳戶資料', {content: dash(d.vendorBankAccount), colSpan: 3} as any],
             ['公司地址', {content: dash(d.vendorAddress), colSpan: 3} as any],
+          ] : [
+            ['受款人', {content: dash(d.payeeName), colSpan: 3} as any],
           ],
         });
       }

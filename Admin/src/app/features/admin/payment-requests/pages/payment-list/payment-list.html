@@ -45,6 +45,9 @@
                   @if (r.type === 'vendor' && r.vendorName) {
                     <div class="text-muted small">廠商：{{ r.vendorName }}</div>
                   }
+                  @if (r.type === 'other' && r.payeeName) {
+                    <div class="text-muted small">受款人：{{ r.payeeName }}</div>
+                  }
                 </td>
                 <td>
                   <span class="badge bg-secondary-subtle text-secondary">{{ r.invoices.length }} 張</span>

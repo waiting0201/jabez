@@ -587,7 +587,8 @@ export class ApprovalTaskList {
   getSummary(t: ApprovalTask): string {
     if (t.paymentDetail) {
       const d = t.paymentDetail;
-      const vendorPart = d.paymentType === 'vendor' && d.vendorName ? `・${d.vendorName}` : '';
+      const vendorPart = d.paymentType === 'vendor' && d.vendorName ? `・${d.vendorName}`
+                       : d.paymentType === 'other' && d.payeeName ? `・${d.payeeName}` : '';
       return `${this.payTypeLabel[d.paymentType]}・${d.projectCode}${vendorPart}（${d.totalAmount.toLocaleString()} 元）`;
     }
     if (t.shiftChangeDetail) {

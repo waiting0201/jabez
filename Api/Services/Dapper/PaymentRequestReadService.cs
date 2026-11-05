@@ -26,7 +26,7 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
                pr.TotalAmount, pr.ApprovalStatus,
                sub.Name AS SubmittedBy, pr.CreatedAt, pr.SubmittedAt,
                pr.ReviewedAt, pr.ReviewNote, pr.Reason,
-               pr.VendorId, ven.Name AS VendorName, ven.TaxId AS VendorTaxId,
+               pr.VendorId, ven.Name AS VendorName, ven.TaxId AS VendorTaxId, pr.PayeeName,
                (SELECT COUNT(*) FROM ApprovalReturnLogs rl
                 WHERE rl.ApplicationType = 'payment_request' AND rl.ApplicationId = pr.Id
                   AND rl.Action = 'returned') AS ReturnCount,
@@ -708,7 +708,7 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
             SELECT pr.Id, pr.RequestNo, pr.Type AS PaymentType, proj.Code AS ProjectCode, proj.Name AS ProjectName,
                    pr.TotalAmount, pr.ApprovalStatus, pr.ApprovalItemId, pr.CurrentStepOrder,
                    sub.Name AS SubmittedBy, sub.SignatureUrl AS SubmittedBySignatureUrl, pr.CreatedAt, pr.SubmittedAt, pr.ReviewedAt, pr.ReviewNote,
-                   pr.Reason,
+                   pr.Reason, pr.PayeeName,
                    pr.VendorId, ven.Name AS VendorName, ven.TaxId AS VendorTaxId,
                    ven.ContactPerson AS VendorContactPerson, ven.Phone AS VendorPhone,
                    {VendorBankAccountExpr} AS VendorBankAccount, ven.Address AS VendorAddress,
@@ -1492,7 +1492,8 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
                 (string?)x.pr.VendorAddress,
                 instDicts.Payment.TryGetValue((int)x.pr.Id, out var prInst) ? [.. prInst] : null,
                 installments.ComputeStatus(instDicts.Payment.GetValueOrDefault((int)x.pr.Id, [])),
-                GetPaymentAttachments((int)x.pr.Id)),
+                GetPaymentAttachments((int)x.pr.Id),
+                (string?)x.pr.PayeeName),
             null, null, null, null, null, null,
             GetRecords("payment_request", (int)x.pr.Id),
             GetDesignatedReviewers("payment_request", (int)x.pr.Id),
@@ -2076,6 +2077,7 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
             (int?)x.pr.VendorId,
             (string?)x.pr.VendorName,
             (string?)x.pr.VendorTaxId,
-            ReturnCount: (int)x.pr.ReturnCount));
+            ReturnCount: (int)x.pr.ReturnCount,
+            PayeeName:   (string?)x.pr.PayeeName));
     }
 }

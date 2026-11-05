@@ -73,7 +73,8 @@ public sealed record PaymentRequestDto(
     InstallmentDto[]? Installments = null,
     string?          PaymentStatus = null,
     AttachmentDto[]? Attachments = null,
-    int              ReturnCount = 0);   // 曾被退回修改次數（ApprovalReturnLogs，重送不清；清單徽章用）
+    int              ReturnCount = 0,    // 曾被退回修改次數（ApprovalReturnLogs，重送不清；清單徽章用）
+    string?          PayeeName   = null); // 受款人名稱（僅 type=other，申請人自填）
 
 public sealed record CreatePaymentRequestRequest(
     string              Type,
@@ -151,7 +152,8 @@ public sealed record PaymentTaskDetailDto(
     string?          VendorAddress        = null,
     InstallmentDto[]? Installments        = null,
     string?          PaymentStatus        = null,   // Unpaid | PartiallyPaid | FullyPaid
-    AttachmentDto[]? Attachments          = null);
+    AttachmentDto[]? Attachments          = null,
+    string?          PayeeName            = null);  // 受款人名稱（僅 type=other，申請人自填）
 
 public sealed record LeaveTaskDetailDto(
     int      LeaveRequestId,

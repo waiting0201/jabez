@@ -84,6 +84,8 @@ export interface PaymentRequest {
   vendorId?: number;
   vendorName?: string;
   vendorTaxId?: string;
+  /** 受款人名稱（僅 type=other，申請人自填） */
+  payeeName?: string | null;
   createdAt: Date;
   submittedAt: Date | null;   // 送簽日期（申請日期）；草稿為 null
   // 分期撥款（共用 InstallmentDto / PaymentInstallmentStatus 定義於 approval-tasks model）

@@ -243,6 +243,7 @@ export class PaymentForm implements OnInit {
     type:      ['vendor', Validators.required],
     projectId: [null as number | null, Validators.required],
     vendorId:  [null as number | null, Validators.required],   // 預設 type=vendor 故必填
+    payeeName: [''],                                            // type=other 時必填（受款人，申請人自填）
     reason:    ['', Validators.required],
     invoices:  this.fb.array([]),
   });
@@ -270,6 +271,11 @@ export class PaymentForm implements OnInit {
         this.vendorTypeaheadModel = null;
       }
       c.updateValueAndValidity();
+
+      // 「其他」請款：受款人名稱必填（非廠商主檔，申請人自填）
+      const payee = this.form.get('payeeName')!;
+      payee.setValidators(t === 'other' ? [Validators.required, Validators.maxLength(100)] : null);
+      payee.updateValueAndValidity();
     });
 
     // 檢查簽核流程是否有「申請人指定審核」步驟（呼叫輕量端點，免 approvals:read 權限）
@@ -322,7 +328,7 @@ export class PaymentForm implements OnInit {
         this.loadedTotalAmount    = r.totalAmount ?? 0;
         this.loadedAttachments    = r.attachments ?? [];
         if (this.isReadOnly) this.form.disable();
-        this.form.patchValue({type: r.type, projectId: r.projectId, reason: r.reason ?? '', vendorId: r.vendorId ?? null});
+        this.form.patchValue({type: r.type, projectId: r.projectId, reason: r.reason ?? '', vendorId: r.vendorId ?? null, payeeName: r.payeeName ?? ''});
 
         // 若請款單帶有 vendorId 但下拉中沒有（例如已停用），補回該選項以保留當前值
         if (r.vendorId && r.vendorName && !this.vendors().some(v => v.id === r.vendorId)) {
@@ -570,6 +576,8 @@ export class PaymentForm implements OnInit {
     // vendorId：永遠帶入（含 type=vendor 必填、其他類型回傳空字串讓後端強制清空）
     const vendorId = this.form.get('vendorId')?.value;
     fd.append('vendorId', type === 'vendor' && vendorId ? String(vendorId) : '');
+    // payeeName：永遠帶入（type=other 必填；其他類型送空字串，後端強制清空）
+    fd.append('payeeName', type === 'other' ? (this.form.get('payeeName')?.value || '').trim() : '');
 
     // 指定審核者清單（從 picker payload 組成，含 approvalStepOrder 與 selectedDepartmentId）
     if (this._pickerPayload.length > 0) {

@@ -153,6 +153,23 @@
               </div>
             }
 
+            @if (form.get('type')?.value === 'other') {
+              <div class="row g-3 mb-4">
+                <div class="col-12 col-md-6">
+                  <label class="form-label fw-500">受款人 <span class="text-danger">*</span></label>
+                  @if (isReadOnly) {
+                    <p class="form-control-plaintext fw-500 mb-0">{{ form.get('payeeName')?.value || '—' }}</p>
+                  } @else {
+                    <input type="text" class="form-control" formControlName="payeeName" maxlength="100"
+                           placeholder="請輸入受款人姓名或名稱">
+                    @if (form.get('payeeName')?.invalid && form.get('payeeName')?.touched) {
+                      <div class="text-danger small mt-1">請填寫受款人。</div>
+                    }
+                  }
+                </div>
+              </div>
+            }
+
             <div class="mb-4">
               <label class="form-label fw-500">請款原因 <span class="text-danger">*</span></label>
               @if (isReadOnly) {

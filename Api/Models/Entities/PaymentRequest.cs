@@ -7,6 +7,7 @@ public class PaymentRequest
     public string    Type           { get; set; } = string.Empty; // vendor | general | business_trip | other
     public int       ProjectId      { get; set; }
     public int?      VendorId       { get; set; }
+    public string?   PayeeName      { get; set; }                 // 受款人名稱：僅 type=other 由申請人自填，其餘類型恆為 null
     public int?      ApprovalItemId { get; set; }
     public decimal   TotalAmount    { get; set; }
     public string    ApprovalStatus   { get; set; } = "draft";    // draft | pending | approved | rejected | returned
