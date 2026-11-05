@@ -12,6 +12,13 @@ public sealed class PayrollReadService(IDbConnection db, IDisasterPayrollService
     /// 指定員工時只計算該員工（供 GET /me/payroll 員工自助查詢近 N 個月使用）；
     /// null＝全公司（人事薪資頁 / 寄送薪資單）。計算邏輯完全共用，不另開一套公式。
     /// </param>
+    /// <summary>
+    /// 假日執行活動已於四週彈性工時切換後退場（最後一批為 10 月活動，歸屬 11 月薪資）。
+    /// 自此月份起薪資明細 / 總表 / 薪資信不再顯示「假日執行活動天數 / 假日津貼」（2026-11-05 業務決議）。
+    /// 防呆：該月仍有人領到假日津貼時照常顯示，避免把實際發放的金額藏起來。
+    /// </summary>
+    public static readonly DateTime HolidayAllowanceHiddenFrom = new(2026, 12, 1);
+
     public async Task<MonthlyPayrollDto> CalculateMonthlyPayrollAsync(int year, int month, Guid? employeeId = null)
     {
         var firstDay          = new DateTime(year, month, 1);
@@ -516,7 +523,8 @@ public sealed class PayrollReadService(IDbConnection db, IDisasterPayrollService
                 compSettlementNote,
                 disasterUnpaidDays,
                 disasterDeduction,
-                (bool)emp.ShowOvertimePay));
+                (bool)emp.ShowOvertimePay,
+                firstDay < HolidayAllowanceHiddenFrom || holidayDays > 0m || holidayAllowance != 0m));
         }
 
         return new MonthlyPayrollDto(
@@ -541,6 +549,7 @@ public sealed class PayrollReadService(IDbConnection db, IDisasterPayrollService
             results.Sum(r => r.CalculatedOvertimePay),
             results.Sum(r => r.PublicHolidayDoublePay),
             results.Sum(r => r.CompensatorySettlementAmount),
-            results.Sum(r => r.DisasterDeduction));
+            results.Sum(r => r.DisasterDeduction),
+            results.Any(r => r.ShowHolidayAllowance));
     }
 }

@@ -39,7 +39,8 @@
 10. **實領薪水** = 底薪 + 伙食費 + 加班費 + **加班費（加班申請）** + 加給合計 + 假日津貼 + **國定假日加倍工資** + **補休未休完津貼** + 其他加項 − 勞保費 − 健保費 − 事假扣薪 − 病假扣薪 − 生理假扣薪 − 家庭照顧假扣薪 − 其他扣項 − 勞退自提扣款
    - **加給合計** = 其他加給 + 代扣代付款（2 種來自 User 表，由最新生效 SalaryAdjustmentRecord 同步而來，亦可在基本資料手動覆寫，null/未填視為 0）
      - 2026-08 移除職務加給 / 主管加給 / 外派加給。DB 欄位（`Users` / `SalaryAdjustmentRecords` 各 3 欄）**刻意保留不 DROP** 作歷史封存，程式已完全不讀寫；同步用的 no-op migration 見 `RemoveThreeAllowancesFromModel`。
-   - **加班費** 即 `User.OvertimePay`，畫面名稱為 **「加班費(免稅)」**（2026-11-05 更名）。員工另有 `User.ShowOvertimePay`（預設 true）：false 時員工端薪資明細卡、個人資訊頁、薪資信**不列這一行**，但**金額照常計入實領**（業務決議只控制顯示，故員工看到的明細加總會比實領少該金額）；管理端薪資頁照列並加註「員工薪資明細不顯示」，Excel 總表不受影響。
+   - **加班費** 即 `User.OvertimePay`，畫面名稱為 **「加班費(免稅)」**（2026-11-05 更名）。員工另有 `User.ShowOvertimePay`（預設 true）：false 時薪資明細卡（人事薪資編輯與個人資訊共用）、個人資訊過往薪資表、薪資信**不列這一行**，但**金額照常計入實領**（業務決議只控制顯示，故明細加總會比實領少該金額）；Excel 總表不受影響。
+   - **假日執行活動天數 / 假日津貼自 2026-12 薪資月份起不顯示**（假日執行活動已於四週彈性工時切換後退場，最後一批 10 月活動歸屬 11 月薪資）：明細卡、薪資清單欄與總計卡、Excel 兩欄、個人資訊、薪資信皆隱藏；該月仍有人有假日津貼時照常顯示（防呆，避免藏起實際發放的金額）。判定單一真相 `PayrollReadService.HolidayAllowanceHiddenFrom`，經 `EmployeePayrollDto.ShowHolidayAllowance` / `MonthlyPayrollDto.ShowHolidayAllowance` 帶給前端。
    - **加班費（加班申請）** 見第 12 條 —— 與 `User.OvertimePay`（人事手填的固定月額）**併存、不取代**，兩者是不同來源的兩筆錢，薪資單分列兩行。
    - 底薪與加給若當月有育嬰留停，已為折減後的金額（見第 9 條）。
 11. **勞退自提扣款** = 提繳底薪 × `User.LaborPensionSelfContributionRate`（%，0~6 整數，員工自願提撥）÷ 100（四捨五入至整數）

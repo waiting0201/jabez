@@ -237,7 +237,7 @@ public sealed class PayrollHandler(IPayrollReadService reader, AppDbContext db, 
             ("其他加給", emp.OtherAllowanceAmount),
             ("代扣代付款", emp.AdjustmentDifference),
         };
-        int rowIdx = 4; // 已有 底薪/伙食/加班費/加班費(加班申請) 4 列
+        int rowIdx = emp.ShowOvertimePay ? 4 : 3; // 已有 底薪/伙食/加班費(免稅)/加班費(加班申請)；加班費(免稅)可能隱藏
         foreach (var (label, value) in allowanceRows)
         {
             if (value == 0m) continue;
@@ -247,11 +247,15 @@ public sealed class PayrollHandler(IPayrollReadService reader, AppDbContext db, 
             """;
             rowIdx++;
         }
-        var holidayBg = rowIdx % 2 == 1 ? " style=\"background:#FDFAF5\"" : "";
-        earningsRows += $"""
+        // 假日津貼：假日執行活動已退場，2026-12 起的薪資月份不列（仍有金額時照列，見 PayrollReadService.HolidayAllowanceHiddenFrom）
+        if (emp.ShowHolidayAllowance)
+        {
+            var holidayBg = rowIdx % 2 == 1 ? " style=\"background:#FDFAF5\"" : "";
+            earningsRows += $"""
             <tr{holidayBg}><td style="padding:8px 12px">假日津貼（{emp.HolidayTravelDays.ToString("0.#")} 天）</td><td style="padding:8px 12px;text-align:right">{fmt(emp.HolidayAllowance)}</td></tr>
             """;
-        rowIdx++;
+            rowIdx++;
+        }
         // 國定假日出勤加倍工資（四週彈性工時 §6.3.1）。切換日前恆為 0，故整列跳過而非印 0。
         // ⚠ 斑馬色靠 rowIdx 累加，新增列一定要 rowIdx++，否則其後每一列的底色全反過來。
         if (emp.PublicHolidayWorkDays > 0)
