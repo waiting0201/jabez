@@ -195,10 +195,13 @@ public static class OvertimeRequestGuard
     /// 事後申請資格判定（資料面）：須於<b>加班日後一個工作日內</b>提出（截止日＝加班日之後第一個公司工作日 23:59:59，
     /// 遇週六日 / 國定假日順延，見 <see cref="WorkCalendarHelper.NextCompanyWorkingDayAsync"/>）、當日有出缺勤紀錄、
     /// 已<b>親自</b>打下班卡（非系統補卡）、且尚無加班打卡。
+    /// <b>該員當日為非上班日（休假日 / 國定假日等，2026-11-05）不要求出缺勤紀錄與下班卡</b>：休假日加班本來就沒有上下班卡，
+    /// 原規則會把這類補申請整批擋掉；核准時若無紀錄由 <see cref="PostHocOvertimeService"/> 建立只含加班時間的紀錄（比照休假日打加班開始卡）。
     /// <c>GET /overtime-requests/post-hoc-context</c> 與送件驗證共用，避免兩處漂移。回傳的 <c>Record</c> 為 AsNoTracking 快照。
     /// </summary>
     public static async Task<(bool Eligible, string? Reason, Models.Entities.AttendanceRecord? Record, DateTime? Deadline)>
-        EvaluatePostHocEligibilityAsync(AppDbContext db, ICalendarDayReadService calendarReader, Guid ownerId, DateTime overtimeDate)
+        EvaluatePostHocEligibilityAsync(AppDbContext db, ICalendarDayReadService calendarReader,
+            IShiftScheduleReadService shiftSchedule, Guid ownerId, DateTime overtimeDate)
     {
         var day = overtimeDate.Date;
         var today = Clock.Today;
@@ -214,11 +217,15 @@ public static class OvertimeRequestGuard
         var record = await db.AttendanceRecords.AsNoTracking()
             .FirstOrDefaultAsync(a => a.UserId == ownerId && a.RecordDate == day);
 
-        if (record is null || record.ClockOutTime is null)
-            return (false, $"{day:yyyy/MM/dd} 尚未打下班卡，無法申請事後加班；請改用正常申請，或下班打卡後再申請。", record, deadline);
-        if (record.IsClockOutAuto)
-            return (false, $"{day:yyyy/MM/dd} 的下班卡為系統補卡（非親自打卡），無法申請事後加班，請洽主管由出缺勤補正。", record, deadline);
-        if (record.OvertimeStartTime is not null || record.OvertimeEndTime is not null)
+        var isWorkDay = await shiftSchedule.ResolveDayTypeAsync(ownerId, day) == WorkDayTypes.Work;
+        if (isWorkDay)
+        {
+            if (record is null || record.ClockOutTime is null)
+                return (false, $"{day:yyyy/MM/dd} 尚未打下班卡，無法申請事後加班；請改用正常申請，或下班打卡後再申請。", record, deadline);
+            if (record.IsClockOutAuto)
+                return (false, $"{day:yyyy/MM/dd} 的下班卡為系統補卡（非親自打卡），無法申請事後加班，請洽主管由出缺勤補正。", record, deadline);
+        }
+        if (record is not null && (record.OvertimeStartTime is not null || record.OvertimeEndTime is not null))
             return (false, $"{day:yyyy/MM/dd} 已有加班打卡紀錄，請改用正常申請（或洽主管由出缺勤補正）。", record, deadline);
 
         return (true, null, record, deadline);
@@ -236,7 +243,7 @@ public static class OvertimeRequestGuard
         IWorkdayScheduleProvider scheduleProvider,
         Guid ownerId, DateTime overtimeDate, DateTime? actualStart, DateTime? actualEnd, decimal projectHours)
     {
-        var (eligible, reason, _, _) = await EvaluatePostHocEligibilityAsync(db, calendarReader, ownerId, overtimeDate);
+        var (eligible, reason, _, _) = await EvaluatePostHocEligibilityAsync(db, calendarReader, shiftSchedule, ownerId, overtimeDate);
         if (!eligible) throw AppException.BadRequest(reason!);
 
         if (actualStart is null || actualEnd is null)

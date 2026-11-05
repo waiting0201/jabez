@@ -26,6 +26,8 @@ public static class AttendanceAuditWriter
         db.AttendanceAuditLogs.Add(new AttendanceAuditLog
         {
             AttendanceRecordId  = record.Id,
+            // 同一交易新建的紀錄（Id 尚為 0，例：休假日事後加班核准）以導覽屬性讓 EF 存檔時回填 FK
+            AttendanceRecord    = record.Id == 0 ? record : null,
             OwnerUserId         = record.UserId,
             RecordDate          = record.RecordDate,
             ModifiedById        = modifiedById,

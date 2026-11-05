@@ -30,7 +30,7 @@ public static class PostHocOvertimeService
 
     /// <summary>
     /// 核准前的預檢（在任何狀態變更之前呼叫，避免批次核准中途丟例外留下髒的 tracked 變更）：
-    /// 當日出缺勤已有（非本單的）加班打卡 → 400，請 HR 處理。
+    /// 當日出缺勤已有（非本單的）加班打卡 → 400，請 HR 處理。當日無紀錄（休假日）不擋，核准時建立。
     /// </summary>
     public static async Task EnsureCanApplyAsync(AppDbContext db, OvertimeRequest ot)
     {
@@ -51,11 +51,19 @@ public static class PostHocOvertimeService
 
         var rec = await FindRecordAsync(db, ot, track: true);
         EnsureRecordUsable(rec, ot);
-        var record = rec!;
 
         var start = ot.ActualStartTime!.Value;
         var end   = ot.ActualEndTime!.Value;
         var now   = Clock.Now;
+
+        // 休假日事後申請（2026-11-05）：當日沒有任何打卡 → 建立只含加班時間的紀錄（比照休假日打加班開始卡）。
+        // 送件時已驗證僅非上班日可無紀錄，故走到這裡的 null 必為休假日。
+        var record = rec ?? db.AttendanceRecords.Add(new AttendanceRecord
+        {
+            UserId     = ot.EmployeeId!.Value,
+            RecordDate = ot.OvertimeDate.Date,
+            CreatedAt  = now,
+        }).Entity;
 
         // 已綁定本單且值相同（重跑）→ 不重複寫稽核，只重新結算
         bool alreadyApplied = record.OvertimeRequestId == ot.Id
@@ -88,9 +96,8 @@ public static class PostHocOvertimeService
 
     private static void EnsureRecordUsable(AttendanceRecord? rec, OvertimeRequest ot)
     {
-        if (rec is null)
-            throw AppException.BadRequest(
-                $"找不到 {ot.OvertimeDate:yyyy/MM/dd} 的出缺勤紀錄，無法寫入事後加班，請洽 HR 處理後再核准。");
+        // 無紀錄＝休假日事後申請（送件時資格已驗證），核准時自動建立，見 ApplyOnApprovalAsync
+        if (rec is null) return;
 
         bool hasOtherPunch = (rec.OvertimeStartTime is not null || rec.OvertimeEndTime is not null)
                           && rec.OvertimeRequestId != ot.Id;
