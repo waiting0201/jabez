@@ -1156,6 +1156,8 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
         var sql = $"""
             SELECT wo.Id, wo.AdvanceRequestId, wo.WriteOffNo, wo.RequestNo, wo.GrandTotal, wo.ApprovalStatus,
                    wo.CreatedAt, wo.ReturnedAmount, wo.ReturnedAt,
+                   (SELECT ISNULL(SUM(wi.CashAmount), 0)  FROM WriteOffItems wi WHERE wi.WriteOffRecordId = wo.Id) AS CashTotal,
+                   (SELECT ISNULL(SUM(wi.CheckAmount), 0) FROM WriteOffItems wi WHERE wi.WriteOffRecordId = wo.Id) AS CheckTotal,
                    {WriteOffRequestReadService.FinancePassedSql("wo")}
             FROM WriteOffRecords wo
             WHERE wo.ApprovalStatus <> 'rejected'
@@ -1170,7 +1172,9 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
             dict[advId].Add(new WriteOffRoundDto(
                 (int)r.Id, (int)r.WriteOffNo, (string?)r.RequestNo, (decimal)r.GrandTotal,
                 (string)r.ApprovalStatus, (DateTime)r.CreatedAt, false, (decimal?)r.ReturnedAmount, (DateTime?)r.ReturnedAt,
-                (int)r.FinancePassed == 1));
+                (int)r.FinancePassed == 1,
+                CashTotal:  (decimal)r.CashTotal,
+                CheckTotal: (decimal)r.CheckTotal));
         }
         return dict;
     }

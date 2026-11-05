@@ -370,6 +370,10 @@ export interface WriteOffRound {
   financePassed?: boolean;
   /** 前次沖銷的明細（本單列為 null / 不帶） */
   items?: WriteOffRoundItem[] | null;
+  /** 該次沖銷明細「現金花費」合計（申請人代墊） */
+  cashTotal?: number;
+  /** 該次沖銷明細「支票（月結）」合計（公司月結支付，不屬申請人應繳 / 補撥） */
+  checkTotal?: number;
 }
 
 /** 前次沖銷明細列（結構同 WriteOffItem 的子集，避免與 write-off-request.model 循環匯入） */

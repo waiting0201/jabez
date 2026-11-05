@@ -65,7 +65,9 @@ public sealed record WriteOffRoundDto(
     decimal? ReturnedAmount = null,    // 該次沖銷的同仁繳回金額（歷程列顯示用）
     DateTime? ReturnedAt = null,       // 該次繳回日期（歷程列 / 沖銷 PDF 逐筆列出用）
     bool      FinancePassed = false,   // 財務管理部關卡已核准（ApprovalStatus=approved 時恆 true）；判準見 WriteOffRequestReadService.FinancePassedSql
-    WriteOffItemDto[]? Items = null);  // 前次沖銷明細（只在非本單列填；本單列為 null，本單明細在主 DTO 的 Items）
+    WriteOffItemDto[]? Items = null,   // 前次沖銷明細（只在非本單列填；本單列為 null，本單明細在主 DTO 的 Items）
+    decimal   CashTotal  = 0m,         // 該次沖銷明細「現金花費」合計（申請人代墊，結清對帳的現金分項）
+    decimal   CheckTotal = 0m);        // 該次沖銷明細「支票（月結）」合計（公司月結支付，不屬申請人應繳 / 補撥）
 
 // ── 依預支單彙總檢視 DTO ─────────────────────────────────────────────────────
 

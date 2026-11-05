@@ -305,6 +305,8 @@ public sealed class WriteOffRequestReadService(IDbConnection db, IInstallmentRea
         var sql = $"""
             SELECT wo.Id, wo.AdvanceRequestId, wo.WriteOffNo, wo.RequestNo, wo.GrandTotal, wo.ApprovalStatus,
                    wo.CreatedAt, wo.ReturnedAmount, wo.ReturnedAt,
+                   (SELECT ISNULL(SUM(wi.CashAmount), 0)  FROM WriteOffItems wi WHERE wi.WriteOffRecordId = wo.Id) AS CashTotal,
+                   (SELECT ISNULL(SUM(wi.CheckAmount), 0) FROM WriteOffItems wi WHERE wi.WriteOffRecordId = wo.Id) AS CheckTotal,
                    {FinancePassedSql("wo")}
             FROM WriteOffRecords wo
             WHERE wo.AdvanceRequestId IN @AdvIds AND wo.ApprovalStatus <> 'rejected'
@@ -326,7 +328,8 @@ public sealed class WriteOffRequestReadService(IDbConnection db, IInstallmentRea
                     (string)r.ApprovalStatus, (DateTime)r.CreatedAt, isCurrent,
                     (decimal?)r.ReturnedAmount, (DateTime?)r.ReturnedAt,
                     (int)r.FinancePassed == 1,
-                    isCurrent ? null : [.. itemLookup[id]]);
+                    isCurrent ? null : [.. itemLookup[id]],
+                    (decimal)r.CashTotal, (decimal)r.CheckTotal);
             }).ToArray());
     }
 
