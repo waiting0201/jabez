@@ -867,7 +867,7 @@
 | 消費點 | 現行行為 | 新制 |
 |---|---|---|
 | `OvertimePayCalculator`（`IsHolidayAsync`） | 排班制員工**恆判平日**倍率 | 改看當日是**上班日／休息日／例假日**（例假日禁止加班） |
-| `AttendanceHandler`（休假日加班免下班卡） | 排班制員工恆不適用休假日條件 | 改看個人排定的休假日 |
+| `AttendanceHandler`（休假日加班免下班卡） | 排班制員工恆不適用休假日條件 | 改看個人排定的休假日（**2026-11-05 才補上**：原本新制仍看公司行事曆，平日休假日的已核准加班打不了卡；現以 `ClockDayPolicy.AllowsClockInOut` 判定） |
 | `LeaveRequestHandler` / `LeaveDayExpander`（請假扣假日） | 排班制員工請假**不扣**六日與國定假日 | 改扣個人排定的例假／休假日 ✅ **2026-09-29 已實作** |
 | `LeaveRevocationHandler`（銷假逐日展開） | 同上 | 同上 ✅ |
 | `AttendanceLeaveMerger`（出缺勤報表工作日集合） | 依旗標分兩組查行事曆 | 改 per-user（見 §9.2 效能重估）✅ 查詢區間全在切換日前仍分兩組快取 |

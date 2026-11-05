@@ -391,7 +391,7 @@ public sealed class AttendanceHandler(
 
         // 3. 下班卡前置條件：休假日 / 全日請假豁免
         var todayLeaves = await reader.GetLeavesOnDateAsync(userId, DateOnly.FromDateTime(today));
-        bool exempt = await CanOvertimeWithoutClockOutAsync(userId, today, todayLeaves);
+        bool exempt = await CanOvertimeWithoutClockOutAsync(userId, today, todayLeaves, otCtx);
         if (record?.ClockOutTime is null && !exempt)
             throw AppException.BadRequest(record?.ClockInTime is null
                 ? "請先完成上下班打卡。"
@@ -745,7 +745,7 @@ public sealed class AttendanceHandler(
     private static DateTime ComputeOvertimeNotBefore(
         DateTime today, DateTime? clockOutAt, IReadOnlyList<ActiveLeaveDto> todayLeaves, ClockContext otCtx)
     {
-        var window    = ExpectedWorkWindow.Compute(today, ToLeaveDays(today, todayLeaves), otCtx.Schedule);
+        var window    = ExpectedWorkWindow.Compute(today, ToLeaveDays(today, todayLeaves, otCtx.Schedule), otCtx.Schedule);
         var notBefore = window.End ?? today.Add(otCtx.Schedule.End.ToTimeSpan());
         if (clockOutAt is { } outAt && outAt > notBefore) notBefore = outAt;
         return notBefore;
@@ -760,16 +760,36 @@ public sealed class AttendanceHandler(
         DateTime today, IReadOnlyList<ActiveLeaveDto> todayLeaves, WorkdaySchedule schedule)
     {
         if (todayLeaves.Count == 0) return null;
-        var window = ExpectedWorkWindow.Compute(today, ToLeaveDays(today, todayLeaves), schedule);
+        var window = ExpectedWorkWindow.Compute(today, ToLeaveDays(today, todayLeaves, schedule), schedule);
         return window.End ?? today;
     }
 
-    /// <summary>當日已核准請假 → ExpectedWorkWindow 吃的逐日時段（跨日假單裁到當日 00:00 / 23:59:59）</summary>
-    private static List<LeaveDay> ToLeaveDays(DateTime today, IReadOnlyList<ActiveLeaveDto> todayLeaves) =>
-        todayLeaves.Select(l => new LeaveDay(
-            today, 0m, string.Empty,
-            l.StartDate.Date < today ? TimeOnly.MinValue : TimeOnly.FromDateTime(l.StartDate),
-            l.EndDate.Date   > today ? TimeOnly.MaxValue : TimeOnly.FromDateTime(l.EndDate))).ToList();
+    /// <summary>
+    /// 當日已核准請假 → ExpectedWorkWindow 吃的逐日時段（跨日假單裁到當日 00:00 / 23:59:59）。
+    /// <b>半天制假別（年假 / 補休 / 高階主管假）</b>存的是代表時刻（2026-10-21 起上午 09:00–13:00、下午 13:00–17:00），
+    /// 不等於實際涵蓋的時段 —— 新制下午半天實際到 18:00、舊制上午半天實際從 08:00 起。
+    /// 故比照 <see cref="LeaveDayExpander"/> 以「起 &lt; 13:00 ＝含上午、訖 &gt; 13:00 ＝含下午」分類，換成該日時段的上午 / 下午 / 全天。
+    /// 不正規化的話：新制全天年假（09:00–17:00）留下 17:00–18:00 應出勤，被誤判「非全日請假」→ 加班仍要求先打下班卡（2026-11-05）。
+    /// </summary>
+    private static List<LeaveDay> ToLeaveDays(
+        DateTime today, IReadOnlyList<ActiveLeaveDto> todayLeaves, WorkdaySchedule schedule) =>
+        todayLeaves.Select(l =>
+        {
+            if (LeaveDayExpander.GetTimeUnit(l.LeaveType) == LeaveTimeUnit.HalfDay)
+            {
+                var boundaryHour = schedule.HalfDayPmStart.Hour;
+                bool am = l.StartDate.Date < today || l.StartDate.Hour < boundaryHour;
+                bool pm = l.EndDate.Date   > today || l.EndDate.Hour   > boundaryHour;
+                if (am || pm)
+                    return new LeaveDay(today, 0m, string.Empty,
+                        am ? schedule.Start : schedule.HalfDayPmStart,
+                        pm ? schedule.End   : schedule.HalfDayAmEnd);
+            }
+            return new LeaveDay(
+                today, 0m, string.Empty,
+                l.StartDate.Date < today ? TimeOnly.MinValue : TimeOnly.FromDateTime(l.StartDate),
+                l.EndDate.Date   > today ? TimeOnly.MaxValue : TimeOnly.FromDateTime(l.EndDate));
+        }).ToList();
 
     /// <summary>
     /// 今日是否「免下班卡即可打加班開始」：
@@ -777,31 +797,35 @@ public sealed class AttendanceHandler(
     /// (b) 當日全日已核准請假
     /// GET /attendances/today 的 CanOvertimeWithoutClockOut 與 OvertimeStartAsync 的放行共用此判定。
     /// 排班制員工（六日與國定假日皆為工作日）不適用 (a)，須照常先打下班卡。
+    /// <b>四週彈性工時切換後（2026-11-05 修正）</b>，(a) 改看<b>個人日別</b>：當日不允許打上下班卡
+    /// （<see cref="ClockDayPolicy.AllowsClockInOut"/>：休假日 / 例假日 / 非活動日預定人力的國定假日）即免下班卡。
+    /// 原本新制仍只看公司行事曆 → 排在平日的休假日被要求先打下班卡，但新制又鎖住上下班打卡，加班按鈕永遠按不了；
+    /// 反之排在週末的上班日也不該免。例假日另由 <see cref="ClockDayPolicy.AllowsOvertime"/> 擋加班，與此無關。
     /// </summary>
     private async Task<bool> CanOvertimeWithoutClockOutAsync(
-        Guid userId, DateTime today, IReadOnlyList<ActiveLeaveDto> leaves)
+        Guid userId, DateTime today, IReadOnlyList<ActiveLeaveDto> leaves, ClockContext ctx)
     {
+        if (ctx.Flexible)
+            return !ClockDayPolicy.AllowsClockInOut(ctx.DayType, ctx.IsActivityAssignee)
+                || CoversFullWorkday(leaves, today, ctx.Schedule);
+
         var isShiftWorker = await workPattern.IsShiftWorkerAsync(userId);
         if (await WorkCalendarHelper.IsHolidayAsync(calendarReader, isShiftWorker, today))
             return true;
 
-        return CoversFullWorkday(leaves, today);
+        return CoversFullWorkday(leaves, today, ctx.Schedule);
     }
 
     /// <summary>
-    /// 當日已核准請假是否涵蓋整個上班時段：上午段 08:00–12:00 與下午段 13:00–17:00 各需被某一張單完整覆蓋。
-    /// 可由一張全日單（存 00:00–23:59）或「上午半天 + 下午半天」兩張單共同滿足；只請半天則不成立。
+    /// 當日已核准請假是否涵蓋整個上班時段＝<see cref="ExpectedWorkWindow"/> 算出當日免出勤（Start 為 null）。
+    /// 時段依該日適用的 <paramref name="schedule"/>（舊制 08:00–17:00 / 新制 09:00–18:00，含跨午休正規化），
+    /// 可由一張全日單或「上午半天 + 下午半天」兩張單共同滿足；只請半天則不成立。
+    /// 2026-11-05 前寫死舊制 08–12 / 13–17，新制下全天年假（存 09:00–17:00）與上下午兩張半天假都判不成全日。
     /// 刻意不用 Hours >= 8 判定 —— 多日請假的 Hours 是「天數 × 8」會誤判。
     /// </summary>
-    private static bool CoversFullWorkday(IReadOnlyList<ActiveLeaveDto> leaves, DateTime today)
-    {
-        if (leaves.Count == 0) return false;
-
-        bool Covers(DateTime from, DateTime to) => leaves.Any(l => l.StartDate <= from && l.EndDate >= to);
-
-        return Covers(today.AddHours(WorkdayHours.StartHour),    today.AddHours(WorkdayHours.LunchStartHour))
-            && Covers(today.AddHours(WorkdayHours.LunchEndHour), today.AddHours(WorkdayHours.EndHour));
-    }
+    private static bool CoversFullWorkday(IReadOnlyList<ActiveLeaveDto> leaves, DateTime today, WorkdaySchedule schedule) =>
+        leaves.Count > 0
+        && ExpectedWorkWindow.Compute(today, ToLeaveDays(today, leaves, schedule), schedule).Start is null;
 
     /// <summary>
     /// 組合今日打卡 DTO + 當日已核准請假清單。打卡紀錄不存在時回傳 Id=0 的空殼 DTO，仍帶請假資訊供前端顯示提示。
@@ -821,10 +845,9 @@ public sealed class AttendanceHandler(
         }
 
         var leaves = await reader.GetLeavesOnDateAsync(userId, today);
-        var exempt = await CanOvertimeWithoutClockOutAsync(userId, now.Date, leaves);
-
         // 四週彈性工時的旗標：前端不自行重組日別規則，只吃這裡算好的結果
         var ctx = await ResolveClockContextAsync(userId, now);
+        var exempt = await CanOvertimeWithoutClockOutAsync(userId, now.Date, leaves, ctx);
         bool canClock = !ctx.Flexible || ClockDayPolicy.AllowsClockInOut(ctx.DayType, ctx.IsActivityAssignee);
         string? lockReason = ctx.Flexible
             ? ClockDayPolicy.ClockInOutLockReason(ctx.DayType, ctx.IsActivityAssignee)
