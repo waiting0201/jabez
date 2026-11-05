@@ -556,6 +556,9 @@ Api/
 │   │                                  #      單號 OT-{今日}-NNN、ApprovalItemId NULL）＋專案明細＋出缺勤加班起訖（無紀錄則新建，IsLate / IsEarlyLeave 無 DB 預設須明填）＋稽核；
 │   │                                  #      加班日 ≥ 切換日才開補休 lot（倍率加權、到期 7/31 或隔年 1/31）。**僅限休假日**：上班日 / 例假日 / 新制國定假日中止；
 │   │                                  #      另擋同日已有加班單 / 已有加班打卡 / 專案未填或已結案（空跑報表列出該員近 90 天用過的專案）
+│   │                                  #   23 為「已核准」的加班單補寫當日加班打卡並結算（@Commit 空跑開關，冪等；首例劉闓毅 OT-20261104-002，11/4 個人休假日打不了加班卡、SettledHours=0）：
+│   │                                  #      與 22 互補（22 新建加班單、遇同日已有單即中止；23 不建單）。寫出缺勤加班起訖（無紀錄則新建）＋稽核＋SettledHours＝min(核准, 起訖)＋新制補休 lot（已有則更新、保留已扣抵），
+│   │                                  #      等同管理者補填加班起訖 → SyncFromPunchesAsync。閘門：當日已核准新制單須恰好一張 / 已有加班打卡 / 日別非休假日即中止
 │   └── Seed/                          # 一次性匯入工具（共用 RocDateParser 解民國年）
 │       ├── EmployeeImporter + EmployeeImportDtos + employee-import.json  # 員工人事資料（RUN_EMPLOYEE_IMPORT 旗標，IMPORT_UPLOAD_FILES 控制附件上傳）
 │       ├── ProjectImporter + ProjectImportDtos + project-import.json     # 專案資料（RUN_PROJECT_IMPORT 旗標，PROJECT_IMPORT_DRY_RUN 只印不寫；來源 reference/專案資料-115.07.29.xls；以 Code upsert、期別明細全量重建）
