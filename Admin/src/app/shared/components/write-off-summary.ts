@@ -102,7 +102,9 @@ import {WriteOffRound, writeOffRoundStatus} from '../../features/admin/approval-
       }
     </div>
 
-    <!-- 結清對帳：預支 − 費用核銷 − 同仁匯回 = 尚未結清 -->
+    <!-- 結清對帳：預支 − 費用核銷 − 同仁匯回 = 尚未結清；
+         原始預支 / 實際費用核銷 / 尚未結清各再拆「現金 / 月結」——
+         現金＝申請人經手（應繳回或補撥的對象），月結＝公司直接支付廠商，不屬申請人應繳 / 補撥 -->
     <div class="border rounded mt-4 overflow-x-auto">
       <table class="table table-sm mb-0 small">
         <tbody>
@@ -110,9 +112,25 @@ import {WriteOffRound, writeOffRoundStatus} from '../../features/admin/approval-
             <td class="fw-500">原始預支金額</td>
             <td class="text-right">{{ advanceTotal() | number:'1.0-0' }}</td>
           </tr>
+          <tr class="text-muted">
+            <td class="ps-6">現金</td>
+            <td class="text-right">{{ advanceCash() | number:'1.0-0' }}</td>
+          </tr>
+          <tr class="text-muted">
+            <td class="ps-6">月結</td>
+            <td class="text-right">{{ advanceCheck() | number:'1.0-0' }}</td>
+          </tr>
           <tr>
             <td class="fw-500">實際費用核銷</td>
             <td class="text-right">{{ writtenOffTotal() | number:'1.0-0' }}</td>
+          </tr>
+          <tr class="text-muted">
+            <td class="ps-6">現金</td>
+            <td class="text-right">{{ writtenOffCash() | number:'1.0-0' }}</td>
+          </tr>
+          <tr class="text-muted">
+            <td class="ps-6">月結</td>
+            <td class="text-right">{{ writtenOffCheck() | number:'1.0-0' }}</td>
           </tr>
           <tr>
             <td class="fw-500">現金・匯款繳回</td>
@@ -134,6 +152,14 @@ import {WriteOffRound, writeOffRoundStatus} from '../../features/admin/approval-
                 <span class="badge bg-warning-subtle text-warning-emphasis ml-1">未結清</span>
               }
             </td>
+          </tr>
+          <tr class="text-muted">
+            <td class="ps-6">現金 <span class="text-xs">（申請人應繳回 ／ 應補撥申請人）</span></td>
+            <td class="text-right">{{ unsettledCash() | number:'1.0-0' }}</td>
+          </tr>
+          <tr class="text-muted">
+            <td class="ps-6">月結 <span class="text-xs">（公司月結支付，不屬申請人應繳 ／ 補撥）</span></td>
+            <td class="text-right">{{ unsettledCheck() | number:'1.0-0' }}</td>
           </tr>
         </tfoot>
       </table>
@@ -167,6 +193,16 @@ export class WriteOffSummaryComponent {
     (this.writeOffHistory() ?? []).reduce((acc, w) => acc + w.grandTotal, 0));
 
   balance = computed(() => this.advanceTotal() - this.writtenOffTotal());
+
+  // 現金 / 月結分項：預支批次的 cashTotal / checkTotal、沖銷各次的 cashTotal / checkTotal（後端以明細加總）
+  advanceCash  = computed(() => (this.advanceRounds() ?? []).reduce((acc, r) => acc + (r.cashTotal ?? 0), 0));
+  advanceCheck = computed(() => (this.advanceRounds() ?? []).reduce((acc, r) => acc + (r.checkTotal ?? 0), 0));
+  writtenOffCash  = computed(() => (this.writeOffHistory() ?? []).reduce((acc, w) => acc + (w.cashTotal ?? 0), 0));
+  writtenOffCheck = computed(() => (this.writeOffHistory() ?? []).reduce((acc, w) => acc + (w.checkTotal ?? 0), 0));
+  /** 現金尚未結清 = 現金預支 − 現金核銷 − 同仁繳回（繳回一律屬現金側）；正＝申請人應繳回、負＝公司應補撥 */
+  unsettledCash  = computed(() => this.advanceCash() - this.writtenOffCash() - this.returnedTotal());
+  /** 月結尚未結清 = 月結預支 − 月結核銷（公司與廠商之間，與申請人無關） */
+  unsettledCheck = computed(() => this.advanceCheck() - this.writtenOffCheck());
 
   returnedTotal = computed(() => this.advanceReturnedTotal() + (this.currentReturnedAmount() ?? 0));
 
