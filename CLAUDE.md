@@ -190,6 +190,7 @@ Admin/src/app/
 │   │   ├── heic.ts                       # **HEIC/HEIF 轉 JPEG 的單一入口**（2026-10）：副檔名 / MIME / ftyp 三種判定，heic-to 為主、heic2any 備援（皆 dynamic import），
 │   │                                     #   **轉不了丟例外、不得退回原檔**（舊版靜默存入 HEIC 導致 PR-20261001-001 無法預覽）。六支明細表單、ImageCompressionService、預覽 modal 共用；
 │   │                                     #   預覽 modal 遇 .heic 會經 `/files/{invoices|advance-files|write-off-invoices|travel-write-off-invoices}/{*path}` 代理取 bytes 轉檔
+│   │   ├── upload-error.ts               # **multipart 上傳總量上限（100MB）與失敗訊息**（2026-11）：送出前 `uploadTooLargeMessage(fd)` 預檢、失敗時 `saveErrorMessage(err, fallback)` 把 413 / 連線中斷翻成可讀訊息；四支發票表單共用，數字與後端 `Common/RequestBodyLimits.cs` 同步
 │   │   └── safe-url.ts                   # **預覽 iframe / 連結 URL 白名單**（2026-10 第二輪安全修補）：只認自家 API / Blob 來源，擋 `javascript:` 與外部網址；auth.interceptor 的 Bearer 亦只附加給自家 API，見 [docs/backend-design.md §4.7](docs/backend-design.md)
 │   ├── components/project-typeahead.ts   # **專案 autocomplete 共用元件**（2026-10-16，NgbTypeahead + ControlValueAccessor，值＝projectId；**兼具下拉**：點欄位 / ▼ 即列全部、打字篩選）：7 支申請表單與報表的專案選擇一律用它、不再用原生 select；清單由呼叫端傳入、`excludeIds` 做多列互斥、`allowClear` 供篩選用，見 [docs/frontend-design.md §6.1](docs/frontend-design.md)
 │   ├── components/closed-list-tabs.ts     # **個人清單「進行中 / 已結案」頁籤**（2026-11）：請款 / 預支 / 預支沖銷 / 出差請款 / 出差預支 / 出差預支沖銷六個清單共用，`?tab=closed` 存網址，列表 API 帶 `closed=true|false`，判定單一真相為後端 `Common/ClosedListFilter.cs`（請款類＝已核准且全部撥款、預支類＝`IsClosed`、沖銷類＝母單已結案），見 [docs/business/application-forms.md](docs/business/application-forms.md)
@@ -708,6 +709,7 @@ Api/
 │   │                                    收緊授權時要一起收。**advance 為反向案例**：原本毫無存取控制（逐一試 id 可讀遍全公司預支明細，
 │   │                                    而列表只列自己的單），2026-09 一併收斂＝補缺口而非放寬。兩個地雷：① TravelRequests 一表兩型，須依 `IsHolidayTravel` 傳 `travel` / `holiday_travel`，
 │   │                                    否則查不到自己的簽核足跡；② 路由層權限碼仍在最外層（無 `xxx-requests:read` 者在 AppRouter 就 403，根本進不到這裡）
+│   ├── RequestBodyLimits.cs           # **請求本文上限單一真相（100MB，2026-11）**：worker Kestrel 預設 30MB，超過會切斷連線、前端只見「儲存失敗」（90 筆發票的預支沖銷踩到）；Program.cs 設 Kestrel / FormOptions，ExceptionMiddleware 回 413 訊息；再往上調須同改 host 的 `FUNCTIONS_REQUEST_BODY_SIZE_LIMIT`
 │   ├── RequestDateGuard.cs            # 申請單「使用者輸入日期」年份合理性單一真相（2026-09 新增，純函式無 I/O）：今日 ±3 年（子女出生日期另為「過去 3 年內且不得晚於今日」），
 │   ├── ProjectAllocationValidator.cs  # 下班打卡專案佔比驗證單一真相（2026-10-16）：≥1 筆、專案不重複、每筆 0.01–100 且最多 2 位小數、合計恰 100、專案須 active；clock-out 與當日修改共用。資料存 `AttendanceProjectAllocation`（AttendanceRecord 子表，Cascade；Project 為 NO_ACTION，刪專案時被引用即擋）
 │   │                                    超出回 400 且訊息點名「是否誤填民國年」。10 種申請表的 Create / Update 全數套用（Ensure / EnsureAll / EnsureEach / EnsurePastWithin）。

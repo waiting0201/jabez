@@ -40,6 +40,7 @@ import {NgbModal, NgbTypeahead, NgbTypeaheadSelectItemEvent} from '@ng-bootstrap
 import {ScrollIntoViewDirective} from '@shared/directives/scroll-into-view.directive';
 import {ProjectTypeahead} from '@shared/components/project-typeahead';
 import {MAX_REQUEST_DATE, MIN_REQUEST_DATE} from '@shared/utils/date-bounds';
+import {saveErrorMessage, uploadTooLargeMessage} from '@shared/utils/upload-error';
 
 @Component({
   selector: 'app-payment-form',
@@ -487,6 +488,8 @@ export class PaymentForm implements OnInit {
     if (this.invoiceArray.length === 0) {this.showInvoiceError = true; return;}
     this.showInvoiceError = false;
     const fd = this._buildFormData();
+    const tooLarge = uploadTooLargeMessage(fd);
+    if (tooLarge) { this.errorMsg.set(tooLarge); return; }
     // 判斷依據是「後端已有這張單」，不是路由模式：create 成功後重送必須走 update
     const obs = this.requestId
       ? this.service.updateWithFiles(this.requestId, fd)
@@ -500,7 +503,7 @@ export class PaymentForm implements OnInit {
       },
       error: (err: HttpErrorResponse) => {
         this.saving.set(false);
-        this.errorMsg.set(err.error?.message || '儲存失敗，請稍後再試。');
+        this.errorMsg.set(saveErrorMessage(err, '儲存失敗，請稍後再試。'));
       },
     });
   }
@@ -532,6 +535,8 @@ export class PaymentForm implements OnInit {
       }
     }
     const fd = this._buildFormData();
+    const tooLarge = uploadTooLargeMessage(fd);
+    if (tooLarge) { this.errorMsg.set(tooLarge); return; }
     const save$ = this.requestId
       ? this.service.updateWithFiles(this.requestId, fd)
       : this.service.createWithFiles(fd);
@@ -549,13 +554,13 @@ export class PaymentForm implements OnInit {
           error: (err: HttpErrorResponse) => {
             this.saving.set(false);
             this.errorMsg.set(
-              (err.error?.message || '送出失敗，請稍後再試。') + '（草稿已保留，修正後可直接再送出）');
+              saveErrorMessage(err, '送出失敗，請稍後再試。') + '（草稿已保留，修正後可直接再送出）');
           },
         });
       },
       error: (err: HttpErrorResponse) => {
         this.saving.set(false);
-        this.errorMsg.set(err.error?.message || '儲存失敗，請稍後再試。');
+        this.errorMsg.set(saveErrorMessage(err, '儲存失敗，請稍後再試。'));
       },
     });
   }

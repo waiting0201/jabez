@@ -39,6 +39,12 @@ public sealed class ExceptionMiddleware(ILogger<ExceptionMiddleware> logger) : I
             logger.LogWarning(ioEx, "Form parse failed in [{Function}]: {Message}", context.FunctionDefinition.Name, ioEx.Message);
             await WriteErrorAsync(context, 400, "請求需為 multipart/form-data 或 application/x-www-form-urlencoded。", ioEx.Message);
         }
+        catch (BadHttpRequestException bhEx) when (bhEx.StatusCode == StatusCodes.Status413PayloadTooLarge)
+        {
+            // 請求本文超過 RequestBodyLimits.MaxBytes。Kestrel 可能已切斷連線，寫得回去才算數（WriteErrorAsync 自行判斷）
+            logger.LogWarning(bhEx, "Request body too large in [{Function}]", context.FunctionDefinition.Name);
+            await WriteErrorAsync(context, 413, RequestBodyLimits.TooLargeMessage, bhEx.Message);
+        }
         catch (Exception ex)
         {
             logger.LogError(ex, "Unhandled exception in [{Function}]", context.FunctionDefinition.Name);

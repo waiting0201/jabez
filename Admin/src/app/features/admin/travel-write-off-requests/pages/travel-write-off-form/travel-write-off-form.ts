@@ -27,6 +27,7 @@ import {Department} from '../../../departments/models/department.model';
 
 import {ScrollIntoViewDirective} from '@shared/directives/scroll-into-view.directive';
 import {MAX_REQUEST_DATE, MIN_REQUEST_DATE} from '@shared/utils/date-bounds';
+import {saveErrorMessage, uploadTooLargeMessage} from '@shared/utils/upload-error';
 
 @Component({
   selector: 'app-travel-write-off-form',
@@ -354,6 +355,8 @@ export class TravelWriteOffForm implements OnInit {
       return;
     }
     const fd = this._buildFormData();
+    const tooLarge = uploadTooLargeMessage(fd);
+    if (tooLarge) { this.errorMsg.set(tooLarge); return; }
     this.errorMsg.set('');
     this.saving.set(true);
     // 判斷依據是「後端已有這張單」，不是路由模式：create 成功後重送必須走 update
@@ -364,7 +367,7 @@ export class TravelWriteOffForm implements OnInit {
       next: () => this.router.navigate(['/admin/travel-write-off-requests']),
       error: (err: HttpErrorResponse) => {
         this.saving.set(false);
-        this.errorMsg.set(err.error?.message || '儲存失敗，請稍後再試。');
+        this.errorMsg.set(saveErrorMessage(err, '儲存失敗，請稍後再試。'));
       },
     });
   }
@@ -389,6 +392,8 @@ export class TravelWriteOffForm implements OnInit {
       }
     }
     const fd = this._buildFormData();
+    const tooLarge = uploadTooLargeMessage(fd);
+    if (tooLarge) { this.errorMsg.set(tooLarge); return; }
     this.errorMsg.set('');
     this.saving.set(true);
     const save$ = this.editId
@@ -406,13 +411,13 @@ export class TravelWriteOffForm implements OnInit {
           error: (err: HttpErrorResponse) => {
             this.saving.set(false);
             this.errorMsg.set(
-              (err.error?.message || '送出失敗，請稍後再試。') + '（草稿已保留，修正後可直接再送出）');
+              saveErrorMessage(err, '送出失敗，請稍後再試。') + '（草稿已保留，修正後可直接再送出）');
           },
         });
       },
       error: (err: HttpErrorResponse) => {
         this.saving.set(false);
-        this.errorMsg.set(err.error?.message || '儲存失敗，請稍後再試。');
+        this.errorMsg.set(saveErrorMessage(err, '儲存失敗，請稍後再試。'));
       },
     });
   }
