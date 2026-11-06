@@ -1063,6 +1063,15 @@ if (record.EffectiveDate <= Clock.Today) { /* 已生效 */ }
 | 證明文件（原住民 / 低收入 / 身心障礙 / 身分證） | 1 MB |
 | 發票圖檔 | 1 MB |
 
+### 12.2a 整個請求的大小上限（100MB，2026-11）
+
+除了單檔上限，**整個 multipart 請求本文**另有上限，單一真相 [Api/Common/RequestBodyLimits.cs](../Api/Common/RequestBodyLimits.cs)（`MaxBytes` = 100MB），由 `Program.cs` 設定 `KestrelServerOptions.Limits.MaxRequestBodySize` 與 `FormOptions.MultipartBodyLengthLimit`。
+
+- **起因**：ASP.NET Core Integration 的 worker 內建 Kestrel 預設只收 **30MB**，超過即在 `ReadFormAsync` 丟 `BadHttpRequestException` 並切斷連線，前端拿不到任何 `message`。2026-11-06 正式站一張預支沖銷 90 筆明細各附一張發票圖就撞到，同仁連按 7 次「儲存失敗，請稍後再試」（App Insights 可見 `Request body too large. The max request body size is 30000000 bytes.`）。
+- **100MB 是 Functions host 的預設上限**（`FUNCTIONS_REQUEST_BODY_SIZE_LIMIT`）：只調高 worker 端沒用，要再往上調須同時設定該 app setting。
+- `ExceptionMiddleware` 捕捉 413 的 `BadHttpRequestException` 並回 `RequestBodyLimits.TooLargeMessage`（連線已被切斷時寫不回去，故前端另有預檢，見 [frontend-design.md §12.3a](frontend-design.md)）。
+- 前端同一數字在 `Admin/src/app/shared/utils/upload-error.ts`，兩處必須一起改。
+
 ### 12.3 驗證
 
 ```csharp

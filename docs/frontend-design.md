@@ -2108,6 +2108,14 @@ async onFileSelected(event: Event) {
 | 發票 | 1 MB | 1600 |
 | 整單批次附件（請款（廠商 / 一般）/ 預支沖銷） | 10 MB（後端安全網） | 1600（圖片自動壓縮，PDF 不壓） |
 
+### 12.3a 整張單的上傳總量（100MB，2026-11）
+
+含檔案的申請表單（請款 / 預支沖銷 / 出差預支沖銷 / 出差請款）一律經 [shared/utils/upload-error.ts](../Admin/src/app/shared/utils/upload-error.ts)：
+
+- **送出前**：`const tooLarge = uploadTooLargeMessage(fd); if (tooLarge) { this.errorMsg.set(tooLarge); return; }` —— 緊接 `_buildFormData()` 之後、`saving.set(true)` 之前；超過上限直接說明並附目前 MB 數，不浪費一次上傳。
+- **失敗時**：`this.errorMsg.set(saveErrorMessage(err, '儲存失敗，請稍後再試。'))` 取代 `err.error?.message || '…'`。後端有 `message` 照用；413 → 檔案過大；**status 0（連線被切斷）** → 提示可能是檔案過大或網路不穩、建議拆單。
+- 起因：後端超過上限時會直接切斷連線，前端只會顯示通用的「儲存失敗，請稍後再試」，使用者完全不知道原因（2026-11-06，90 筆發票的預支沖銷）。上限數字與後端 `Api/Common/RequestBodyLimits.cs` 同步，見 [backend-design.md §12.2a](backend-design.md)。
+
 ### 12.4 file proxy 端點
 
 需 `users:read` 權限的敏感 PII（HR 證明文件）一律走授權代理：

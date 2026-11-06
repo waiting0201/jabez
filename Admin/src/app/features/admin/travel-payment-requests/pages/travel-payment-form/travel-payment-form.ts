@@ -34,6 +34,7 @@ import {UserLookup} from '../../../users/models/user.model';
 import {ScrollIntoViewDirective} from '@shared/directives/scroll-into-view.directive';
 import {ProjectTypeahead} from '@shared/components/project-typeahead';
 import {MAX_REQUEST_DATE, MIN_REQUEST_DATE} from '@shared/utils/date-bounds';
+import {saveErrorMessage, uploadTooLargeMessage} from '@shared/utils/upload-error';
 
 @Component({
   selector: 'app-travel-payment-form',
@@ -390,6 +391,8 @@ export class TravelPaymentForm implements OnInit {
       return;
     }
     const fd = this._buildFormData();
+    const tooLarge = uploadTooLargeMessage(fd);
+    if (tooLarge) { this.errorMsg.set(tooLarge); return; }
     this.errorMsg.set('');
     this.saving.set(true);
     // 判斷依據是「後端已有這張單」，不是路由模式：create 成功後重送必須走 update
@@ -403,7 +406,7 @@ export class TravelPaymentForm implements OnInit {
       },
       error: (err: HttpErrorResponse) => {
         this.saving.set(false);
-        this.errorMsg.set(err.error?.message || '儲存失敗，請稍後再試。');
+        this.errorMsg.set(saveErrorMessage(err, '儲存失敗，請稍後再試。'));
       },
     });
   }
@@ -433,6 +436,8 @@ export class TravelPaymentForm implements OnInit {
       }
     }
     const fd = this._buildFormData();
+    const tooLarge = uploadTooLargeMessage(fd);
+    if (tooLarge) { this.errorMsg.set(tooLarge); return; }
     this.errorMsg.set('');
     this.saving.set(true);
     const save$ = this.requestId
@@ -450,13 +455,13 @@ export class TravelPaymentForm implements OnInit {
           error: (err: HttpErrorResponse) => {
             this.saving.set(false);
             this.errorMsg.set(
-              (err.error?.message || '送出失敗，請稍後再試。') + '（草稿已保留，修正後可直接再送出）');
+              saveErrorMessage(err, '送出失敗，請稍後再試。') + '（草稿已保留，修正後可直接再送出）');
           },
         });
       },
       error: (err: HttpErrorResponse) => {
         this.saving.set(false);
-        this.errorMsg.set(err.error?.message || '儲存失敗，請稍後再試。');
+        this.errorMsg.set(saveErrorMessage(err, '儲存失敗，請稍後再試。'));
       },
     });
   }

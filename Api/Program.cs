@@ -4,7 +4,10 @@ using Jabez.Api.Middleware;
 using Jabez.Api.Routing;
 using Jabez.Api.Services;
 using Jabez.Api.Services.Dapper;
+using Jabez.Api.Common;
+using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
@@ -31,6 +34,15 @@ var host = new HostBuilder()
         // 只能靠 DB 的 AttendanceReminderLogs 反推。取樣設定見 host.json。
         services.AddApplicationInsightsTelemetryWorkerService();
         services.ConfigureFunctionsApplicationInsights();
+
+        // ── 請求本文大小上限：100MB ────────────────────────────────────────
+        // ASP.NET Core Integration 的 worker 內建 Kestrel 預設只收 30MB（30,000,000 bytes），
+        // 超過即在 ReadFormAsync 丟 BadHttpRequestException 並直接切斷連線 → 前端拿不到任何訊息，
+        // 只看到「儲存失敗，請稍後再試」。2026-11-06 正式站：預支沖銷一次 90 筆明細各附一張發票圖，
+        // 整包超過 30MB，同仁連按 7 次皆失敗。對齊 Functions host 的預設上限（100MB，
+        // FUNCTIONS_REQUEST_BODY_SIZE_LIMIT）；再往上調需兩處一起改。
+        services.Configure<KestrelServerOptions>(o => o.Limits.MaxRequestBodySize = RequestBodyLimits.MaxBytes);
+        services.Configure<FormOptions>(o => o.MultipartBodyLengthLimit = RequestBodyLimits.MaxBytes);
 
         // ── 全域 JSON 序列化：camelCase（前端 TypeScript 慣例）────────────
         // IActionResult 回應序列化（OkObjectResult 等）

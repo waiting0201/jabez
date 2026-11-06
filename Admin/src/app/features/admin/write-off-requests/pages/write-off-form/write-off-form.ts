@@ -35,6 +35,7 @@ import {DesignatedReviewersPicker, DesignatedReviewerPayload} from '../../../../
 
 import {ScrollIntoViewDirective} from '@shared/directives/scroll-into-view.directive';
 import {MAX_REQUEST_DATE, MIN_REQUEST_DATE} from '@shared/utils/date-bounds';
+import {saveErrorMessage, uploadTooLargeMessage} from '@shared/utils/upload-error';
 
 /** 明細列的三個連動金額欄（總價 = 現金花費 + 支票金額） */
 type AmountField = 'total' | 'cash' | 'check';
@@ -547,6 +548,8 @@ export class WriteOffRequestForm implements OnInit {
     }
     if (!this._validateReturned()) return;
     const fd = this._buildFormData();
+    const tooLarge = uploadTooLargeMessage(fd);
+    if (tooLarge) { this.errorMsg.set(tooLarge); return; }
     this.errorMsg.set('');
     this.saving.set(true);
     const obs = this.editId
@@ -556,7 +559,7 @@ export class WriteOffRequestForm implements OnInit {
       next: () => this.router.navigate(['/admin/write-off-requests']),
       error: (err: HttpErrorResponse) => {
         this.saving.set(false);
-        this.errorMsg.set(err.error?.message || '儲存失敗，請稍後再試。');
+        this.errorMsg.set(saveErrorMessage(err, '儲存失敗，請稍後再試。'));
       },
     });
   }
@@ -585,6 +588,8 @@ export class WriteOffRequestForm implements OnInit {
     }
     if (!this._validateReturned()) return;
     const fd = this._buildFormData();
+    const tooLarge = uploadTooLargeMessage(fd);
+    if (tooLarge) { this.errorMsg.set(tooLarge); return; }
     this.errorMsg.set('');
     this.saving.set(true);
     const save$ = this.editId
@@ -604,13 +609,13 @@ export class WriteOffRequestForm implements OnInit {
           error: (err: HttpErrorResponse) => {
             this.saving.set(false);
             this.errorMsg.set(
-              (err.error?.message || '送出失敗，請稍後再試。') + '（草稿已保留，修正後可直接再送出）');
+              saveErrorMessage(err, '送出失敗，請稍後再試。') + '（草稿已保留，修正後可直接再送出）');
           },
         });
       },
       error: (err: HttpErrorResponse) => {
         this.saving.set(false);
-        this.errorMsg.set(err.error?.message || '儲存失敗，請稍後再試。');
+        this.errorMsg.set(saveErrorMessage(err, '儲存失敗，請稍後再試。'));
       },
     });
   }
