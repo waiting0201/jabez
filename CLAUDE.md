@@ -394,7 +394,7 @@ Api/
 │   ├── ShiftChangeRequestHandler.cs  # **改班申請（四週彈性工時 §3.5.2，2026-09 新增，第 12 種申請類型）**：
 │   │                                    **2026-09-28**：`POST /shift-changes/preview` 試算；送簽與每關核准前以「現行班表＋本單」重驗合規
 │   │                                    （`ShiftChangeRequestService.EnsureValidAsync`）；**同一人同一月份同時只能有一張進行中的單**。
-│   │                                    班表定案後的異動途徑，走簽核流程、**核准後才寫入班表**（未核准前班表完全不動，故不需回滾）。
+│   │                                    班表定案後的異動途徑，走簽核流程、**核准後才寫入班表**（未核准前班表完全不動，故不需回滾）；**核准時該月若無整月狀態列或仍為 draft 即補成 committed**（2026-11-07，否則沒寫到的週末退回舊制行事曆變休假日、活動日打不了卡）。
 │   │                                    ⚠ **與銷假申請的關鍵差異**：銷假借用請假的流程設定（`ResolveApprovalItemIdAsync("leave", …)`）、
 │   │                                    自己沒有 ApprovalItem；改班以**自己的 ApplicationType** 解析 ——
 │   │                                    逐部門六條簽核路線要靠管理員建 6 個 ApprovalItem，借用別型就建不出來。

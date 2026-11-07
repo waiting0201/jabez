@@ -196,5 +196,38 @@ public static class ShiftChangeRequestService
                 row.UpdatedAt = now;
             }
         }
+
+        await EnsureMonthSettledAsync(db, userId, request.Year, request.Month, now);
+    }
+
+    /// <summary>
+    /// 核准後確保該月有「已排定」的整月狀態列（committed / auto 之一）。
+    ///
+    /// ⚠ 不可省（2026-11-07 事故，SC-20261026-001）：<c>ShiftScheduleDays</c> 只落地非上班日，
+    /// 日別解析（<see cref="Dapper.ShiftScheduleReadService"/>）要靠月份狀態列才把「沒寫的日子」當上班日；
+    /// 沒有這一列就退回舊制行事曆 —— 週六日一律變休假日。申請人 10/25 前沒排班、自動排班又排不出來，
+    /// 改班單核准後只寫了 8 天，整月的週末活動日全被鎖成休假日、打不了卡。
+    ///
+    /// 已是 committed / auto 者不動（auto badge 與 AutoAssignedAt 保留）；無列或 draft 者改為 committed ——
+    /// 改班單送簽與每關核准前都已以「現行班表＋本單」重驗合規，與整月寫入的擋存同一判準。
+    /// </summary>
+    private static async Task EnsureMonthSettledAsync(AppDbContext db, Guid userId, int year, int month, DateTime now)
+    {
+        var monthRow = await db.ShiftScheduleMonths
+            .FirstOrDefaultAsync(m => m.UserId == userId && m.Year == year && m.Month == month);
+
+        if (monthRow is null)
+        {
+            monthRow = new ShiftScheduleMonth { UserId = userId, Year = year, Month = month, CreatedAt = now };
+            db.ShiftScheduleMonths.Add(monthRow);
+        }
+        else if (monthRow.Status is ShiftScheduleMonthStatus.Committed or ShiftScheduleMonthStatus.Auto)
+        {
+            return;
+        }
+
+        monthRow.Status      = ShiftScheduleMonthStatus.Committed;
+        monthRow.CommittedAt = now;
+        monthRow.UpdatedAt   = now;
     }
 }
