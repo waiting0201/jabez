@@ -79,7 +79,8 @@
                         <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#eye"></use></svg>
                       </a>
                     }
-                    @if (canWrite() && canDelete() && r.approvalStatus === 'draft') {
+                    <!-- 退回修改的單也可刪（後端本就允許）：退場後退回單無法再送簽，不刪會一直佔著參與人員當日、擋住加班申請 -->
+                    @if (canWrite() && canDelete() && (r.approvalStatus === 'draft' || r.approvalStatus === 'returned')) {
                       <button class="btn btn-sm btn-ghost-danger inline-flex items-center" (click)="delete(r)" title="刪除">
                         <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#trash"></use></svg>
                       </button>
