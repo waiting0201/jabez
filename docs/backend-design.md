@@ -534,7 +534,7 @@ RequestDateGuard.EnsurePastWithin(body.ChildBirthDate, "子女出生日期",
 | 簽核詳情檢視範圍 | `Common/RequestViewAccess.CanViewAsync` | `approval-tasks:read` 不再等於全公司可讀：須 `ProjectAccessScope` 涵蓋申請人部門，或為該單目前候選審核者（`StepReviewerProbe`，與 `ApprovalTaskHandler.GetByIdAsync` 同判準）；advance / travel / travel_payment / write_off / travel_write_off / shift_change 的單筆詳情（列印 PDF 取原料）共用 |
 | 送簽自審判準 | `ApprovalFlowService`（`IsApplicantOnlyReviewerOfFixedStepAsync`） | 該關固定池「排除申請人後查無他人」才算自審而跳過，與推進流程 `SkipUnreviewableStepsAsync` 同判準；池中尚有他人就停在該關（原寫法會整關略過、全跳完即自動核准） |
 | 出差 / 假日活動型別 | `TravelRequestHandler`（`isHolidayTravel` 參數） | 路由型別須與 `IsHolidayTravel` 一致，不符回 404（兩種共用一張表，不比對會互相冒用退場閘門與重複給付檢查）；AppRouter 的 `holiday-travel-requests` 路由一律傳 `isHolidayTravel: true` |
-| 撥款明細 | `InstallmentValidator` + 5 支 installments / 結案 / check-payments 端點 | 逐列金額須 > 0 且不超過總額（不只驗加總）；申請人不可操作自己單據的撥款明細（Superadmin 例外） |
+| 撥款明細 | `InstallmentValidator` + 5 支 installments / 結案 / check-payments 端點 | 逐列金額須 > 0 且不超過總額（不只驗加總）；**財務可操作全部單據含自己送出的**（2026-11-09 業務決議：財務為最終撥款環節，撤銷 2026-10「申請人不可操作自己單據」的限制，check-payments 亦同；進入權限仍限財務部門 / Superadmin） |
 | 已撥款鎖定 | 各申請 Handler 的 Update / Delete | 任一期 `PaidAt` 非空的單據即使被退回也不可修改 / 刪除（Superadmin 亦同），請洽財務 |
 | 輕量端點最小揭露 | `ProjectLookupDto`（`/projects/active`）、`VendorReadService`（`/vendors/lookup`）、AppRouter 權限表（`/files/vendor-passbooks`） | `/projects/active` 只回 Id / Code / Name / Status / DepartmentId / DepartmentName，**不含任何金額與 Drive 連結**；`/vendors/lookup` 的個人 `IdNumber` 遮罩（前 1 後 3）；`/files/vendor-passbooks/*` 須 `vendors:read`（檔名 `{vendorId}{ext}` 可列舉） |
 | 寫入回應薪資遮罩 | `EmployeeProfileHandler`（`PUT /users/{id}/profile`） | 寫入回應與 GET 走同一道 `PayrollFieldAccess.Mask`，無 `users:salary-read` 者存檔後不可拿到薪資調整歷史 |
