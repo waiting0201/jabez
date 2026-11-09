@@ -855,7 +855,7 @@ public sealed class AttendanceHandler(
         DateTime? expectedOut = ctx.Flexible && record?.ClockInTime is { } ci
             ? ClockRules.ExpectedClockOut(ci, ctx.Schedule, ctx.AfternoonOnly, ctx.Profile)
             : null;
-        // 正常下班帶的終點（公司預設 T+30 分、自訂時段 E+5 分），前端據此判斷逾時、不再寫死 30 分
+        // 正常下班帶的終點（公司預設 T+30 分、自訂時段 E+30 分），前端據此判斷逾時、不再寫死 30 分
         DateTime? normalOutUntil = expectedOut?.AddMinutes(ctx.Profile.GraceMinutes);
         // 遲到界線：前端據此決定上班打卡是否先開原因對話框（與 ClockInAsync 擋件同一函式）
         DateTime? lateAfter = ctx.Flexible

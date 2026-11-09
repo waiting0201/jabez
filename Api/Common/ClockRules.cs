@@ -47,7 +47,7 @@ public static class ClockRules
 
     /// <summary>
     /// 出勤起算時間：落在「開放～準時界線」內一律視為當日上班時刻（早到不算加班），
-    /// 超過則取實際打卡時刻。公司預設為 08:30–09:30 → 09:00；自訂時段者為 S−30 分～S+2 分 → S。
+    /// 超過則取實際打卡時刻。公司預設為 08:30–09:30 → 09:00；自訂時段者為 S−30 分～S+10 分 → S。
     /// </summary>
     public static DateTime AttendanceStart(DateTime actualClockIn, WorkdaySchedule schedule, ClockProfile? profile = null)
     {
@@ -63,7 +63,7 @@ public static class ClockRules
         TimeOnly.FromDateTime(actualClockIn) > (profile ?? ClockProfile.Company).OnTimeUntil;
 
     /// <summary>
-    /// 當日的遲到界線（超過即為遲到）。一般為個人準時界線（公司 09:30、自訂時段 S+2 分）；
+    /// 當日的遲到界線（超過即為遲到）。一般為個人準時界線（公司 09:30、自訂時段 S+10 分）；
     /// <paramref name="afternoonOnly"/>（請上午半天假、下午才上班）時改為 13:00 ＋ 交接容許帶 5 分 ——
     /// 否則 13:00 準時進來的人會因「超過 09:30」被記遲到（2026-10-06 修正）。
     /// 打卡寫旗標、必填遲到原因、首頁提示三處共用。
@@ -92,7 +92,7 @@ public static class ClockRules
 
     /// <summary>
     /// 下班打卡屬於哪一種情形。三者互斥且涵蓋全部：
-    /// `&lt; T` 早退／`[T, T+容許帶]` 正常／`&gt; T+容許帶` 逾時（公司預設 30 分、自訂時段 5 分）。
+    /// `&lt; T` 早退／`[T, T+容許帶]` 正常／`&gt; T+容許帶` 逾時（公司預設與自訂時段皆 30 分）。
     /// </summary>
     public static ClockOutKind ResolveClockOutKind(
         DateTime actualClockIn, DateTime actualClockOut, WorkdaySchedule schedule, bool afternoonOnly,
@@ -115,8 +115,8 @@ public static class ClockRules
 /// 賣店等在員工資料勾選「自訂上下班時段」者（<c>User.CustomWorkStartTime / CustomWorkEndTime</c>），
 /// 由上班 S / 下班 E 兩個時刻推導全部參數，對應客戶給的兩組實例：
 /// <code>
-///   09:00–17:00 → 開放 08:30、準時 ≤ 09:02、提醒 08:58 / 16:58、正常下班 17:00–17:05
-///   08:30–17:00 → 開放 08:00、準時 ≤ 08:32、提醒 08:28 / 16:58、正常下班 17:00–17:05
+///   09:00–17:00 → 開放 08:30、準時 ≤ 09:10、提醒 08:58 / 16:58、正常下班 17:00–17:30
+///   08:30–17:00 → 開放 08:00、準時 ≤ 08:40、提醒 08:28 / 16:58、正常下班 17:00–17:30
 /// </code>
 /// ⚠ 僅新制切換後生效（呼叫端只在 Flexible 分支使用）。
 /// </summary>
@@ -129,10 +129,16 @@ public sealed record ClockProfile(
 {
     /// <summary>自訂時段：上班前幾分鐘開放打卡。</summary>
     public const int CustomOpenBeforeMinutes = 30;
-    /// <summary>自訂時段：上班後幾分鐘內仍算準時（含）。</summary>
-    public const int CustomOnTimeGraceMinutes = 2;
-    /// <summary>自訂時段：正常下班容許帶（分）。</summary>
-    public const int CustomClockOutGraceMinutes = 5;
+    /// <summary>
+    /// 自訂時段：上班後幾分鐘內仍算準時（含），期間打卡不記遲到、不必填原因。
+    /// （2026-11-10 客戶要求由 2 分放寬為 10 分：賣店原本幾乎沒有緩衝）
+    /// </summary>
+    public const int CustomOnTimeGraceMinutes = 10;
+    /// <summary>
+    /// 自訂時段：正常下班容許帶（分），期間打卡不算逾時、不必填原因。
+    /// （2026-11-10 客戶要求由 5 分放寬為 30 分，與公司預設一致：17:07 下班被要求填逾時原因）
+    /// </summary>
+    public const int CustomClockOutGraceMinutes = 30;
 
     /// <summary>
     /// 自訂時段的合法範圍。上下班提醒只在 <c>AttendanceReminderCron</c>（現值 <c>0 */1 23,0-13 * * *</c>

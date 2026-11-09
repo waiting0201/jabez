@@ -285,7 +285,7 @@ export class Dashboard implements OnInit, OnDestroy {
   }
 
   /**
-   * 上班打卡：超過遲到界線（後端 `lateAfter`：公司 09:30、自訂上下班時段 S+2 分、請上午半天假者 13:05）
+   * 上班打卡：超過遲到界線（後端 `lateAfter`：公司 09:30、自訂上下班時段 S+10 分、請上午半天假者 13:05）
    * 時先跳對話框填遲到原因（出差亦同）；未遲到直接打卡（不增加一般情況的操作步驟）。
    * 舊制（尚未切換）一律直接打卡。
    */
@@ -323,7 +323,7 @@ export class Dashboard implements OnInit, OnDestroy {
    * 早退／逾時的必填原因**併入同一個視窗**（規格明訂不另開第二個視窗）。
    * 新制三種情況以應下班時間 T 為界，互斥且涵蓋全部：
    * `< T` 早退必填原因、`[T, T+30分]` 正常只需確認、`> T+30分` 逾時必填原因
-   * （自訂上下班時段者 T 為固定下班時刻、容許帶 5 分，界線皆由後端 `normalClockOutUntil` 帶回）。
+   * （自訂上下班時段者 T 為固定下班時刻、容許帶同為 30 分，界線皆由後端 `normalClockOutUntil` 帶回）。
    * 出差只是出缺勤紀錄上的標記，不影響原因必填。
    *
    * 舊制（尚未切換）只顯示專案區塊，不顯示出勤時長與原因欄。
@@ -350,7 +350,7 @@ export class Dashboard implements OnInit, OnDestroy {
       const expected = r.expectedClockOutTime ? new Date(r.expectedClockOutTime) : null;
       const diffMin = expected ? Math.round((expected.getTime() - now.getTime()) / 60000) : 0;
       const isEarly = !!expected && now < expected;
-      // 逾時界線由後端依個人打卡參數算好（公司預設 +30 分、自訂上下班時段 +5 分），不在前端寫死
+      // 逾時界線由後端依個人打卡參數算好（公司預設與自訂上下班時段皆 +30 分），不在前端寫死
       const normalUntil = r.normalClockOutUntil ? new Date(r.normalClockOutUntil) : null;
       const isOvertime = !!normalUntil && now > normalUntil;
 
