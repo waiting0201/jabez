@@ -843,7 +843,7 @@ dotnet ef database update               # 套用 Migration
 > 角色管理不可改自己所屬角色、不可授出超出自身的權限；出缺勤不可改自己的、修改留 `AttendanceAuditLogs`。
 > **第二輪（2026-10，21 項，commit `0bda4907` / `a1b3c621`）**：使用者管理防提權（禁改自己部門 / 職稱 / 薪資、調財務部或高職級限 Superadmin、改他人密碼須權限子集，異動留 `UserAuditLogs`）；
 > **`Users.SecurityStamp`**（JWT `sstamp`，AppRouter 每請求比對，停用 / 改密碼 / 換角色 / 改部門職稱即讓舊 token 失效）；簽核詳情檢視加部門 scope、送簽自審判準與推進一致、指定審核者須嚴格高於申請人、
-> 撥款明細逐列驗證且申請人不可動自己的、已撥款單退回後仍鎖定；輕量端點最小揭露（`/projects/active` 不回金額、`/vendors/lookup` 身分證遮罩、存摺封面需 `vendors:read`）；
+> 撥款明細逐列驗證（2026-11-09 起財務可設定自己送出單據的撥款明細）、已撥款單退回後仍鎖定；輕量端點最小揭露（`/projects/active` 不回金額、`/vendors/lookup` 身分證遮罩、存摺封面需 `vendors:read`）；
 > 明細附件 FileUrl 只認 DB 既有值、上傳 magic-byte＋10MB、通知信 HtmlEncode、前端 CSP / URL 白名單；加班開始卡時間下限、加班 × 假日活動互斥、假別額度依假期年度、OCR / GCIS 每人速率限制（`UserRateLimiter`）、
 > 出缺勤修改範圍與職級檢查、銷假 / 改班核准時重驗日期。逐項規則見 backend-design.md §4.7。
 > 規範總表見 [docs/backend-design.md §4.7 / §9.6](docs/backend-design.md)，業務規則見 attendance-clock-rules / approval-flow / authentication。

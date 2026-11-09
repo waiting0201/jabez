@@ -752,9 +752,8 @@ public sealed class WriteOffRequestHandler(
                          .FirstOrDefaultAsync(w => w.Id == intId)
                  ?? throw AppException.NotFound("WriteOffRecord");
 
-        // 2026-10 安全修正：申請人不可操作自己單據的撥款明細（Superadmin 例外）
-        if (!user.IsSuperAdmin && wo.SubmittedById == userId)
-            throw AppException.Forbidden("不可設定自己申請單的撥款明細。");
+        // 2026-11-09 業務決議：財務為最終撥款環節，可操作全部單據的撥款明細（含自己送出的），
+        // 撤銷 2026-10「申請人不可操作自己單據」的限制。進入權限仍限財務部門 / Superadmin（見上方）。
 
         if (wo.ApprovalStatus != "approved")
             return new BadRequestObjectResult(ApiResponse.Fail("只有已核准的沖銷申請可以設定撥款明細。"));
@@ -810,9 +809,8 @@ public sealed class WriteOffRequestHandler(
                          .FirstOrDefaultAsync(w => w.Id == intId)
                  ?? throw AppException.NotFound("WriteOffRecord");
 
-        // 2026-10 安全修正：申請人不可操作自己單據的支票支付註記（Superadmin 例外）
-        if (!user.IsSuperAdmin && wo.SubmittedById == userId)
-            throw AppException.Forbidden("不可設定自己申請單的支票支付註記。");
+        // 2026-11-09 業務決議：財務為最終撥款環節，可操作全部單據的支票支付註記（含自己送出的），
+        // 撤銷 2026-10「申請人不可操作自己單據」的限制。進入權限仍限財務部門 / Superadmin（見上方）。
 
         if (wo.ApprovalStatus is not ("pending" or "approved"))
             return new BadRequestObjectResult(ApiResponse.Fail("只有待審核或已核准的沖銷申請可以註記支票支付狀態。"));
