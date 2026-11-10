@@ -109,7 +109,7 @@
 | GET/POST | `/payment-requests` | 請款列表（`?page=&pageSize=&closed=true\|false`：已結案頁籤，2026-11；預支 / 預支沖銷 / 出差請款 / 出差預支 / 出差預支沖銷列表同樣支援，判定見 application-forms.md）/ 新增（預設 draft，multipart 含 `vendorId` — 當 `type=vendor` 時必填且必須是 IsActive=true 的廠商；`payeeName` — 當 `type=other` 時必填（≤100 字），其他類型強制清空；PATCH 帶 `payeeName` 或 `type` 即依當前 type 重算） |
 | GET/PUT/PATCH/DELETE | `/payment-requests/{id}` | 請款 CRUD（DTO 含 `vendorId / vendorName / vendorTaxId`） |
 | PATCH | `/payment-requests/{id}/submit` | 送出請款申請（draft → pending） |
-| PATCH | `/payment-requests/{id}/installments` | upsert 一或多筆撥款明細（**2026-10：request 不再接受 `approvalStatus`**；**僅 ApprovalStatus == approved**；SUM 嚴格驗證 = TotalAmount；已撥款列不可刪、預計撥款日 / 金額不可改，**實際撥款日可更正日期但不可清空**（2026-10-21）；每筆 PaidAt null→value **或已撥款列更正日期**觸發一次「已撥款」通知含 N/M 期；僅財務體系部門：AC/FIN/Jabez HQ/CEO）。validate+diff 持久化核心由 `InstallmentUpsertService.Apply` 共用（與審核時原子寫入同一份邏輯）。 |
+| PATCH | `/payment-requests/{id}/installments` | upsert 一或多筆撥款明細（**2026-10：request 不再接受 `approvalStatus`**；**僅 ApprovalStatus == approved**；SUM 嚴格驗證 = TotalAmount；已撥款列不可刪、預計撥款日 / 金額不可改，**實際撥款日可更正日期**（2026-10-21）**或清空**（2026-11-10，該期退回未撥款、`PaidByUserId` 一併清除、不發通知）；每筆 PaidAt null→value **或已撥款列更正日期**觸發一次「已撥款」通知含 N/M 期；僅財務體系部門：AC/FIN/Jabez HQ/CEO）。validate+diff 持久化核心由 `InstallmentUpsertService.Apply` 共用（與審核時原子寫入同一份邏輯）。 |
 | GET/POST | `/leave-requests` | 請假列表 / 新增（預設 draft） |
 | GET/PUT/PATCH/DELETE | `/leave-requests/{id}` | 請假 CRUD |
 | PATCH | `/leave-requests/{id}/submit` | 送出請假申請（draft → pending） |

@@ -546,7 +546,7 @@ Api/
 │   │                                  #   18 補登歷史預支沖銷的「同仁繳回預支餘額」（@Commit 空跑開關，冪等可重跑）：以預支單 RequestNo 定位，寫入該預支單最後一張已核准沖銷的 ReturnedAmount / ReturnedAt（無匯款照片）；金額超過尚未結清 / 已有不同繳回資料即中止
 │   │                                  #   19 清除預支單某一期誤填的「實際撥款日」（@Commit 空跑開關，冪等可重跑；首例 ADV-20260921-001 第 2 期）：
 │   │                                  #      前台已撥款列全鎖、InstallmentValidator 亦拒改，故以腳本處理。以 RequestNo + InstallmentNo 定位、預計撥款日 / 金額防呆，
-│   │                                  #      PaidAt 與 PaidByUserId 一起清（兩者撥款時同時寫入）；已發出的「已撥款」通知無法撤回
+│   │                                  #      PaidAt 與 PaidByUserId 一起清（兩者撥款時同時寫入）；已發出的「已撥款」通知無法撤回。**2026-11-10 起前台撥款明細「編輯」→「清除」即可自行處理，本腳本已不需使用**
 │   │                                  #   20 指定員工的個人排班加一天休假日（@Commit 空跑開關，冪等可重跑；首例鄭宇婷 2026-11-27，班表已過開放期）：
 │   │                                  #      以姓名（或 @Email）定位，只 INSERT 一列 ShiftScheduleDays rest_day、不動 ShiftScheduleMonths.Status；
 │   │                                  #      國定假日 / 活動日預定人力 / 有假單 / 進行中改班申請 / 已是例假即中止；例＋休合計會多 1 天（validator 不擋）

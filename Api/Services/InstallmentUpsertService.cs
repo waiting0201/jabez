@@ -77,6 +77,13 @@ public static class InstallmentUpsertService
                         newlyPaid.Add(new(ent.InstallmentNo, ent.PaidAt.Value, ent.Amount, inputs.Count));
                     }
                 }
+                else if (!wasPaidNull)
+                {
+                    // 2026-11-10：已撥款列清空實際撥款日（誤填）→ 退回未撥款，撥款人一併清掉（兩者撥款時同時寫入）；
+                    // 已發出的「已撥款」通知無法撤回，亦不另發通知
+                    ent.PaidAt       = null;
+                    ent.PaidByUserId = null;
+                }
                 ent.UpdatedAt = nowUtc;
             }
             else
