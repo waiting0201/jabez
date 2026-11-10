@@ -197,6 +197,8 @@ RefundDue = max(0, 前次已沖銷 + 本次沖銷 − 預支總額)
 
 **結案當下的 `RefundAmount`**：只計 `ApprovalStatus == "approved"` 的沖銷單，**外加觸發本次結案的那一張**（`triggeringWriteOffId`）—— 結案發生在 `SaveChangesAsync` 之前，該張在 DB 仍是 `pending`。刻意不用 `!= "rejected"`，否則 `draft` / `returned` 的沖銷單會灌進差額，發出金額偏高的「[需匯款]」通知。基準與 `WriteOffRefundCalculator` 一致。
 
+**結案寫回實際金額、金額不同不擋（2026-11）**：結案時（四個入口皆經 `CloseAdvanceRequestAsync` / `CloseTravelRequestAsync`）把已核准沖銷（含觸發結案那張）的合計寫入 `AdvanceRequest.ActualAmount`（預支另寫 `ActualCashTotal` / `ActualCheckTotal`）/ `TravelRequest.ActualAmount`，**短支（沖銷 < 預支）與超支皆寫**；沖銷金額與預支不同時送簽 / 核准 / 結案**一律不擋**，只把差額如何處理（同仁繳回 / 公司補撥 / 結案時未處理）記在歷程。差額不落地，一律推導 `GrandTotal − ActualAmount`。完整歷程（預支批次 → 撥款 → 各次沖銷 → 繳回 / 補撥 → 結案）由 `AdvanceSettlementLedgerService` 產出 `settlementLedger`，見 [backend-design.md §13.4b](../backend-design.md)。`RefundedAmount` 為 deprecated，不再用於結餘。專案水位：未結案取 `MAX(預支, 已核准沖銷)`、已結案取實際金額。
+
 ### 依預支單彙總檢視（2026-07 新增）
 
 一張預支單可對應多張沖銷單，過去只能逐張沖銷單點進去看，對不出「這張預支單到底沖到哪」。沖銷清單本來就依 `AdvanceRequestId` 把沖銷單 group 在一起，母層列（同一預支單 ≥ 2 筆時出現的摘要列）操作欄現在多一個**檢視**按鈕，進入彙總頁 `/admin/write-off-requests/by-advance/:advanceId`（[write-off-overview](../../Admin/src/app/features/admin/write-off-requests/pages/write-off-overview/)）。

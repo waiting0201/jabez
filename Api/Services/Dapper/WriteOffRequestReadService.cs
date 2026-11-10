@@ -5,7 +5,7 @@ using System.Data;
 
 namespace Jabez.Api.Services.Dapper;
 
-public sealed class WriteOffRequestReadService(IDbConnection db, IInstallmentReadService installments) : IWriteOffRequestReadService
+public sealed class WriteOffRequestReadService(IDbConnection db, IInstallmentReadService installments, IAdvanceSettlementLedgerService ledger) : IWriteOffRequestReadService
 {
     /// <summary>
     /// 公司已補撥給同仁的超支差額：同預支單「已核准 ∪ 本單」沖銷的已撥款 WriteOffInstallments 合計與最後撥款日。
@@ -182,6 +182,7 @@ public sealed class WriteOffRequestReadService(IDbConnection db, IInstallmentRea
             PaymentStatus        = installments.ComputeStatus(ownInst),
             AdvanceInstallments  = advInst.Count > 0 ? [.. advInst] : null,
             AdvancePaymentStatus = installments.ComputeStatus(advInst),
+            SettlementLedger     = await ledger.GetForAdvanceAsync(dto.AdvanceRequestId),
         };
     }
 

@@ -1,3 +1,4 @@
+import type {SettlementLedger} from '@shared/models/settlement-ledger.model';
 export type ApprovalStatus = 'draft' | 'pending' | 'approved' | 'rejected' | 'returned';
 
 export const APPROVAL_STATUS_LABELS: Record<ApprovalStatus, string> = {
@@ -81,6 +82,9 @@ export interface TravelWriteOffRequest {
   travelRefundAmount?: number;
   /** 關聯出差單的實際退款金額（財務手動填入） */
   travelRefundedAmount?: number;
+
+  /** 關聯母單的金額歷程（後端單一真相） */
+  settlementLedger?: SettlementLedger | null;
 }
 
 /** TravelRequest summary for dropdown selection */

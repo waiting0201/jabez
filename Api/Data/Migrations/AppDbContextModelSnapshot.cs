@@ -101,6 +101,15 @@ namespace Jabez.Api.Data.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
 
+                    b.Property<decimal?>("ActualAmount")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal?>("ActualCashTotal")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal?>("ActualCheckTotal")
+                        .HasColumnType("decimal(18,2)");
+
                     b.Property<DateTime>("AdvanceDate")
                         .HasColumnType("datetime2");
 
@@ -6753,6 +6762,9 @@ namespace Jabez.Api.Data.Migrations
                         .HasColumnType("int");
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<decimal?>("ActualAmount")
+                        .HasColumnType("decimal(18,2)");
 
                     b.Property<DateTime?>("AdvanceNeededDate")
                         .HasColumnType("datetime2");

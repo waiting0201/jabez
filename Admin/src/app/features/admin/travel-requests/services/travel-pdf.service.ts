@@ -1,6 +1,7 @@
 import { Injectable, inject, signal } from '@angular/core';
 import { TravelRequest } from '../models/travel-request.model';
 import { ApprovalRecord, ApprovalFlow } from '../../approval-tasks/models/approval-task.model';
+import { drawSettlementLedger } from '../../../../shared/services/pdf-settlement-ledger';
 import { PdfCoreService, SignBlock, CIS, FONT_FAMILY, fmtDT, fmtDate, fmt, buildDynamicSignBlocks, designatedStepOrdersOf } from '../../../../shared/services/pdf-core.service';
 
 @Injectable({ providedIn: 'root' })
@@ -188,6 +189,9 @@ export class TravelPdfService {
       } else {
         lv('撥款資訊：', '尚未排定撥款', mx, y, true);
       }
+
+      // ── 金額歷程 ──
+      y = drawSettlementLedger(doc, autoTable, r.settlementLedger, { mx, cw, ph, y });
 
       // ── 簽名欄 ──
       y += 10;

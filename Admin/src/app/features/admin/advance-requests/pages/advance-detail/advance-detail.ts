@@ -15,13 +15,14 @@ import {ApprovalTimeline} from '../../../../../shared/components/approval-timeli
 import {InstallmentsTable} from '../../../../../shared/components/installments-table';
 import {CategorySubtotalsComponent} from '../../../../../shared/components/category-subtotals';
 import {ClosureInfoCardComponent} from '../../../../../shared/components/closure-info-card';
+import {AdvanceSettlementLedgerComponent} from '../../../../../shared/components/advance-settlement-ledger';
 import {LinkedPreReviews} from '../../../../../shared/components/linked-pre-reviews';
 import {FilePreviewModal, PreviewFileData} from '../../../../../shared/components/file-preview-modal';
 
 @Component({
   selector: 'app-advance-detail',
   templateUrl: './advance-detail.html',
-  imports: [RouterLink, DecimalPipe, DatePipe, ApprovalTimeline, InstallmentsTable, ClosureInfoCardComponent, FilePreviewModal, CategorySubtotalsComponent, LinkedPreReviews],
+  imports: [RouterLink, DecimalPipe, DatePipe, ApprovalTimeline, InstallmentsTable, ClosureInfoCardComponent, FilePreviewModal, CategorySubtotalsComponent, LinkedPreReviews, AdvanceSettlementLedgerComponent],
 })
 export class AdvanceDetail implements OnInit {
   private service = inject(AdvanceRequestService);
@@ -70,17 +71,6 @@ export class AdvanceDetail implements OnInit {
 
   approvedReturnedTotal(r: AdvanceRequest): number {
     return this.approvedWriteOffs(r).reduce((s, w) => s + (w.returnedAmount ?? 0), 0);
-  }
-
-  /** 尚未結清＝預支總額 − 已核准費用核銷 − 已核准同仁繳回 */
-  unsettled(r: AdvanceRequest): number {
-    return r.grandTotal - this.approvedWrittenOffTotal(r) - this.approvedReturnedTotal(r);
-  }
-
-  /** 沖銷大於預支（尚未結清為負）且公司已補撥足額 → 已結清（與 write-off-summary 同判準）*/
-  overspendSettled(r: AdvanceRequest): boolean {
-    const u = this.unsettled(r);
-    return u < 0 && (r.overspendPaidTotal ?? 0) >= -u;
   }
 
   // ── 追加預支 ──────────────────────────────────────────────────────────────

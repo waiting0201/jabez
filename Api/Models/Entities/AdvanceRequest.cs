@@ -32,9 +32,15 @@ public class AdvanceRequest
     public DateTime? ClosedAt          { get; set; }
     public Guid?     ClosedById        { get; set; }
 
+    // 結案實際金額（2026-11）：結案當下已核准沖銷（含觸發結案那張）的合計，短支 / 超支皆寫；未結案為 null。
+    // 差額不落地，一律推導 GrandTotal − ActualAmount。舊結案單由 AddAdvanceActualAmount migration 回填。
+    public decimal?  ActualAmount      { get; set; }
+    public decimal?  ActualCashTotal   { get; set; }   // 實際現金花費（WriteOffItems.CashAmount 合計）
+    public decimal?  ActualCheckTotal  { get; set; }   // 實際支票（月結）（WriteOffItems.CheckAmount 合計）
+
     // 退還差額欄位（沖銷累計 > 預支時，系統自動計算）
     public decimal?  RefundAmount         { get; set; }
-    public decimal?  RefundedAmount       { get; set; }
+    public decimal?  RefundedAmount       { get; set; }   // [Deprecated] 全專案無寫入點，勿再用於結餘公式
     public DateTime? EstimatedRefundDate  { get; set; }
     public DateTime? RefundedAt           { get; set; }
     public Guid?     RefundedByUserId     { get; set; }

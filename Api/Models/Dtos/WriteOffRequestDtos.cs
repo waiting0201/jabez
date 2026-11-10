@@ -51,7 +51,8 @@ public sealed record WriteOffRequestDto(
     // ── 公司已補撥的超支差額（尚未結清為負時判定「已結清」用）──
     decimal                   OverspendPaidTotal = 0,      // 同預支單已核准 ∪ 本單沖銷的已撥款差額分期合計
     DateTime?                 OverspendLastPaidAt = null, // 上述分期的最後撥款日
-    AdvanceRequestItemDto[]?  AdvanceItems = null);       // 關聯預支單全批次明細（依 RoundNo, SortOrder, Id；僅 GET /write-off-requests/{id} 填入）
+    AdvanceRequestItemDto[]?  AdvanceItems = null,        // 關聯預支單全批次明細（依 RoundNo, SortOrder, Id；僅 GET /write-off-requests/{id} 填入）
+    AdvanceSettlementLedgerDto? SettlementLedger = null);       // 關聯預支單的金額歷程（母單 ledger；僅 GET /write-off-requests/{id} 填入）
 
 /// <summary>同一張預支單底下的各次沖銷（供沖銷資訊卡列出第 N 次沖銷金額）</summary>
 public sealed record WriteOffRoundDto(
@@ -157,7 +158,8 @@ public sealed record WriteOffTaskDetailDto(
     decimal             OverspendPaidTotal = 0,       // 同預支單已核准 ∪ 本單沖銷的已撥款差額分期合計
     DateTime?           OverspendLastPaidAt = null,   // 上述分期的最後撥款日
     string              ActivityName = "",            // 關聯預支單的活動名稱
-    AdvanceRequestItemDto[]? AdvanceItems = null);    // 關聯預支單全批次明細（簽核頁唯讀對照；恆填，無明細時為空陣列）
+    AdvanceRequestItemDto[]? AdvanceItems = null,     // 關聯預支單全批次明細（簽核頁唯讀對照；恆填，無明細時為空陣列）
+    AdvanceSettlementLedgerDto? SettlementLedger = null);    // 關聯預支單的金額歷程（母單 ledger）
 
 // ── 支票已支付註記 ────────────────────────────────────────────────────────────
 

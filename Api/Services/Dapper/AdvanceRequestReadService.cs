@@ -5,7 +5,7 @@ using System.Data;
 
 namespace Jabez.Api.Services.Dapper;
 
-public sealed class AdvanceRequestReadService(IDbConnection db, IInstallmentReadService installments) : IAdvanceRequestReadService
+public sealed class AdvanceRequestReadService(IDbConnection db, IInstallmentReadService installments, IAdvanceSettlementLedgerService ledger) : IAdvanceRequestReadService
 {
     private const string BaseSql = """
         SELECT ar.Id, ar.RequestNo, ar.ProjectId, proj.Code AS ProjectCode, proj.Name AS ProjectName,
@@ -14,7 +14,7 @@ public sealed class AdvanceRequestReadService(IDbConnection db, IInstallmentRead
                ar.ApprovalStatus, ar.CurrentRoundNo,
                sub.Name AS SubmittedBy, ar.CreatedAt, ar.SubmittedAt,
                ar.ReviewedAt, ar.ReviewNote,
-               ar.IsClosed, ar.ClosedAt, ar.RefundAmount, ar.RefundedAmount, ar.EstimatedRefundDate, ar.RefundedAt,
+               ar.IsClosed, ar.ClosedAt, ar.ActualAmount, ar.RefundAmount, ar.RefundedAmount, ar.EstimatedRefundDate, ar.RefundedAt,
                ai.Id AS ItemId, ai.RoundNo AS ItemRoundNo, ai.Category, ai.SeqNo, ai.ItemName,
                ai.UnitPrice, ai.Quantity, ai.TotalPrice,
                ai.CashAmount AS ItemCash, ai.CheckAmount AS ItemCheck,
@@ -146,6 +146,7 @@ public sealed class AdvanceRequestReadService(IDbConnection db, IInstallmentRead
             PaymentStatus = installments.ComputeStatus(instList),
             Rounds = BuildRounds(dto.AdvanceDate, dto.AdvanceNeededDate, supRows, dto.Items),
             PreReviews = await GetLinkedPreReviewsAsync(id),
+            SettlementLedger = await ledger.GetForAdvanceAsync(id),
         };
     }
 
@@ -302,7 +303,8 @@ public sealed class AdvanceRequestReadService(IDbConnection db, IInstallmentRead
                 null,                               // PaymentStatus（稍後補上）
                 null,                               // Rounds（僅 GetByIdAsync 帶入）
                 (int)x.ar.CurrentRoundNo,
-                (DateTime?)x.ar.AdvanceNeededDate);
+                (DateTime?)x.ar.AdvanceNeededDate,
+                ActualAmount: (decimal?)x.ar.ActualAmount);
         });
     }
 

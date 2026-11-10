@@ -188,7 +188,9 @@ public sealed class PaymentReportReadService(IDbConnection db) : IPaymentReportR
                pr.ApprovalStatus,
                {paidAt} AS PaidAt,
                pr.SubmittedAt,
-               'payment' AS SourceCategory
+               'payment' AS SourceCategory,
+               CAST(NULL AS DECIMAL(18,2)) AS ActualAmount,
+               CAST(0 AS BIT) AS IsClosed
         FROM PaymentRequests pr
         JOIN Users   u    ON pr.SubmittedById = u.Id
         JOIN Projects proj ON pr.ProjectId    = proj.Id
@@ -207,7 +209,9 @@ public sealed class PaymentReportReadService(IDbConnection db) : IPaymentReportR
                adv.ApprovalStatus,
                {paidAt}       AS PaidAt,
                adv.SubmittedAt,
-               'advance'      AS SourceCategory
+               'advance'      AS SourceCategory,
+               adv.ActualAmount AS ActualAmount,
+               CAST(adv.IsClosed AS BIT) AS IsClosed
         FROM AdvanceRequests adv
         JOIN Users    u    ON adv.SubmittedById = u.Id
         JOIN Projects proj ON adv.ProjectId    = proj.Id
@@ -226,7 +230,9 @@ public sealed class PaymentReportReadService(IDbConnection db) : IPaymentReportR
                wo.ApprovalStatus,
                adv.RefundedAt AS PaidAt,
                wo.SubmittedAt,
-               'writeoff'     AS SourceCategory
+               'writeoff'     AS SourceCategory,
+               CAST(NULL AS DECIMAL(18,2)) AS ActualAmount,
+               CAST(0 AS BIT) AS IsClosed
         FROM WriteOffRecords wo
         JOIN Users           u    ON wo.SubmittedById = u.Id
         JOIN AdvanceRequests adv  ON wo.AdvanceRequestId = adv.Id
@@ -246,7 +252,9 @@ public sealed class PaymentReportReadService(IDbConnection db) : IPaymentReportR
                tpr.ApprovalStatus,
                {paidAt}       AS PaidAt,
                tpr.SubmittedAt,
-               'travel-payment' AS SourceCategory
+               'travel-payment' AS SourceCategory,
+               CAST(NULL AS DECIMAL(18,2)) AS ActualAmount,
+               CAST(0 AS BIT) AS IsClosed
         FROM TravelPaymentRequests tpr
         JOIN Users         u    ON tpr.EmployeeId = u.Id
         LEFT JOIN Projects proj ON tpr.ProjectId  = proj.Id
@@ -265,7 +273,9 @@ public sealed class PaymentReportReadService(IDbConnection db) : IPaymentReportR
                tr.ApprovalStatus,
                {paidAt}       AS PaidAt,
                tr.SubmittedAt,
-               'travel'       AS SourceCategory
+               'travel'       AS SourceCategory,
+               tr.ActualAmount AS ActualAmount,
+               CAST(tr.IsClosed AS BIT) AS IsClosed
         FROM TravelRequests tr
         JOIN Users         u    ON tr.EmployeeId = u.Id
         LEFT JOIN Projects proj ON tr.ProjectId  = proj.Id
@@ -284,7 +294,9 @@ public sealed class PaymentReportReadService(IDbConnection db) : IPaymentReportR
                two.ApprovalStatus,
                tr.RefundedAt  AS PaidAt,
                two.SubmittedAt,
-               'travel-writeoff' AS SourceCategory
+               'travel-writeoff' AS SourceCategory,
+               CAST(NULL AS DECIMAL(18,2)) AS ActualAmount,
+               CAST(0 AS BIT) AS IsClosed
         FROM TravelWriteOffRecords two
         JOIN Users          u    ON two.SubmittedById = u.Id
         JOIN TravelRequests tr   ON two.TravelRequestId = tr.Id
@@ -311,7 +323,9 @@ public sealed class PaymentReportReadService(IDbConnection db) : IPaymentReportR
                ii.ItemName    AS ItemName,
                CAST(NULL AS NVARCHAR(50)) AS ItemCol3Text,
                ii.InvoiceDate AS ItemCol3Date,
-               ii.Amount      AS ItemAmount
+               ii.Amount      AS ItemAmount,
+               CAST(NULL AS DECIMAL(18,2)) AS ActualAmount,
+               CAST(0 AS BIT) AS IsClosed
         FROM PaymentRequests pr
         JOIN Users     u    ON pr.SubmittedById = u.Id
         JOIN Projects  proj ON pr.ProjectId    = proj.Id
@@ -334,7 +348,9 @@ public sealed class PaymentReportReadService(IDbConnection db) : IPaymentReportR
                item.ItemName  AS ItemName,
                item.Quantity  AS ItemCol3Text,
                CAST(NULL AS DATETIME) AS ItemCol3Date,
-               item.TotalPrice AS ItemAmount
+               item.TotalPrice AS ItemAmount,
+               adv.ActualAmount AS ActualAmount,
+               CAST(adv.IsClosed AS BIT) AS IsClosed
         FROM AdvanceRequests adv
         JOIN Users     u    ON adv.SubmittedById = u.Id
         JOIN Projects  proj ON adv.ProjectId    = proj.Id
@@ -357,7 +373,9 @@ public sealed class PaymentReportReadService(IDbConnection db) : IPaymentReportR
                item.ItemName  AS ItemName,
                CAST(NULL AS NVARCHAR(50)) AS ItemCol3Text,
                item.InvoiceDate AS ItemCol3Date,
-               item.TotalPrice  AS ItemAmount
+               item.TotalPrice  AS ItemAmount,
+               CAST(NULL AS DECIMAL(18,2)) AS ActualAmount,
+               CAST(0 AS BIT) AS IsClosed
         FROM WriteOffRecords wo
         JOIN Users           u    ON wo.SubmittedById = u.Id
         JOIN AdvanceRequests adv  ON wo.AdvanceRequestId = adv.Id
@@ -381,7 +399,9 @@ public sealed class PaymentReportReadService(IDbConnection db) : IPaymentReportR
                item.ItemName    AS ItemName,
                CAST(NULL AS NVARCHAR(50)) AS ItemCol3Text,
                item.InvoiceDate AS ItemCol3Date,
-               item.TotalPrice  AS ItemAmount
+               item.TotalPrice  AS ItemAmount,
+               CAST(NULL AS DECIMAL(18,2)) AS ActualAmount,
+               CAST(0 AS BIT) AS IsClosed
         FROM TravelPaymentRequests tpr
         JOIN Users         u    ON tpr.EmployeeId = u.Id
         LEFT JOIN Projects proj ON tpr.ProjectId  = proj.Id
@@ -404,7 +424,9 @@ public sealed class PaymentReportReadService(IDbConnection db) : IPaymentReportR
                item.ItemName    AS ItemName,
                CAST(NULL AS NVARCHAR(50)) AS ItemCol3Text,
                item.InvoiceDate AS ItemCol3Date,
-               item.TotalPrice  AS ItemAmount
+               item.TotalPrice  AS ItemAmount,
+               tr.ActualAmount AS ActualAmount,
+               CAST(tr.IsClosed AS BIT) AS IsClosed
         FROM TravelRequests tr
         JOIN Users         u    ON tr.EmployeeId = u.Id
         LEFT JOIN Projects proj ON tr.ProjectId  = proj.Id
@@ -427,7 +449,9 @@ public sealed class PaymentReportReadService(IDbConnection db) : IPaymentReportR
                item.ItemName    AS ItemName,
                CAST(NULL AS NVARCHAR(50)) AS ItemCol3Text,
                item.InvoiceDate AS ItemCol3Date,
-               item.TotalPrice  AS ItemAmount
+               item.TotalPrice  AS ItemAmount,
+               CAST(NULL AS DECIMAL(18,2)) AS ActualAmount,
+               CAST(0 AS BIT) AS IsClosed
         FROM TravelWriteOffRecords two
         JOIN Users          u    ON two.SubmittedById = u.Id
         JOIN TravelRequests tr   ON two.TravelRequestId = tr.Id
@@ -869,7 +893,9 @@ public sealed class PaymentReportReadService(IDbConnection db) : IPaymentReportR
             ApprovalStatus: (string)row.ApprovalStatus,
             PaidAt:         (DateTime?)row.PaidAt,
             SubmittedAt:    (DateTime)row.SubmittedAt,
-            Items:          []);
+            Items:          [],
+            ActualAmount:   (decimal?)row.ActualAmount,
+            IsClosed:       (bool)row.IsClosed);
     }
 
     // ========================================================================

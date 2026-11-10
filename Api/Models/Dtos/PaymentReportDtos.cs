@@ -16,7 +16,9 @@ public sealed record PaymentReportDto(
     string    ApprovalStatus,
     DateTime? PaidAt,
     DateTime  SubmittedAt,   // 送簽日期（申請日期）；報表只含非草稿，必有值
-    List<PaymentReportItemDto> Items);
+    List<PaymentReportItemDto> Items,
+    decimal?  ActualAmount = null,   // 預支 / 出差預支結案寫回的實際金額（其他類別與未結案為 null）
+    bool      IsClosed = false);     // 預支 / 出差預支是否已結案（其他類別恆 false）
 
 /// <summary>
 /// 款項統計明細列（4 欄語意依 category 由前端對應）：
@@ -49,7 +51,9 @@ public sealed record PaymentExportRowDto(
     string?   ItemName,
     string?   ItemCol3Text,
     DateTime? ItemCol3Date,
-    decimal?  ItemAmount);
+    decimal?  ItemAmount,
+    decimal?  ActualAmount = null,   // 預支 / 出差預支結案實際金額（其他類別為 null）
+    bool      IsClosed = false);
 
 /// <summary>
 /// 待撥款清單的一列 —— **一期一列**（一張單有 3 期就 3 列），與上面「一單一列」的報表粒度不同。

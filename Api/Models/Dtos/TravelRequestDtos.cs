@@ -81,7 +81,9 @@ public sealed record TravelRequestDto(
     ParticipantDto[]?            Participants         = null,
     InstallmentDto[]?            Installments         = null,
     string?                      PaymentStatus        = null,
-    DateTime?                    AdvanceNeededDate    = null);
+    DateTime?                    AdvanceNeededDate    = null,
+    decimal?                     ActualAmount         = null,  // 結案寫回的實際金額（未結案 null）
+    AdvanceSettlementLedgerDto?  SettlementLedger     = null); // 金額歷程（僅單筆詳情帶入）
 
 public sealed record CreateTravelRequestRequest(
     Guid?    EmployeeId,

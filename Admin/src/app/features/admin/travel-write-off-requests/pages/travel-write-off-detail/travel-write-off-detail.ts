@@ -10,6 +10,7 @@ import {ApprovalTaskService} from '../../../approval-tasks/services/approval-tas
 import {ApprovalTask} from '../../../approval-tasks/models/approval-task.model';
 import {TravelWriteOffRequest, APPROVAL_STATUS_LABELS, APPROVAL_STATUS_CLASSES} from '../../models/travel-write-off-request.model';
 import {ApprovalTimeline} from '../../../../../shared/components/approval-timeline';
+import {AdvanceSettlementLedgerComponent} from '../../../../../shared/components/advance-settlement-ledger';
 import {ClosureInfoCardComponent} from '../../../../../shared/components/closure-info-card';
 import {SubmitSuccessModal} from '../../../../../shared/components/submit-success-modal';
 import {NgbModal} from '@ng-bootstrap/ng-bootstrap';
@@ -19,7 +20,7 @@ import {ScrollIntoViewDirective} from '@shared/directives/scroll-into-view.direc
 @Component({
   selector: 'app-travel-write-off-detail',
   templateUrl: './travel-write-off-detail.html',
-  imports: [RouterLink, DecimalPipe, DatePipe, FilePreviewModal, ApprovalTimeline, ClosureInfoCardComponent, ScrollIntoViewDirective],
+  imports: [RouterLink, DecimalPipe, DatePipe, FilePreviewModal, ApprovalTimeline, ClosureInfoCardComponent, ScrollIntoViewDirective, AdvanceSettlementLedgerComponent],
 })
 export class TravelWriteOffDetail implements OnInit {
   private service     = inject(TravelWriteOffRequestService);

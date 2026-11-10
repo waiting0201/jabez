@@ -1,6 +1,7 @@
 import { Injectable, inject, signal } from '@angular/core';
 import { AdvanceRequest, roundLabel } from '../models/advance-request.model';
 import { ApprovalRecord, ApprovalFlow, writeOffRoundStatus } from '../../approval-tasks/models/approval-task.model';
+import { drawSettlementLedger } from '../../../../shared/services/pdf-settlement-ledger';
 import { drawWriteOffTable } from '../../../../shared/services/pdf-write-off-table';
 import { PdfCoreService, SignBlock, CIS, FONT_FAMILY, fmtDT, fmt, buildDynamicSignBlocks, designatedStepOrdersOf } from '../../../../shared/services/pdf-core.service';
 
@@ -260,6 +261,9 @@ export class AdvancePdfService {
         doc.text(`待沖銷金額：${fmt(remaining)} 元`, summaryX, y, { align: 'right' });
         doc.setTextColor(...CIS.textPrimary);
       }
+
+      // ── 金額歷程（預支 → 撥款 → 沖銷 → 繳回 / 補撥 → 結案）──
+      y = drawSettlementLedger(doc, autoTable, r.settlementLedger, { mx, cw, ph, y });
 
       // ── 簽名欄 ──
       y += 6;

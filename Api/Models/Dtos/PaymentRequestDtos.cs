@@ -226,7 +226,9 @@ public sealed record TravelTaskDetailDto(
     decimal?  RefundedAmount = null,
     DateTime? AdvanceNeededDate = null,
     /// <summary>假日活動津貼合計（僅 IsHolidayTravel=true 時提供）；逐人金額不外流，只給合計。</summary>
-    int?      HolidayAllowanceTotal = null)
+    int?      HolidayAllowanceTotal = null,
+    decimal?  ActualAmount = null,                         // 結案寫回的實際金額（假日活動恆 null）
+    AdvanceSettlementLedgerDto? SettlementLedger = null)
 {
     public TravelRequestItemDto[] Items { get; init; } = Items ?? Array.Empty<TravelRequestItemDto>();
 }

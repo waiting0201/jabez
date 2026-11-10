@@ -1011,6 +1011,7 @@
                     [advanceRounds]="d.advanceRounds"
                     [writeOffHistory]="d.writeOffHistory"
                     [currentGrandTotal]="d.grandTotal"
+                    [ledger]="d.settlementLedger"
                     [refundDue]="d.refundDue ?? 0"
                     [advanceReturnedTotal]="d.advanceReturnedTotal ?? 0"
                     [currentReturnedAmount]="d.returnedAmount"
@@ -1302,8 +1303,8 @@
                     </div>
                     <div class="col-6 col-md-3">
                       <div class="text-muted small mb-1">待沖銷餘額</div>
-                      <span class="fw-600 text-lg" [class]="(d.travelGrandTotal - d.otherWrittenOffTotal - d.grandTotal + (d.travelRefundedAmount ?? 0)) >= 0 ? 'text-green' : 'text-red'">
-                        {{ d.travelGrandTotal - d.otherWrittenOffTotal - d.grandTotal + (d.travelRefundedAmount ?? 0) | number:'1.0-0' }}
+                      <span class="fw-600 text-lg" [class]="(d.travelGrandTotal - d.otherWrittenOffTotal - d.grandTotal) >= 0 ? 'text-green' : 'text-red'">
+                        {{ d.travelGrandTotal - d.otherWrittenOffTotal - d.grandTotal | number:'1.0-0' }}
                       </span>
                     </div>
                   </div>
@@ -1320,12 +1321,6 @@
                         <span class="fw-500" [class.text-success]="d.refundedAt">{{ d.refundedAt ? (d.refundedAt | date:'yyyy-MM-dd') : '尚未撥款' }}</span>
                         <div class="text-muted small mt-1">公司實際撥付差額給員工的日期</div>
                       </div>
-                      @if (d.travelRefundedAmount != null) {
-                        <div class="col-6 col-md-3">
-                          <div class="text-muted small mb-1">撥款金額</div>
-                          <span class="fw-500">${{ d.travelRefundedAmount | number:'1.0-0' }}</span>
-                        </div>
-                      }
                     </div>
                   }
 
@@ -1478,6 +1473,11 @@
 
         }
 
+        <!-- ── 金額歷程（advance / travel 為本單；兩種沖銷為其關聯母單；後端 settlementLedger 單一真相）── -->
+        @if (settlementLedger(task); as sl) {
+          <app-advance-settlement-ledger cardClass="mt-6" [title]="ledgerTitle(task)" [ledger]="sl" />
+        }
+
         <!-- ── 結案資訊（advance / travel 為本單；兩種沖銷為其關聯母單）──────────── -->
         @if (closureInfo(task); as c) {
           <app-closure-info-card
@@ -1488,7 +1488,6 @@
             [isClosed]="c.isClosed"
             [closedAt]="c.closedAt"
             [refundAmount]="c.refundAmount"
-            [refundedAmount]="c.refundedAmount"
             [estimatedRefundDate]="c.estimatedRefundDate"
             [refundedAt]="c.refundedAt" />
         }
@@ -1775,10 +1774,6 @@
                 <div class="text-muted small mb-1 fw-500">撥款日：</div>
                 <div class="small mb-4 text-success">{{ task.writeOffDetail!.refundedAt | date:'yyyy-MM-dd' }}</div>
               }
-              @if (task.applicationType === 'write_off' && task.writeOffDetail?.advanceRefundedAmount != null) {
-                <div class="text-muted small mb-1 fw-500">撥款金額：</div>
-                <div class="small mb-4">${{ task.writeOffDetail!.advanceRefundedAmount | number:'1.0-0' }}</div>
-              }
               @if (task.applicationType === 'travel_write_off' && task.travelWriteOffDetail?.estimatedRefundDate) {
                 <div class="text-muted small mb-1 fw-500">預計撥款日：</div>
                 <div class="small mb-4">{{ task.travelWriteOffDetail!.estimatedRefundDate | date:'yyyy-MM-dd' }}</div>
@@ -1786,10 +1781,6 @@
               @if (task.applicationType === 'travel_write_off' && task.travelWriteOffDetail?.refundedAt) {
                 <div class="text-muted small mb-1 fw-500">撥款日：</div>
                 <div class="small mb-4 text-success">{{ task.travelWriteOffDetail!.refundedAt | date:'yyyy-MM-dd' }}</div>
-              }
-              @if (task.applicationType === 'travel_write_off' && task.travelWriteOffDetail?.travelRefundedAmount != null) {
-                <div class="text-muted small mb-1 fw-500">撥款金額：</div>
-                <div class="small mb-4">${{ task.travelWriteOffDetail!.travelRefundedAmount | number:'1.0-0' }}</div>
               }
               <!-- 已核准後的撥款明細管理：分期表（payment_request / advance / travel / travel_payment / write_off）-->
               @if (isInstallmentApp(task) && canSetPaymentDate(task)) {

@@ -1299,6 +1299,17 @@ Superadmin，只有 Create 沒有）。
 
 ---
 
+## 13.4b 預支金額歷程 Ledger（單一真相，2026-11）
+
+預支 / 出差預支的「預支 → 撥款 → 各次沖銷 → 繳回 / 補撥 → 結案實際金額」歷程，數字**只在** [`Services/AdvanceSettlementLedgerService`](../Api/Services/AdvanceSettlementLedgerService.cs) 計算（Dapper、`QueryMultiple` 一次撈回避免 N+1；`GetForAdvanceAsync` / `GetForTravelAsync`），前端與 PDF 不得各自重算「已沖銷 / 尚未結清」。
+
+- **基準**：只計 `approved` 沖銷；簽核中 / 退回 / 草稿另列 `PendingWriteOffTotal`、不進累計。`Outstanding = AdvanceTotal − ApprovedWriteOffTotal − ReturnedTotal + OverspendPaidTotal`（>0 同仁應繳回，<0 公司應補撥）；`Difference = AdvanceTotal − (ActualAmount ?? ApprovedWriteOffTotal)`。
+- **事件**（`Events`，依日期排序、null 排前，`closed` 恆最後）：`advance_round`（日期取各批次預支日期；進行中、尚未核准的追加批次不列）/ `advance_paid`（資訊列，不影響 Outstanding）/ `write_off`（日期＝核准時間，舊資料退回送簽 / 建立時間）/ `returned` / `overspend_paid` / `closed`（`Outstanding ≠ 0` 時 Note 寫「差額未處理 N 元」，**不擋結案**）。
+- **掛載**：由各 ReadService 的單筆 `GetByIdAsync`（Advance / Travel / WriteOff / TravelWriteOff）與 `PaymentRequestReadService.GetApprovalTaskByIdAsync(id, type)` 呼叫；**列表端點不帶**（避免 N+1）。DI：`IAdvanceSettlementLedgerService` scoped。
+- **實際金額寫入**：`ApprovalTaskHandler.CloseAdvanceRequestAsync` / `CloseTravelRequestAsync`（四個結案入口的唯一落點）寫 `ActualAmount`（預支另寫現金 / 支票分項），短支超支皆寫。
+- **專案水位**：`ProjectWaterLevelReadService` 逐張預支計算 `IsClosed ? ISNULL(ActualAmount, 已核准沖銷) : MAX(GrandTotal, 已核准沖銷)`，預支限 `approved`、出差限 `IsHolidayTravel=0`。
+- **沖銷前序一致**：`PaymentRequestReadService`（沖銷 / 出差沖銷簽核詳情）與 `TravelWriteOffRequestReadService` 的「他單已沖銷」前序改為與 `WriteOffRefundCalculator` 同一規則（核准時間早於本單；同時間 Id 小者在前），不再用 `Id <`。
+
 ## 13.5 父單多批次（Round）模式
 
 **目前唯一採用者：追加預支**（[AdvanceRequestHandler](../Api/Handlers/AdvanceRequestHandler.cs) + [AdvanceSupplementService](../Api/Services/AdvanceSupplementService.cs)）。當「已核准的單需要再追加內容，且追加要重跑簽核、金額要併回原單」時採用此模式，而非開一種新申請類型。

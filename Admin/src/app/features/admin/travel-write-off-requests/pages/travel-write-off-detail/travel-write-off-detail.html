@@ -107,8 +107,8 @@
           </div>
           <div class="col-6 col-md-3">
             <div class="text-muted small">待沖銷餘額</div>
-            <div class="fw-600 text-lg" [class]="(r.travelGrandTotal - r.travelWrittenOffTotal - r.grandTotal + (r.travelRefundedAmount ?? 0)) >= 0 ? 'text-green' : 'text-red'">
-              {{ r.travelGrandTotal - r.travelWrittenOffTotal - r.grandTotal + (r.travelRefundedAmount ?? 0) | number:'1.0-0' }}
+            <div class="fw-600 text-lg" [class]="(r.travelGrandTotal - r.travelWrittenOffTotal - r.grandTotal) >= 0 ? 'text-green' : 'text-red'">
+              {{ r.travelGrandTotal - r.travelWrittenOffTotal - r.grandTotal | number:'1.0-0' }}
             </div>
           </div>
         </div>
@@ -125,12 +125,6 @@
               <div class="fw-500" [class.text-success]="r.refundedAt">{{ r.refundedAt ? (r.refundedAt | date:'yyyy-MM-dd') : '尚未撥款' }}</div>
               <div class="text-muted small mt-1">公司實際撥付差額給員工的日期</div>
             </div>
-            @if (r.travelRefundedAmount != null) {
-              <div class="col-6 col-md-3">
-                <div class="text-muted small">撥款金額</div>
-                <div class="fw-500">${{ r.travelRefundedAmount | number:'1.0-0' }}</div>
-              </div>
-            }
           </div>
         }
 
@@ -148,6 +142,9 @@
       [showRefund]="false"
       [isClosed]="r.travelIsClosed"
       [closedAt]="r.travelClosedAt" />
+
+    <!-- 關聯出差單的金額歷程 -->
+    <app-advance-settlement-ledger title="出差單金額歷程" [ledger]="r.settlementLedger" />
 
     <!-- 沖銷明細 -->
     <div class="card border-0 shadow-sm mb-6">

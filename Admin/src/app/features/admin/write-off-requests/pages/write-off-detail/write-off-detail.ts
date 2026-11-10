@@ -17,6 +17,7 @@ import {WriteOffSummaryComponent} from '../../../../../shared/components/write-o
 import {AdvanceItemsReadonlyComponent} from '../../../../../shared/components/advance-items-readonly';
 import {PriorWriteOffsComponent} from '../../../../../shared/components/prior-write-offs';
 import {CategorySubtotalsComponent} from '../../../../../shared/components/category-subtotals';
+import {AdvanceSettlementLedgerComponent} from '../../../../../shared/components/advance-settlement-ledger';
 import {ClosureInfoCardComponent} from '../../../../../shared/components/closure-info-card';
 import {SubmitSuccessModal} from '../../../../../shared/components/submit-success-modal';
 import {NgbModal} from '@ng-bootstrap/ng-bootstrap';
@@ -26,7 +27,7 @@ import {ScrollIntoViewDirective} from '@shared/directives/scroll-into-view.direc
 @Component({
   selector: 'app-write-off-request-detail',
   templateUrl: './write-off-detail.html',
-  imports: [RouterLink, DecimalPipe, DatePipe, FilePreviewModal, ApprovalTimeline, AttachmentsList, InstallmentsTable, WriteOffSummaryComponent, WriteOffReturnedInfo, ClosureInfoCardComponent, ScrollIntoViewDirective, AdvanceItemsReadonlyComponent, PriorWriteOffsComponent, CategorySubtotalsComponent],
+  imports: [RouterLink, DecimalPipe, DatePipe, FilePreviewModal, ApprovalTimeline, AttachmentsList, InstallmentsTable, WriteOffSummaryComponent, WriteOffReturnedInfo, ClosureInfoCardComponent, ScrollIntoViewDirective, AdvanceItemsReadonlyComponent, PriorWriteOffsComponent, CategorySubtotalsComponent, AdvanceSettlementLedgerComponent],
 })
 export class WriteOffRequestDetail implements OnInit {
   private service     = inject(WriteOffRequestService);

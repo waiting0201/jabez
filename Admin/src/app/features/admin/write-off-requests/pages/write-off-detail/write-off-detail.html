@@ -90,6 +90,7 @@
           [advanceRounds]="r.advanceRounds"
           [writeOffHistory]="r.writeOffHistory"
           [currentGrandTotal]="r.grandTotal"
+          [ledger]="r.settlementLedger"
           [refundDue]="r.refundDue ?? 0"
           [advanceReturnedTotal]="r.advanceReturnedTotal ?? 0"
           [currentReturnedAmount]="r.returnedAmount"
@@ -115,6 +116,9 @@
       [showRefund]="false"
       [isClosed]="r.advanceIsClosed"
       [closedAt]="r.advanceClosedAt" />
+
+    <!-- 關聯預支單的金額歷程 -->
+    <app-advance-settlement-ledger title="預支單金額歷程" [ledger]="r.settlementLedger" />
 
     <!-- 本次沖銷差額撥款明細（僅超支時才有資料；read-only）-->
     <app-installments-table

@@ -18,6 +18,8 @@ import {AdvanceItemsReadonlyComponent} from '../../../../../shared/components/ad
 import {PriorWriteOffsComponent} from '../../../../../shared/components/prior-write-offs';
 import {CategorySubtotalsComponent} from '../../../../../shared/components/category-subtotals';
 import {WriteOffSummaryComponent} from '../../../../../shared/components/write-off-summary';
+import {AdvanceSettlementLedgerComponent} from '../../../../../shared/components/advance-settlement-ledger';
+import type {SettlementLedger} from '../../../../../shared/models/settlement-ledger.model';
 import {ClosureInfoCardComponent} from '../../../../../shared/components/closure-info-card';
 import {AuthService} from '../../../../../core/auth/services/auth.service';
 import {PaymentRequestService} from '../../../payment-requests/services/payment-request.service';
@@ -65,7 +67,7 @@ import {ShiftMonthCalendar} from '../../../../../shared/components/shift-month-c
 @Component({
   selector: 'app-approval-task-review',
   templateUrl: './approval-task-review.html',
-  imports: [RouterLink, ReactiveFormsModule, AsyncPipe, DatePipe, DecimalPipe, FilePreviewModal, AttachmentsList, InstallmentsEditorComponent, WriteOffSummaryComponent, WriteOffReturnedInfo, ClosureInfoCardComponent, ScrollIntoViewDirective, ShiftMonthCalendar, AdvanceItemsReadonlyComponent, PriorWriteOffsComponent, CategorySubtotalsComponent, PreReviewItemsReadonly, LinkedPreReviews, StepReturnHistory],
+  imports: [RouterLink, ReactiveFormsModule, AsyncPipe, DatePipe, DecimalPipe, FilePreviewModal, AttachmentsList, InstallmentsEditorComponent, WriteOffSummaryComponent, WriteOffReturnedInfo, ClosureInfoCardComponent, AdvanceSettlementLedgerComponent, ScrollIntoViewDirective, ShiftMonthCalendar, AdvanceItemsReadonlyComponent, PriorWriteOffsComponent, CategorySubtotalsComponent, PreReviewItemsReadonly, LinkedPreReviews, StepReturnHistory],
 })
 export class ApprovalTaskReview implements OnInit {
   private service           = inject(ApprovalTaskService);
@@ -546,7 +548,6 @@ export class ApprovalTaskReview implements OnInit {
     isClosed: boolean;
     closedAt?: string;
     refundAmount?: number;
-    refundedAmount?: number;
     estimatedRefundDate?: string;
     refundedAt?: string;
   } | null {
@@ -561,7 +562,6 @@ export class ApprovalTaskReview implements OnInit {
           isClosed:            !!wo.advanceIsClosed,
           closedAt:            wo.advanceClosedAt,
           refundAmount:        wo.advanceRefundAmount,
-          refundedAmount:      wo.advanceRefundedAmount,
           estimatedRefundDate: wo.estimatedRefundDate,
           refundedAt:          wo.refundedAt,
         }
@@ -570,7 +570,6 @@ export class ApprovalTaskReview implements OnInit {
           isClosed:            !!two.travelIsClosed,
           closedAt:            two.travelClosedAt,
           refundAmount:        two.travelRefundAmount,
-          refundedAmount:      two.travelRefundedAmount,
           estimatedRefundDate: two.estimatedRefundDate,
           refundedAt:          two.refundedAt,
         }
@@ -578,7 +577,6 @@ export class ApprovalTaskReview implements OnInit {
           isClosed:            !!d!.isClosed,
           closedAt:            d!.closedAt,
           refundAmount:        d!.refundAmount,
-          refundedAmount:      d!.refundedAmount,
           estimatedRefundDate: d!.estimatedRefundDate,
           refundedAt:          d!.refundedAt,
         };
@@ -586,10 +584,26 @@ export class ApprovalTaskReview implements OnInit {
     if (wo || two) return info;
     const hasAny = info.isClosed
       || (info.refundAmount != null && info.refundAmount > 0)
-      || info.refundedAmount != null
       || !!info.estimatedRefundDate
       || !!info.refundedAt;
     return hasAny ? info : null;
+  }
+
+  /** 金額歷程：advance / travel 為本單、兩種沖銷為其關聯母單；其餘類型無（假日執行活動 ledger 為 null） */
+  settlementLedger(task: ApprovalTask): SettlementLedger | null {
+    switch (task.applicationType) {
+      case 'advance':          return task.advanceDetail?.settlementLedger ?? null;
+      case 'travel':           return task.travelDetail?.settlementLedger ?? null;
+      case 'write_off':        return task.writeOffDetail?.settlementLedger ?? null;
+      case 'travel_write_off': return task.travelWriteOffDetail?.settlementLedger ?? null;
+      default:                 return null;
+    }
+  }
+
+  ledgerTitle(task: ApprovalTask): string {
+    return task.applicationType === 'write_off' ? '預支單金額歷程'
+         : task.applicationType === 'travel_write_off' ? '出差單金額歷程'
+         : '金額歷程';
   }
 
   closeCaseLoading = signal(false);

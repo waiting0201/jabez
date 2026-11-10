@@ -79,6 +79,15 @@ public class AdvanceRequestConfiguration : IEntityTypeConfiguration<AdvanceReque
                .OnDelete(DeleteBehavior.NoAction);
 
         // 退還差額
+        builder.Property(a => a.ActualAmount)
+               .HasColumnType("decimal(18,2)");
+
+        builder.Property(a => a.ActualCashTotal)
+               .HasColumnType("decimal(18,2)");
+
+        builder.Property(a => a.ActualCheckTotal)
+               .HasColumnType("decimal(18,2)");
+
         builder.Property(a => a.RefundAmount)
                .HasColumnType("decimal(18,2)");
 

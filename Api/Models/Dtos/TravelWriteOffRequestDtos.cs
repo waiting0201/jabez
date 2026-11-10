@@ -31,7 +31,8 @@ public sealed record TravelWriteOffRequestDto(
     DateTime?                     RefundedAt            = null,
     decimal?                      TravelRefundAmount    = null,
     decimal?                      TravelRefundedAmount  = null,
-    DateTime?                     TravelClosedAt        = null);  // 關聯出差單的結案時間（供沖銷頁「出差單結案資訊」卡）
+    DateTime?                     TravelClosedAt        = null,   // 關聯出差單的結案時間（供沖銷頁「出差單結案資訊」卡）
+    AdvanceSettlementLedgerDto? SettlementLedger = null);  // 關聯出差單的金額歷程（母單 ledger；僅單筆詳情填入）
 
 // ── Item DTO ──────────────────────────────────────────────────────────────────
 
@@ -99,4 +100,5 @@ public sealed record TravelWriteOffTaskDetailDto(
     decimal?                 TravelRefundAmount    = null,
     decimal?                 TravelRefundedAmount  = null,
     DateTime?                TravelClosedAt        = null,
-    bool                     PendingClose          = false);  // 財務已登記結案，待整張沖銷單核准後生效
+    bool                     PendingClose          = false,   // 財務已登記結案，待整張沖銷單核准後生效
+    AdvanceSettlementLedgerDto? SettlementLedger = null);   // 關聯出差單的金額歷程（母單 ledger）

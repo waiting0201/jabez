@@ -5,7 +5,7 @@ using System.Data;
 
 namespace Jabez.Api.Services.Dapper;
 
-public sealed class TravelRequestReadService(IDbConnection db, IInstallmentReadService installments) : ITravelRequestReadService
+public sealed class TravelRequestReadService(IDbConnection db, IInstallmentReadService installments, IAdvanceSettlementLedgerService ledger) : ITravelRequestReadService
 {
     private const string BaseSql = """
         SELECT tr.Id, tr.RequestNo, u.Name AS EmployeeName,
@@ -15,7 +15,7 @@ public sealed class TravelRequestReadService(IDbConnection db, IInstallmentReadS
                tr.IsHolidayTravel, tr.HolidayDays,
                tr.ApprovalStatus, tr.CreatedAt, tr.SubmittedAt, tr.ReviewedAt, tr.ReviewNote,
                tr.ApprovalItemId, tr.CurrentStepOrder, tr.ReviewedById,
-               tr.IsClosed, tr.ClosedAt, tr.RefundAmount, tr.RefundedAmount,
+               tr.IsClosed, tr.ClosedAt, tr.ActualAmount, tr.RefundAmount, tr.RefundedAmount,
                tr.EstimatedRefundDate, tr.RefundedAt,
                ti.Id AS ItemId, ti.Category, ti.SeqNo, ti.ItemName,
                ti.UnitPrice, ti.Quantity, ti.TotalPrice,
@@ -132,6 +132,7 @@ public sealed class TravelRequestReadService(IDbConnection db, IInstallmentReadS
             Participants        = participants.Length > 0 ? participants : null,
             Installments        = instList.Count > 0 ? instList.ToArray() : null,
             PaymentStatus       = installments.ComputeStatus(instList),
+            SettlementLedger    = dto.IsHolidayTravel ? null : await ledger.GetForTravelAsync(id),   // 假日執行活動不走沖銷
         };
     }
 
@@ -195,7 +196,8 @@ public sealed class TravelRequestReadService(IDbConnection db, IInstallmentReadS
                 EstimatedRefundDate:     (DateTime?)tr.EstimatedRefundDate,
                 RefundedAt:              (DateTime?)tr.RefundedAt,
                 HolidayDays:             (int)tr.HolidayDays,
-                AdvanceNeededDate:       (DateTime?)tr.AdvanceNeededDate);
+                AdvanceNeededDate:       (DateTime?)tr.AdvanceNeededDate,
+                ActualAmount:            (decimal?)tr.ActualAmount);
         });
     }
 }

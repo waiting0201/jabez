@@ -5,7 +5,7 @@ using System.Data;
 
 namespace Jabez.Api.Services.Dapper;
 
-public sealed class TravelWriteOffRequestReadService(IDbConnection db) : ITravelWriteOffRequestReadService
+public sealed class TravelWriteOffRequestReadService(IDbConnection db, IAdvanceSettlementLedgerService ledger) : ITravelWriteOffRequestReadService
 {
     // 出差沖銷申請主查詢：TravelWriteOffRecords 關聯 TravelRequests、Projects、Users、TravelWriteOffItems
     private const string BaseSql = """
@@ -24,7 +24,11 @@ public sealed class TravelWriteOffRequestReadService(IDbConnection db) : ITravel
                ISNULL((SELECT SUM(w2.GrandTotal) FROM TravelWriteOffRecords w2
                        WHERE w2.TravelRequestId = two.TravelRequestId
                          AND w2.ApprovalStatus = 'approved'
-                         AND w2.Id < two.Id), 0) AS TravelWrittenOffTotal,
+                         AND w2.Id <> two.Id
+                         AND (two.ReviewedAt IS NULL
+                           OR w2.ReviewedAt IS NULL
+                           OR w2.ReviewedAt < two.ReviewedAt
+                           OR (w2.ReviewedAt = two.ReviewedAt AND w2.Id < two.Id))), 0) AS TravelWrittenOffTotal,
                twi.Id AS ItemId, twi.Category, twi.SeqNo, twi.ItemName,
                twi.UnitPrice, twi.Quantity, twi.TotalPrice,
                twi.Note AS ItemNote, twi.InvoiceNo AS ItemInvoiceNo,
@@ -90,7 +94,11 @@ public sealed class TravelWriteOffRequestReadService(IDbConnection db) : ITravel
             (DateTime?)r.ReviewedAt,
             (string?)r.Comment)).ToArray();
 
-        return dto with { DesignatedReviewers = designatedReviewers.Length > 0 ? designatedReviewers : null };
+        return dto with
+        {
+            DesignatedReviewers = designatedReviewers.Length > 0 ? designatedReviewers : null,
+            SettlementLedger    = await ledger.GetForTravelAsync(dto.TravelRequestId),
+        };
     }
 
     // ── Grouping helpers ─────────────────────────────────────────────────────

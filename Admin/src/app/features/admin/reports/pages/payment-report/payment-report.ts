@@ -85,6 +85,21 @@ const ITEM_HEADERS: Record<string, [string, string, string, string]> = {
 /** 匯出筆數預警門檻：超過時先 confirm 再匯出 */
 const EXPORT_WARN_THRESHOLD = 1000;
 
+/** 預支類（結案會寫回實際金額）與沖銷類的 type 值（與 PAYMENT_TYPE_LABELS 同鍵） */
+const ADVANCE_TYPES = ['advance', 'travel'];
+const WRITE_OFF_TYPES = ['writeoff', 'travel-writeoff'];
+
+/**
+ * 「全部」類別合計時單一款項的計入金額：
+ * 預支類已結案且有實際金額 → 取實際金額；沖銷類 → 不計（已併入預支，避免 80,000 + 79,000 重複）；其餘取總金額。
+ * 單選沖銷類別時合計照常（allMode=false）。
+ */
+function effectiveTotal(type: string, total: number, isClosed: boolean, actual: number | null | undefined, allMode: boolean): number {
+  if (allMode && WRITE_OFF_TYPES.includes(type)) return 0;
+  if (ADVANCE_TYPES.includes(type) && isClosed && actual != null) return actual;
+  return total;
+}
+
 export interface PaymentReportItem {
   col1: string | null;        // 發票號碼 or 類別
   itemName: string | null;    // 品名
@@ -103,6 +118,11 @@ export interface PaymentReportRow {
   projectName: string;
   invoiceNos: string;
   totalAmount: number;
+  /** 預支 / 出差預支結案寫回的實際金額（其他類別與未結案為 null） */
+  actualAmount: number | null;
+  isClosed: boolean;
+  /** 「全部」類別下的沖銷類列：金額已併入預支，不進合計 */
+  mergedIntoAdvance: boolean;
   approvalStatus: string;
   statusLabel: string;
   paidAt: string;
@@ -130,6 +150,8 @@ interface PaymentExportRow {
   submittedAt: string;
   paidAt: string | null;
   paymentTotalAmount: number;
+  actualAmount: number | null;
+  isClosed: boolean;
   itemCol1: string | null;
   itemName: string | null;
   itemCol3Text: string | null;
@@ -186,6 +208,8 @@ export class PaymentReport implements OnInit {
 
   /** 合計 */
   totalAmount = signal(0);
+  /** 目前結果是否為「全部」類別查詢（決定合計是否排除沖銷類、預支類取實際金額） */
+  resultAllMode = signal(false);
 
   /** 明細 4 欄表頭（依類別決定） */
   itemHeaders = computed<readonly [string, string, string, string]>(() => {
@@ -311,7 +335,7 @@ export class PaymentReport implements OnInit {
     return params;
   }
 
-  private mapRow(r: any): PaymentReportRow {
+  private mapRow(r: any, allMode: boolean): PaymentReportRow {
     const items: PaymentReportItem[] = (r.items ?? []).map((it: any) => ({
       col1: it.col1 ?? null,
       itemName: it.itemName ?? null,
@@ -329,6 +353,9 @@ export class PaymentReport implements OnInit {
       projectName: r.projectName ?? '',
       invoiceNos: r.invoiceNos?.join(', ') ?? '',
       totalAmount: r.totalAmount ?? 0,
+      actualAmount: r.actualAmount ?? null,
+      isClosed: !!r.isClosed,
+      mergedIntoAdvance: allMode && WRITE_OFF_TYPES.includes(r.type),
       approvalStatus: r.approvalStatus,
       statusLabel: STATUS_LABELS[r.approvalStatus] ?? r.approvalStatus,
       paidAt: r.paidAt ? new Date(r.paidAt).toLocaleDateString('zh-TW') : '',
@@ -349,6 +376,7 @@ export class PaymentReport implements OnInit {
     this.loading.set(true);
     const params = this.buildParams();
 
+    const allMode = this.selectedCategory() === 'all';
     this.http.get<any>(`${environment.apiUrl}/reports/payment`, {params}).subscribe({
       next: (res) => {
         const data = res?.data ?? res ?? {};
@@ -356,9 +384,11 @@ export class PaymentReport implements OnInit {
         this.totalCount.set(data?.totalCount ?? 0);
         this.totalPages.set(data?.totalPages ?? 1);
 
-        const rows = items.map((r: any) => this.mapRow(r));
+        const rows = items.map((r: any) => this.mapRow(r, allMode));
         this.records.set(rows);
-        this.totalAmount.set(rows.reduce((sum: number, r: PaymentReportRow) => sum + r.totalAmount, 0));
+        this.resultAllMode.set(allMode);
+        this.totalAmount.set(rows.reduce((sum: number, r: PaymentReportRow) =>
+          sum + effectiveTotal(r.type, r.totalAmount, r.isClosed, r.actualAmount, allMode), 0));
         this.loading.set(false);
       },
       error: () => {
@@ -589,7 +619,7 @@ export class PaymentReport implements OnInit {
     const headers = [
       '單號', '員工姓名', '類型', '專案',
       ...itemHeaders,
-      '總金額', '簽核狀態', '付款日期', '申請日期',
+      '總金額', '實際金額', '簽核狀態', '付款日期', '申請日期',
     ];
 
     // 第 1 列：篩選條件摘要；第 2 列空；第 3 列：表頭；第 4 列起：資料
@@ -601,6 +631,7 @@ export class PaymentReport implements OnInit {
 
     // 請款層欄位去重：同筆只在第一列輸出；同時記錄各筆 totalAmount 以利合計。
     // 去重 key 用複合字串（type + parentId），避免「全部」UNION 後跨表相同 parentId 相鄰被誤併。
+    const allMode = category === 'all';
     let lastKey: string | null = null;
     const perRequestTotals = new Map<string, number>();
 
@@ -609,7 +640,7 @@ export class PaymentReport implements OnInit {
       const isFirstRow = rowKey !== lastKey;
       if (isFirstRow) {
         lastKey = rowKey;
-        perRequestTotals.set(rowKey, r.paymentTotalAmount ?? 0);
+        perRequestTotals.set(rowKey, effectiveTotal(r.type, r.paymentTotalAmount ?? 0, !!r.isClosed, r.actualAmount, allMode));
       }
 
       // per-row：有 col3Text（數量）優先，否則 col3Date（發票日期）—— 對單一類別等效，對 all 可混合
@@ -631,20 +662,25 @@ export class PaymentReport implements OnInit {
         r.itemAmount ?? null,
         // 後段主表欄位（同筆只在第一列）
         isFirstRow ? (r.paymentTotalAmount ?? 0) : '',
+        // 實際金額：預支類已結案才有值；「全部」類別下沖銷類標「已併入預支」（不進合計）
+        isFirstRow
+          ? (allMode && WRITE_OFF_TYPES.includes(r.type) ? '已併入預支'
+            : (ADVANCE_TYPES.includes(r.type) && r.isClosed && r.actualAmount != null ? r.actualAmount : ''))
+          : '',
         isFirstRow ? (STATUS_LABELS[r.approvalStatus] ?? r.approvalStatus) : '',
         isFirstRow ? this.toIsoDate(r.paidAt) : '',
         isFirstRow ? this.toIsoDate(r.submittedAt) : '',
       ]);
     }
 
-    // 合計列：對齊 UI tfoot（colspan=7 合計 → 明細金額 → 總金額 → colspan=3 空白）
+    // 合計列：對齊 UI tfoot（colspan=7 合計 → 明細金額 → 總金額 → 實際金額空白 → colspan=3 空白）
     const requestTotal = Array.from(perRequestTotals.values()).reduce((sum, v) => sum + v, 0);
     const itemTotal = rows.reduce((sum, r) => sum + (r.itemAmount ?? 0), 0);
     aoa.push([
       '合計', '', '', '', '', '', '',
       itemTotal,        // col 8 = 明細金額合計
-      requestTotal,     // col 9 = 單據總金額（去重）
-      '', '', '',
+      requestTotal,     // col 9 = 單據總金額（去重；「全部」時預支類取實際金額、沖銷類不計）
+      '', '', '', '',
     ]);
 
     const ws = XLSX.utils.aoa_to_sheet(aoa);
@@ -660,6 +696,7 @@ export class PaymentReport implements OnInit {
       { wch: 12 }, // 明細 Col3
       { wch: 14 }, // 明細金額
       { wch: 14 }, // 總金額
+      { wch: 14 }, // 實際金額
       { wch: 10 }, // 簽核狀態
       { wch: 12 }, // 付款日期
       { wch: 12 }, // 申請日期
@@ -674,6 +711,8 @@ export class PaymentReport implements OnInit {
       if (itemCell && typeof itemCell.v === 'number') itemCell.z = numberFmt;
       const totalCell = ws[XLSX.utils.encode_cell({ r, c: 8 })];
       if (totalCell && typeof totalCell.v === 'number') totalCell.z = numberFmt;
+      const actualCell = ws[XLSX.utils.encode_cell({ r, c: 9 })];
+      if (actualCell && typeof actualCell.v === 'number') actualCell.z = numberFmt;
     }
 
     // 「專案」欄（c=3）自動換行（含 code\nname 兩行）

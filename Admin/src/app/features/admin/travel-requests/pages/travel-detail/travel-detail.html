@@ -170,12 +170,14 @@
       </div>
     }
 
+    <!-- 金額歷程（假日執行活動 ledger 為 null 不渲染）-->
+    <app-advance-settlement-ledger [ledger]="r.settlementLedger" />
+
     <!-- 結案與退款資訊（共用元件，欄位與簽核作業詳情頁一致）-->
     <app-closure-info-card
       [isClosed]="r.isClosed"
       [closedAt]="r.closedAt"
       [refundAmount]="r.refundAmount"
-      [refundedAmount]="r.refundedAmount"
       [estimatedRefundDate]="r.estimatedRefundDate"
       [refundedAt]="r.refundedAt" />
 

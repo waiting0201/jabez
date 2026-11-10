@@ -10,12 +10,13 @@ import {NgbModal} from '@ng-bootstrap/ng-bootstrap';
 import {ApprovalTimeline} from '../../../../../shared/components/approval-timeline';
 import {SubmitSuccessModal} from '../../../../../shared/components/submit-success-modal';
 import {InstallmentsTable} from '../../../../../shared/components/installments-table';
+import {AdvanceSettlementLedgerComponent} from '../../../../../shared/components/advance-settlement-ledger';
 import {ClosureInfoCardComponent} from '../../../../../shared/components/closure-info-card';
 
 @Component({
   selector: 'app-travel-detail',
   templateUrl: './travel-detail.html',
-  imports: [RouterLink, DecimalPipe, DatePipe, ApprovalTimeline, InstallmentsTable, ClosureInfoCardComponent],
+  imports: [RouterLink, DecimalPipe, DatePipe, ApprovalTimeline, InstallmentsTable, ClosureInfoCardComponent, AdvanceSettlementLedgerComponent],
 })
 export class TravelDetail implements OnInit {
   private service = inject(TravelRequestService);
