@@ -76,6 +76,9 @@ public class TravelRequestConfiguration : IEntityTypeConfiguration<TravelRequest
         builder.Property(t => t.RefundedAmount)
                .HasColumnType("decimal(18,2)");
 
+        builder.Property(t => t.ActualAmount)
+               .HasColumnType("decimal(18,2)");
+
         builder.HasOne(t => t.ClosedBy)
                .WithMany()
                .HasForeignKey(t => t.ClosedById)

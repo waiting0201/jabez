@@ -171,6 +171,7 @@ var host = new HostBuilder()
         services.AddScoped<IWorkHoursReportReadService, WorkHoursReportReadService>();
         services.AddScoped<IPaymentReportReadService, PaymentReportReadService>();
         services.AddScoped<IProjectWaterLevelReadService, ProjectWaterLevelReadService>();
+        services.AddScoped<IAdvanceSettlementLedgerService, AdvanceSettlementLedgerService>();
         services.AddScoped<ICalendarDayReadService, CalendarDayReadService>();
         services.AddScoped<IWorkPatternReadService, WorkPatternReadService>();
         // 四週彈性工時：per-user 日別解析（取代 WorkCalendarHelper 的 bool ignoreHolidays）

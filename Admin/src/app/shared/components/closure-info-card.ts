@@ -3,7 +3,7 @@ import {DatePipe, DecimalPipe} from '@angular/common';
 
 /**
  * 共用「結案資訊」卡片 — 預支 / 出差預支的結案與退款狀態。
- * 欄位順序固定：結案狀態 / 結案時間 / 應退還差額 / 實際退款金額 / 預計退款日 / 退款日。
+ * 欄位順序固定：結案狀態 / 結案時間 / 應退還差額 / 預計退款日 / 退款日（實際退款金額為死欄位，2026-11 起不再顯示）。
  *
  * 已採用：advance-detail、travel-detail、approval-task-review（advance / travel 本單，
  * 以及 write_off 沖銷單所關聯的預支單）、write-off-detail。
@@ -56,13 +56,6 @@ import {DatePipe, DecimalPipe} from '@angular/common';
                 </div>
               </div>
             }
-            @if (showRefund() && refundedAmount() != null) {
-              <div class="col-6 col-md-3">
-                <div class="text-muted small">實際退款金額</div>
-                <div class="fw-600 text-lg">\${{ refundedAmount() | number:'1.0-0' }}</div>
-              </div>
-            }
-
             @if (showRefund() && estimatedRefundDate()) {
               <div class="col-6 col-md-3">
                 <div class="text-muted small">預計退款日</div>
@@ -99,8 +92,6 @@ export class ClosureInfoCardComponent {
   closedAt            = input<string | undefined>();
   /** 應退還差額（沖銷累計 > 預支 / 出差金額時系統自動計算）*/
   refundAmount        = input<number | undefined>();
-  /** 實際退款金額（財務手動填入）*/
-  refundedAmount      = input<number | undefined>();
   estimatedRefundDate = input<string | undefined>();
   refundedAt          = input<string | undefined>();
 
@@ -122,7 +113,6 @@ export class ClosureInfoCardComponent {
     || !!this.isClosed()
     || (this.showRefund() && (
       (this.refundAmount() != null && this.refundAmount()! > 0)
-      || this.refundedAmount() != null
       || !!this.estimatedRefundDate()
       || !!this.refundedAt())));
 }

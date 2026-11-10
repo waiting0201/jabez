@@ -114,6 +114,7 @@
               <th class="hidden md:table-cell">{{ itemHeaders()[2] || '—' }}</th>
               <th class="text-right">{{ itemHeaders()[3] || '金額' }}</th>
               <th class="text-right hidden md:table-cell">總金額</th>
+              <th class="text-right hidden md:table-cell">實際金額</th>
               <th class="text-center">簽核狀態</th>
               <th class="text-center hidden md:table-cell">付款日期</th>
               <th class="text-center hidden lg:table-cell">申請日期</th>
@@ -150,6 +151,17 @@
                 <td class="text-right fw-600 hidden md:table-cell">
                   @if (fr.isFirstRow) { {{ fr.record.totalAmount | number:'1.0-0' }} }
                 </td>
+                <td class="text-right hidden md:table-cell">
+                  @if (fr.isFirstRow) {
+                    @if (fr.record.mergedIntoAdvance) {
+                      <span class="text-muted text-xs">已併入預支</span>
+                    } @else if (fr.record.isClosed && fr.record.actualAmount != null) {
+                      <span class="fw-600">{{ fr.record.actualAmount | number:'1.0-0' }}</span>
+                    } @else {
+                      <span class="text-muted">—</span>
+                    }
+                  }
+                </td>
                 <td class="text-center">
                   @if (fr.isFirstRow) {
                     @switch (fr.record.approvalStatus) {
@@ -183,7 +195,7 @@
               </tr>
             } @empty {
               <tr>
-                <td colspan="12" class="text-center text-muted py-4">
+                <td colspan="13" class="text-center text-muted py-4">
                   @if (loading()) {
                     載入中...
                   } @else if (!selectedCategory()) {
@@ -201,12 +213,19 @@
                 <td colspan="7" class="text-right fw-500 small">合計</td>
                 <td class="text-right fw-600">{{ itemTotal() | number:'1.0-0' }}</td>
                 <td class="text-right fw-600 hidden md:table-cell">{{ totalAmount() | number:'1.0-0' }}</td>
+                <td class="hidden md:table-cell"></td>
                 <td colspan="3"></td>
               </tr>
             </tfoot>
           }
         </table>
       </div>
+
+      @if (resultAllMode() && records().length > 0) {
+        <div class="px-4 py-2 text-muted text-xs border-t">
+          「全部」合計說明：預支 / 出差預支已結案者以實際金額計入，沖銷單金額已併入預支、不重複計算（明細金額合計不受影響）。
+        </div>
+      }
 
       <!-- Pagination -->
       @if (totalPages() > 1) {

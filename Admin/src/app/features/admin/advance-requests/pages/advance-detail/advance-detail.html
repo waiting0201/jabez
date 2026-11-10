@@ -206,6 +206,9 @@
       </div>
     </div>
 
+    <!-- 金額歷程：預支 → 撥款 → 各次沖銷 → 繳回 / 補撥 → 結案實際金額（後端 settlementLedger 單一真相）-->
+    <app-advance-settlement-ledger [ledger]="r.settlementLedger" />
+
     <!-- 沖銷與繳回紀錄：該預支單底下各張沖銷單的核銷金額與同仁繳回（合計只計已核准）-->
     @if (r.writeOffRecords?.length) {
       <div class="card border-0 shadow-sm mb-6">
@@ -261,22 +264,6 @@
                   <td class="text-right fw-600">{{ approvedReturnedTotal(r) | number:'1.0-0' }}</td>
                   <td colspan="2"></td>
                 </tr>
-                <tr class="table-light">
-                  <td colspan="3" class="text-right fw-500 small">尚未結清（預支 − 核銷 − 繳回）</td>
-                  <td colspan="2" class="text-right fw-600"
-                      [class.text-warning]="unsettled(r) !== 0 && !overspendSettled(r)"
-                      [class.text-green]="unsettled(r) === 0 || overspendSettled(r)">
-                    {{ unsettled(r) | number:'1.0-0' }}
-                    @if (overspendSettled(r)) {
-                      <span class="badge bg-success-subtle text-success ml-1">
-                        已結清@if (r.overspendLastPaidAt) {（{{ r.overspendLastPaidAt | date:'yyyy-MM-dd' }} 已撥匯）}
-                      </span>
-                    } @else if (unsettled(r) !== 0) {
-                      <span class="badge bg-warning-subtle text-warning-emphasis ml-1">未結清</span>
-                    }
-                  </td>
-                  <td colspan="2"></td>
-                </tr>
               </tfoot>
             </table>
           </div>
@@ -289,7 +276,6 @@
       [isClosed]="r.isClosed"
       [closedAt]="r.closedAt"
       [refundAmount]="r.refundAmount"
-      [refundedAmount]="r.refundedAmount"
       [estimatedRefundDate]="r.estimatedRefundDate"
       [refundedAt]="r.refundedAt" />
 

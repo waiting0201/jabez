@@ -84,7 +84,9 @@ public sealed record AdvanceRequestDto(
     // 公司已補撥的超支差額（已核准沖銷的已撥款差額分期合計 / 最後撥款日；詳情頁「尚未結清」為負時判定已結清用）
     decimal                   OverspendPaidTotal     = 0,
     DateTime?                 OverspendLastPaidAt    = null,
-    IEnumerable<AdvanceLinkedPreReviewDto>? PreReviews = null);
+    IEnumerable<AdvanceLinkedPreReviewDto>? PreReviews = null,
+    decimal?                  ActualAmount           = null,  // 結案寫回的實際金額（未結案 null）
+    AdvanceSettlementLedgerDto? SettlementLedger     = null); // 金額歷程（僅單筆詳情帶入，列表為 null）
 
 /// <summary>預支單關聯的預審單摘要（RoundNo = 第幾次預支加選的；1 = 原始預支）。</summary>
 public sealed record AdvanceLinkedPreReviewDto(
@@ -217,7 +219,46 @@ public sealed record AdvanceTaskDetailDto(
     bool      IsClosed = false,
     DateTime? ClosedAt = null,
     DateTime? AdvanceNeededDate = null,
-    IEnumerable<AdvanceLinkedPreReviewDto>? PreReviews = null)
+    IEnumerable<AdvanceLinkedPreReviewDto>? PreReviews = null,
+    decimal?  ActualAmount = null,
+    AdvanceSettlementLedgerDto? SettlementLedger = null)
 {
     public AdvanceRequestItemDto[] Items { get; init; } = Items ?? Array.Empty<AdvanceRequestItemDto>();
 }
+
+// ── 預支金額歷程（Settlement Ledger，2026-11）──────────────────────────────
+
+/// <summary>
+/// 預支 / 出差預支「從預支到實際金額」的歷程單一真相（由 <c>AdvanceSettlementLedgerService</c> 產出）。
+/// 預支、沖銷、出差各頁的「已沖銷 / 尚未結清 / 實際金額 / 差額」一律讀這份，前端不得各自重算。
+/// 基準：只計已核准的沖銷；簽核中 / 退回 / 草稿的沖銷另列 <see cref="PendingWriteOffTotal"/>，不進累計。
+/// </summary>
+public sealed record AdvanceSettlementLedgerDto(
+    decimal   AdvanceTotal,           // 預支總額（含已核准的追加批次）
+    decimal   ApprovedWriteOffTotal,  // 已核准沖銷合計
+    decimal   ReturnedTotal,          // 已核准沖銷登錄的同仁繳回合計（出差預支恆 0）
+    decimal   OverspendPaidTotal,     // 公司已補撥的超支差額（已核准沖銷的差額分期已撥合計；出差預支恆 0）
+    decimal   Outstanding,            // = AdvanceTotal − ApprovedWriteOffTotal − ReturnedTotal + OverspendPaidTotal（>0 同仁尚應繳回，<0 公司尚應補撥）
+    decimal   PendingWriteOffTotal,   // 簽核中 / 退回 / 草稿的沖銷（不進累計）
+    bool      IsClosed,
+    DateTime? ClosedAt,
+    string?   ClosedByName,
+    decimal?  ActualAmount,           // 結案寫回的實際金額（未結案為 null；舊結案單由 migration 回填）
+    decimal?  Difference,             // = AdvanceTotal − (ActualAmount ?? ApprovedWriteOffTotal)
+    List<AdvanceSettlementEventDto> Events);
+
+/// <summary>
+/// 歷程事件列。Kind：advance_round / advance_paid / write_off / returned / overspend_paid / closed。
+/// Running* 為該列（含）之前的累計；advance_paid 為資訊列，不影響 RunningOutstanding。
+/// </summary>
+public sealed record AdvanceSettlementEventDto(
+    DateTime? Date,
+    string    Kind,
+    string    Label,
+    string?   RequestNo,
+    int?      WriteOffId,
+    decimal   Amount,
+    decimal   RunningAdvance,
+    decimal   RunningWrittenOff,
+    decimal   RunningOutstanding,
+    string?   Note);

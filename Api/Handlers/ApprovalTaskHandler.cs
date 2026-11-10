@@ -1636,12 +1636,19 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
         advance.ClosedAt   = Clock.Now;
         advance.ClosedById = closedById;
 
-        // 檢查是否有退還差額（沖銷累計 > 預支金額）
-        var totalWrittenOff = await db.WriteOffRecords
+        // 結案寫回實際金額（短支 / 超支皆寫；金額不同時不擋，只把歷程記清楚）
+        var woIds = db.WriteOffRecords
             .Where(w => w.AdvanceRequestId == advanceRequestId
-                     && (w.ApprovalStatus == "approved" || w.Id == triggeringWriteOffId))
-            .SumAsync(w => (decimal?)w.GrandTotal) ?? 0m;
+                     && (w.ApprovalStatus == "approved" || w.Id == triggeringWriteOffId));
+        var totalWrittenOff = await woIds.SumAsync(w => (decimal?)w.GrandTotal) ?? 0m;
+        var itemSums = await db.WriteOffItems
+            .Where(i => woIds.Select(w => w.Id).Contains(i.WriteOffRecordId))
+            .GroupBy(_ => 1)
+            .Select(g => new { Cash = g.Sum(i => i.CashAmount), Check = g.Sum(i => i.CheckAmount) })
+            .FirstOrDefaultAsync();
+        ApplyActualAmounts(advance, totalWrittenOff, itemSums?.Cash ?? 0m, itemSums?.Check ?? 0m);
 
+        // 檢查是否有退還差額（沖銷累計 > 預支金額）
         var diff = totalWrittenOff - advance.GrandTotal;
         if (diff > 0)
         {
@@ -1649,6 +1656,17 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
             await notifier.NotifyFinanceRefundAsync(advance, diff);
         }
     }
+
+    /// <summary>結案時寫回實際金額的單一落點（預支 / 出差預支四個結案入口皆經由 Close*RequestAsync 走到這裡）。</summary>
+    private static void ApplyActualAmounts(AdvanceRequest advance, decimal total, decimal cash, decimal check)
+    {
+        advance.ActualAmount     = total;
+        advance.ActualCashTotal  = cash;
+        advance.ActualCheckTotal = check;
+    }
+
+    private static void ApplyActualAmounts(TravelRequest travel, decimal total)
+        => travel.ActualAmount = total;
 
     /// <summary>
     /// 關閉出差申請：設 IsClosed、計算退款差額、通知財務。
@@ -1663,12 +1681,14 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
         travel.ClosedAt   = Clock.Now;
         travel.ClosedById = closedById;
 
-        // 檢查是否有退還差額（沖銷累計 > 出差金額）
+        // 結案寫回實際金額（短支 / 超支皆寫；不擋）
         var totalWrittenOff = await db.TravelWriteOffRecords
             .Where(w => w.TravelRequestId == travelRequestId
                      && (w.ApprovalStatus == "approved" || w.Id == triggeringWriteOffId))
             .SumAsync(w => (decimal?)w.GrandTotal) ?? 0m;
+        ApplyActualAmounts(travel, totalWrittenOff);
 
+        // 檢查是否有退還差額（沖銷累計 > 出差金額）
         var diff = totalWrittenOff - travel.GrandTotal;
         if (diff > 0)
         {

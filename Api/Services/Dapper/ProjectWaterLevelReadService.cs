@@ -76,12 +76,29 @@ public sealed class ProjectWaterLevelReadService(IDbConnection db) : IProjectWat
                 AND  pr.ApprovalStatus <> 'draft'
                 AND  i.PaidAt IS NOT NULL
             ) pr_paid
+            -- 預支：逐張計算。未結案 = MAX(預支總額, 已核准沖銷)（預支已撥款未沖銷時即佔用水位）；
+            -- 已結案 = 結案實際金額（ActualAmount 缺值時退回已核准沖銷合計）
             OUTER APPLY (
-              SELECT SUM(w.GrandTotal) AS Amount
-              FROM   WriteOffRecords w
-              JOIN   AdvanceRequests a ON w.AdvanceRequestId = a.Id
+              SELECT SUM(CASE WHEN a.IsClosed = 1 THEN ISNULL(a.ActualAmount, x.WoTotal)
+                              WHEN ap.Total > x.WoTotal THEN ap.Total
+                              ELSE x.WoTotal END) AS Amount
+              FROM   AdvanceRequests a
+              -- 已核准批次的預支金額：追加預支送簽期間母單轉 pending、GrandTotal 已含未核准批次，
+              -- 故以明細依批次加總（進行中的追加批次 RoundNo = CurrentRoundNo 不計）
+              OUTER APPLY (
+                SELECT ISNULL(SUM(ai.TotalPrice), 0) AS Total
+                FROM   AdvanceRequestItems ai
+                WHERE  ai.AdvanceRequestId = a.Id
+                  AND  (a.ApprovalStatus = 'approved' OR ai.RoundNo < a.CurrentRoundNo)
+              ) ap
+              OUTER APPLY (
+                SELECT ISNULL(SUM(w.GrandTotal), 0) AS WoTotal
+                FROM   WriteOffRecords w
+                WHERE  w.AdvanceRequestId = a.Id AND w.ApprovalStatus = 'approved'
+              ) x
               WHERE  a.ProjectId = p.Id
-                AND  w.ApprovalStatus = 'approved'
+                AND  (a.ApprovalStatus = 'approved'
+                      OR (a.CurrentRoundNo > 1 AND a.ApprovalStatus IN ('pending', 'returned')))
             ) wo
             OUTER APPLY (
               SELECT SUM(i.Amount) AS Amount
@@ -91,12 +108,20 @@ public sealed class ProjectWaterLevelReadService(IDbConnection db) : IProjectWat
                 AND  tpr.ApprovalStatus <> 'draft'
                 AND  i.PaidAt IS NOT NULL
             ) tpr_paid
+            -- 出差預支（不含假日執行活動）：計算方式同上
             OUTER APPLY (
-              SELECT SUM(w.GrandTotal) AS Amount
-              FROM   TravelWriteOffRecords w
-              JOIN   TravelRequests t ON w.TravelRequestId = t.Id
+              SELECT SUM(CASE WHEN t.IsClosed = 1 THEN ISNULL(t.ActualAmount, x.WoTotal)
+                              WHEN t.GrandTotal > x.WoTotal THEN t.GrandTotal
+                              ELSE x.WoTotal END) AS Amount
+              FROM   TravelRequests t
+              OUTER APPLY (
+                SELECT ISNULL(SUM(w.GrandTotal), 0) AS WoTotal
+                FROM   TravelWriteOffRecords w
+                WHERE  w.TravelRequestId = t.Id AND w.ApprovalStatus = 'approved'
+              ) x
               WHERE  t.ProjectId = p.Id
-                AND  w.ApprovalStatus = 'approved'
+                AND  t.IsHolidayTravel = 0
+                AND  t.ApprovalStatus = 'approved'
             ) two
             {scopeClause}
             ORDER BY p.Code

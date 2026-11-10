@@ -45,7 +45,12 @@
                   }
                 </td>
                 <td>{{ r.activityName }}</td>
-                <td class="text-right fw-500">{{ r.grandTotal | number:'1.0-0' }}</td>
+                <td class="text-right fw-500">
+                  {{ r.grandTotal | number:'1.0-0' }}
+                  @if (r.isClosed && r.actualAmount != null) {
+                    <div class="text-muted small fw-normal">實際 {{ r.actualAmount | number:'1.0-0' }}</div>
+                  }
+                </td>
                 <td>
                   <div class="flex flex-wrap items-center gap-1">
                     <span [class]="'badge ' + statusClass[r.approvalStatus]">{{ statusLabel[r.approvalStatus] }}</span>

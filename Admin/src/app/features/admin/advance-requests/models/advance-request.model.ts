@@ -1,3 +1,4 @@
+import type {SettlementLedger} from '@shared/models/settlement-ledger.model';
 export type ApprovalStatus = 'draft' | 'pending' | 'approved' | 'rejected' | 'returned';
 
 export const APPROVAL_STATUS_LABELS: Record<ApprovalStatus, string> = {
@@ -128,6 +129,11 @@ export interface AdvanceRequest {
   refundAmount?: number;
   /** 實際退款金額（財務手動填入） */
   refundedAmount?: number;
+
+  /** 結案實際金額（結案當下已核准沖銷合計；未結案為 null） */
+  actualAmount?: number | null;
+  /** 金額歷程（後端單一真相） */
+  settlementLedger?: SettlementLedger | null;
   /** 預計退款日（沖銷退還差額） */
   estimatedRefundDate?: string;
   /** 差額退款完成時間 */

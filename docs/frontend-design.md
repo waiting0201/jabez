@@ -2517,6 +2517,23 @@ Angular 指令不會被編譯；自刻 CSS popover 又會被 FullCalendar 格子
 
 ---
 
+## 12.10 預支金額歷程（`<app-advance-settlement-ledger>`，2026-11）
+
+**用途**：預支 / 出差預支「預支金額 → 撥款 → 各次沖銷 → 繳回 / 補撥 → 結案實際金額與差額」一眼看完；金額不同不擋，只把歷程與差額如何處理標清楚。
+
+- 元件：`shared/components/advance-settlement-ledger.ts`，輸入 `[ledger]`（型別 `SettlementLedger`，定義於 `shared/models/settlement-ledger.model.ts`）、`title`、`cardClass`（detail 頁 `mb-6`、簽核頁 `mt-6`）。ledger 為 null（假日執行活動等）整張卡不渲染。
+- **數字單一真相是後端 `settlementLedger`（只計已核准、前序依核准時間）**，前端不得自行重算累計或尚未結清。
+- 上方三格：預支金額 / 實際金額（未結案顯示已核准沖銷並標「核銷中」，`pendingWriteOffTotal > 0` 另提示「另有 N 元沖銷簽核中」）/ 差額（`outstanding > 0` 同仁應繳回、`< 0` 公司應補撥、`= 0` 已結清；結案事件 note 有值如「差額未處理 N 元」以警示 badge 呈現，不擋結案）。
+- 下方時間軸表格（手機橫向捲動，`min-width: 820px`）：日期 / 事項（kind badge）/ 單號 / 金額 / 累計預支 / 累計核銷 / 尚未結清。kind 對照 `SETTLEMENT_KIND_LABELS` / `SETTLEMENT_KIND_CLASSES`。
+- 掛載：advance-detail（置於「沖銷與繳回紀錄」之前，該卡不再自算尚未結清）、write-off-overview、write-off-detail、travel-detail、travel-write-off-detail、approval-task-review（advance / write_off / travel / travel_write_off 四型，由 `settlementLedger(task)` 取值）。
+- `<app-write-off-summary>` 新增 `[ledger]`：本單與同預支單所有沖銷皆已核准時，「尚未結清」取 `ledger.outstanding`；有簽核中 / 草稿沖銷時仍以含該筆的試算呈現（審核者要看核准後的結果）。
+- PDF：`shared/services/pdf-settlement-ledger.ts` 的 `drawSettlementLedger()`，預支 PDF 與出差預支 PDF 於撥款 / 沖銷段後、簽名欄前呼叫。
+- 清單頁（預支、出差預支）：已結案且 `actualAmount` 有值時，金額下方小字「實際 N」。
+- 款項統計：新增「實際金額」欄（僅預支 / 出差預支已結案有值）；「全部」類別合計預支類取實際金額、沖銷類（`writeoff` / `travel-writeoff`）不計入並標「已併入預支」，單選沖銷類別合計照常；畫面與 Excel 兩份 map 都要補欄位。
+- **`RefundedAmount` 已是死欄位**（無人寫入）：結餘公式、沖銷 PDF、結案資訊卡一律不再使用或顯示。
+
+---
+
 ## 13. 路由與 Lazy Loading
 
 所有 feature 在 `app.routes.ts` 用 `loadComponent` / `loadChildren` lazy load：

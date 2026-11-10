@@ -1,3 +1,4 @@
+import type {SettlementLedger} from '@shared/models/settlement-ledger.model';
 import {AdvanceRequest, AdvanceRequestItem, AdvanceRound} from '../../advance-requests/models/advance-request.model';
 import {InstallmentDto, PaymentInstallmentStatus, WriteOffReturnedCash, WriteOffRound} from '../../approval-tasks/models/approval-task.model';
 
@@ -102,6 +103,9 @@ export interface WriteOffRequest extends WriteOffReturnedCash {
   advanceRefundAmount?: number;
   /** 關聯預支單的實際退款金額（財務手動填入） */
   advanceRefundedAmount?: number;
+
+  /** 關聯母單的金額歷程（後端單一真相） */
+  settlementLedger?: SettlementLedger | null;
   /** 整單批次附件（照片 / PDF） */
   attachments?: import('../../approval-tasks/models/approval-task.model').AttachmentItem[];
   /** 關聯預支單的各預支批次（含追加）*/

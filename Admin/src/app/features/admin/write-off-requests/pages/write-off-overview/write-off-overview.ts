@@ -11,6 +11,7 @@ import {
 import {AdvanceRequest, roundLabel} from '../../../advance-requests/models/advance-request.model';
 import {AttachmentsList} from '../../../../../shared/components/attachments-list';
 import {WriteOffReturnedInfo} from '../../../../../shared/components/write-off-returned-info';
+import {AdvanceSettlementLedgerComponent} from '../../../../../shared/components/advance-settlement-ledger';
 import {InstallmentsTable} from '../../../../../shared/components/installments-table';
 import {HasPermissionDirective} from '@shared/directives/has-permission.directive';
 
@@ -22,7 +23,7 @@ import {HasPermissionDirective} from '@shared/directives/has-permission.directiv
 @Component({
   selector: 'app-write-off-overview',
   templateUrl: './write-off-overview.html',
-  imports: [WriteOffReturnedInfo, RouterLink, DecimalPipe, DatePipe, FilePreviewModal, AttachmentsList, InstallmentsTable, HasPermissionDirective],
+  imports: [WriteOffReturnedInfo, RouterLink, DecimalPipe, DatePipe, FilePreviewModal, AttachmentsList, InstallmentsTable, HasPermissionDirective, AdvanceSettlementLedgerComponent],
 })
 export class WriteOffOverview implements OnInit {
   private service   = inject(WriteOffRequestService);
@@ -47,11 +48,18 @@ export class WriteOffOverview implements OnInit {
   writeOffs = computed<WriteOffRequest[]>(() => this.overview()?.writeOffs ?? []);
 
   /** 已沖銷加總（已拒絕的不計入，與沖銷金額摘要同一規則）*/
-  writtenOffTotal = computed(() =>
-    this.writeOffs().filter(w => w.approvalStatus !== 'rejected').reduce((acc, w) => acc + w.grandTotal, 0));
+  writtenOffTotal = computed(() => {
+    const l = this.advance()?.settlementLedger;
+    // 有金額歷程時以後端為準（只計已核准），與歷程卡同一數字
+    if (l) return l.approvedWriteOffTotal;
+    return this.writeOffs().filter(w => w.approvalStatus !== 'rejected').reduce((acc, w) => acc + w.grandTotal, 0);
+  });
 
-  /** 待沖銷餘額 = 預支總額 − 已沖銷加總 */
-  balance = computed(() => (this.advance()?.grandTotal ?? 0) - this.writtenOffTotal());
+  /** 待沖銷餘額：有金額歷程時取後端 outstanding（預支 − 核銷 − 繳回），否則 預支總額 − 已沖銷加總 */
+  balance = computed(() => {
+    const l = this.advance()?.settlementLedger;
+    return l ? l.outstanding : (this.advance()?.grandTotal ?? 0) - this.writtenOffTotal();
+  });
 
   /** 應撥差額加總（沖銷超出預支、公司須補撥給員工的部分）*/
   refundDueTotal = computed(() =>

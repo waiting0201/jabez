@@ -1,6 +1,7 @@
 import {Component, computed, input} from '@angular/core';
 import {DatePipe, DecimalPipe} from '@angular/common';
 import {AdvanceRound, roundLabel} from '../../features/admin/advance-requests/models/advance-request.model';
+import {SettlementLedger} from '../models/settlement-ledger.model';
 import {WriteOffRound, writeOffRoundStatus} from '../../features/admin/approval-tasks/models/approval-task.model';
 
 /**
@@ -183,6 +184,13 @@ export class WriteOffSummaryComponent {
   /** 上述差額分期的最後撥款日（「已結清（日期 已撥匯）」顯示用）*/
   overspendLastPaidAt = input<string | null | undefined>(null);
 
+  /**
+   * 後端金額歷程（單一真相）。「尚未結清」在歷程與本表皆已核准時改取 ledger.outstanding，
+   * 與歷程卡同一數字；本單或同預支單其他沖銷仍在簽核 / 草稿時，歷程不計入、
+   * 本表仍以「含簽核中」的試算呈現（審核者要看本單核准後的結果）。
+   */
+  ledger = input<SettlementLedger | null | undefined>(null);
+
   readonly roundLabel = roundLabel;
   readonly status = writeOffRoundStatus;
 
@@ -207,7 +215,12 @@ export class WriteOffSummaryComponent {
   returnedTotal = computed(() => this.advanceReturnedTotal() + (this.currentReturnedAmount() ?? 0));
 
   /** 尚未結清 = 預支 − 費用核銷 − 繳回；≠ 0 以警示色標示（只警示不擋結案） */
-  unsettled = computed(() => this.advanceTotal() - this.writtenOffTotal() - this.returnedTotal());
+  unsettled = computed(() => {
+    const l = this.ledger();
+    const history = this.writeOffHistory() ?? [];
+    if (l && history.every(w => w.approvalStatus === 'approved')) return l.outstanding;
+    return this.advanceTotal() - this.writtenOffTotal() - this.returnedTotal();
+  });
 
   /** 沖銷大於預支（尚未結清為負）且公司已補撥足額 → 視為已結清 */
   overspendSettled = computed(() =>

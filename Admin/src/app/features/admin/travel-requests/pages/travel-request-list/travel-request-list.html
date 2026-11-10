@@ -38,7 +38,12 @@
                 <td class="fw-500">{{ r.destination }}</td>
                 <td class="text-muted small">{{ r.startDate | date:'yyyy-MM-dd' }}</td>
                 <td class="text-muted small">{{ r.endDate | date:'yyyy-MM-dd' }}</td>
-                <td class="text-right fw-500">{{ r.grandTotal | number:'1.0-0' }}</td>
+                <td class="text-right fw-500">
+                  {{ r.grandTotal | number:'1.0-0' }}
+                  @if (r.isClosed && r.actualAmount != null) {
+                    <div class="text-muted small fw-normal">實際 {{ r.actualAmount | number:'1.0-0' }}</div>
+                  }
+                </td>
                 <td class="text-muted small hidden md:table-cell">{{ r.purpose }}</td>
                 <td class="hidden lg:table-cell">
                   <div class="font-monospace small fw-500">{{ r.projectCode || '—' }}</div>

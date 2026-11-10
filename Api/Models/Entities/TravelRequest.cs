@@ -29,6 +29,9 @@ public class TravelRequest
     public DateTime? ClosedAt    { get; set; }
     public Guid?     ClosedById  { get; set; }
 
+    /// <summary>結案實際金額（2026-11）：結案當下已核准出差沖銷（含觸發結案那張）的合計；未結案為 null。</summary>
+    public decimal?  ActualAmount { get; set; }
+
     // 退還差額（沖銷累計超過出差金額時需匯款）
     public decimal?  RefundAmount            { get; set; }
     public decimal?  RefundedAmount          { get; set; }

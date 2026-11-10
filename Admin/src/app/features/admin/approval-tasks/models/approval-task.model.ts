@@ -1,3 +1,4 @@
+import type {SettlementLedger} from '@shared/models/settlement-ledger.model';
 import type {ShiftChangeMonthView} from '../../shift-schedules/models/shift-change.model';
 import {
   PaymentType, InvoiceItem, DesignatedReviewer,
@@ -225,6 +226,11 @@ export interface TravelTaskDetail {
   refundAmount?: number;
   /** 實際退款金額（財務手動填入） */
   refundedAmount?: number;
+
+  /** 結案實際金額（結案當下已核准沖銷合計；未結案為 null） */
+  actualAmount?: number | null;
+  /** 金額歷程（後端單一真相） */
+  settlementLedger?: SettlementLedger | null;
 }
 
 /** 加班申請的關聯專案明細（含該案預估時數） */
@@ -325,6 +331,11 @@ export interface AdvanceTaskDetail {
   refundAmount?: number;
   /** 實際退款金額（財務手動填入） */
   refundedAmount?: number;
+
+  /** 結案實際金額（結案當下已核准沖銷合計；未結案為 null） */
+  actualAmount?: number | null;
+  /** 金額歷程（後端單一真相） */
+  settlementLedger?: SettlementLedger | null;
   /** 預支款需求日（選填；Round 1 的值，逐批次值請看 rounds[]） */
   advanceNeededDate?: string;
   /** 關聯的預審單（供審核者對照；點開走 GET /approval-tasks/advance/{id}/pre-reviews/{preReviewId}） */
@@ -466,6 +477,9 @@ export interface WriteOffTaskDetail extends WriteOffReturnedCash {
   advanceRefundAmount?: number;
   /** 關聯預支單的實際退款金額（財務手動填入） */
   advanceRefundedAmount?: number;
+
+  /** 關聯母單的金額歷程（後端單一真相） */
+  settlementLedger?: SettlementLedger | null;
   attachments?: AttachmentItem[];
   /** 關聯預支單的各預支批次（含追加）*/
   advanceRounds?: import('../../advance-requests/models/advance-request.model').AdvanceRound[];
@@ -527,6 +541,9 @@ export interface TravelWriteOffTaskDetail {
   travelRefundAmount?: number;
   /** 關聯出差單的實際退款金額（財務手動填入） */
   travelRefundedAmount?: number;
+
+  /** 關聯母單的金額歷程（後端單一真相） */
+  settlementLedger?: SettlementLedger | null;
 }
 
 export interface TravelPaymentTaskDetail {

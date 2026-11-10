@@ -5,7 +5,7 @@ using System.Data;
 
 namespace Jabez.Api.Services.Dapper;
 
-public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentReadService installments) : IPaymentRequestReadService
+public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentReadService installments, IAdvanceSettlementLedgerService ledger) : IPaymentRequestReadService
 {
     /// <summary>
     /// 廠商匯款資料組字串（戶名 / 匯款銀行 / 銀行代號 / 銀行帳號 四欄併為一行）。
@@ -179,6 +179,26 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
                     PreReviews = await AdvanceRequestReadService.LoadLinkedPreReviewsAsync(db, id),
                 },
             };
+
+        // 預支 / 出差預支金額歷程（單一真相 AdvanceSettlementLedgerService；清單不帶以免 N+1）
+        if (task?.AdvanceDetail is { } ad)
+        {
+            var l = await ledger.GetForAdvanceAsync(ad.AdvanceRequestId);
+            task = task with { AdvanceDetail = ad with { ActualAmount = l?.ActualAmount, SettlementLedger = l } };
+        }
+        else if (task?.TravelDetail is { IsHolidayTravel: false } td)
+        {
+            var l = await ledger.GetForTravelAsync(td.TravelRequestId);
+            task = task with { TravelDetail = td with { ActualAmount = l?.ActualAmount, SettlementLedger = l } };
+        }
+        else if (task?.WriteOffDetail is { } wd)
+        {
+            task = task with { WriteOffDetail = wd with { SettlementLedger = await ledger.GetForAdvanceAsync(wd.AdvanceRequestId) } };
+        }
+        else if (task?.TravelWriteOffDetail is { } twd)
+        {
+            task = task with { TravelWriteOffDetail = twd with { SettlementLedger = await ledger.GetForTravelAsync(twd.TravelRequestId) } };
+        }
         return task;
     }
 
@@ -846,7 +866,11 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
                    ISNULL((SELECT SUM(w2.GrandTotal) FROM WriteOffRecords w2
                            WHERE w2.AdvanceRequestId = wo.AdvanceRequestId
                              AND w2.ApprovalStatus = 'approved'
-                             AND w2.Id < wo.Id), 0) AS OtherWrittenOffTotal,
+                             AND w2.Id <> wo.Id
+                             AND (wo.ReviewedAt IS NULL
+                               OR w2.ReviewedAt IS NULL
+                               OR w2.ReviewedAt < wo.ReviewedAt
+                               OR (w2.ReviewedAt = wo.ReviewedAt AND w2.Id < wo.Id))), 0) AS OtherWrittenOffTotal,
                    ISNULL((SELECT SUM(w3.ReturnedAmount) FROM WriteOffRecords w3
                            WHERE w3.AdvanceRequestId = wo.AdvanceRequestId
                              AND w3.ApprovalStatus = 'approved'
@@ -886,7 +910,11 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
                    ISNULL((SELECT SUM(tw2.GrandTotal) FROM TravelWriteOffRecords tw2
                            WHERE tw2.TravelRequestId = two.TravelRequestId
                              AND tw2.ApprovalStatus = 'approved'
-                             AND tw2.Id < two.Id), 0) AS OtherWrittenOffTotal,
+                             AND tw2.Id <> two.Id
+                             AND (two.ReviewedAt IS NULL
+                               OR tw2.ReviewedAt IS NULL
+                               OR tw2.ReviewedAt < two.ReviewedAt
+                               OR (tw2.ReviewedAt = two.ReviewedAt AND tw2.Id < two.Id))), 0) AS OtherWrittenOffTotal,
                    tworefundby.SignatureUrl AS RefundedBySignatureUrl,
                    trx.IsClosed AS TravelIsClosed,
                    trx.ClosedAt AS TravelClosedAt,
