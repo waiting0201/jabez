@@ -1260,7 +1260,7 @@ UI 行為規範（5 種申請類型一致）：
 
 > ⚠️ **禁止用 `paymentStatus === 'FullyPaid'` 當禁用條件**（2026-07 移除）：**追加預支**核准後申請總額會變大，原本 FullyPaid 的單必須能補一期把新增金額排入。若沿用 FullyPaid 鎖定，財務端湊不到 `SUM == 總額`，而後端在財務步驟又強制必填撥款明細 → **整張單卡死無法核准**。已撥款列的保護改由 `isInstallmentLocked(row)`（欄位 readonly + 隱藏刪除鈕）與後端 `InstallmentValidator` 負責，兩者已足夠。
 
-> 後端 `InstallmentValidator.Validate` 提供等同的伺服端防線（序號連續、SUM == 總額、已撥款列不可刪、僅實際撥款日可更正且不可清空），前端為 UX，後端為強制驗證。
+> 後端 `InstallmentValidator.Validate` 提供等同的伺服端防線（序號連續、SUM == 總額、已撥款列不可刪、僅實際撥款日可更正或清空（2026-11-10 起可清空，清空＝該期退回未撥款）），前端為 UX，後端為強制驗證。
 
 ### 7.7 沖銷金額摘要（[`<app-write-off-summary>`](../Admin/src/app/shared/components/write-off-summary.ts)）
 
