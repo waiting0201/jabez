@@ -1291,6 +1291,10 @@ namespace Jabez.Api.Data.Migrations
                     b.Property<DateTime>("AttemptedAt")
                         .HasColumnType("datetime2");
 
+                    b.Property<string>("BlockMessage")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
                     b.Property<string>("BlockReason")
                         .HasMaxLength(40)
                         .HasColumnType("nvarchar(40)");

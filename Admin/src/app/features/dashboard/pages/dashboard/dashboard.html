@@ -368,6 +368,31 @@
     </div>
   </div>
 
+  <!-- 打卡進行中 / 失敗遮罩：送出前不讓使用者以為已完成，失敗須按「我知道了」才關（見 punchState） -->
+  @if (punchState(); as p) {
+    <div class="position-fixed inset-0 flex items-center justify-center p-4"
+         style="z-index: 1075; background: rgba(0, 0, 0, .55)"
+         role="alertdialog" aria-modal="true" aria-live="assertive">
+      <div class="card border-0 shadow-lg w-full" style="max-width: 22rem">
+        <div class="card-body text-center py-6">
+          @if (p.phase === 'working') {
+            <div class="spinner-border text-primary mb-3"></div>
+            <div class="fs-5 fw-600 mb-2">{{ p.label }}處理中…</div>
+            <p class="text-muted small mb-0">
+              正在定位並送出，約需 5–15 秒。<br>
+              <span class="fw-600" style="color: var(--red)">看到「{{ p.label }}成功」前，請勿關閉或離開此頁面。</span>
+            </p>
+          } @else {
+            <svg class="sa-icon sa-icon-2x mb-3" style="stroke: var(--red)"><use href="/assets/icons/sprite.svg#alert-triangle"></use></svg>
+            <div class="fs-5 fw-600 mb-2" style="color: var(--red)">{{ p.label }}未完成</div>
+            <p class="small mb-4">{{ p.message }}</p>
+            <button type="button" class="btn btn-primary w-full" (click)="punchState.set(null)">我知道了</button>
+          }
+        </div>
+      </div>
+    </div>
+  }
+
   <!-- Toast notification -->
   @if (toast(); as t) {
     <div class="position-fixed bottom-0 end-0 p-4" style="z-index: 1080">

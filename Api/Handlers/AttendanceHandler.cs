@@ -112,8 +112,28 @@ public sealed class AttendanceHandler(
         return new OkObjectResult(ApiResponse.Ok(dto));
     }
 
+    /// <summary>
+    /// 四個本人打卡動作的共用外層（2026-11）：通過 <see cref="AttendancePunchGuard"/> 關卡後才失敗的嘗試
+    /// （未填逾時原因、專案佔比不合、今日已打卡…）也要留一筆嘗試紀錄，否則事後查不出「有沒有送出、被哪條規則擋下」。
+    /// 關卡本身擋下的嘗試已由 GuardAsync 自行落地，RecordRejectionAsync 對它是 no-op。
+    /// </summary>
+    private async Task<IActionResult> WithPunchRejectionLogAsync(Func<Task<IActionResult>> punch)
+    {
+        try
+        {
+            return await punch();
+        }
+        catch (Exception ex)
+        {
+            await punchGuard.RecordRejectionAsync(ex);
+            throw;
+        }
+    }
+
     /// <summary>上班打卡</summary>
-    public async Task<IActionResult> ClockInAsync(HttpRequest req)
+    public Task<IActionResult> ClockInAsync(HttpRequest req) => WithPunchRejectionLogAsync(() => ClockInCoreAsync(req));
+
+    private async Task<IActionResult> ClockInCoreAsync(HttpRequest req)
     {
         var userId = await GetUserIdAsync(req);
         var body   = await req.ReadFromJsonAsync<ClockActionRequest>() ?? new ClockActionRequest(null, null);
@@ -188,7 +208,9 @@ public sealed class AttendanceHandler(
     }
 
     /// <summary>下班打卡</summary>
-    public async Task<IActionResult> ClockOutAsync(HttpRequest req)
+    public Task<IActionResult> ClockOutAsync(HttpRequest req) => WithPunchRejectionLogAsync(() => ClockOutCoreAsync(req));
+
+    private async Task<IActionResult> ClockOutCoreAsync(HttpRequest req)
     {
         var userId = await GetUserIdAsync(req);
         var body   = await req.ReadFromJsonAsync<ClockActionRequest>() ?? new ClockActionRequest(null, null);
@@ -374,7 +396,9 @@ public sealed class AttendanceHandler(
     /// 休假日（行事曆 IsHoliday / 無行事曆時的六日）或當日全日已核准請假：免下班卡，
     /// 今日無打卡紀錄時直接建立「只有加班時間」的紀錄。
     /// </summary>
-    public async Task<IActionResult> OvertimeStartAsync(HttpRequest req)
+    public Task<IActionResult> OvertimeStartAsync(HttpRequest req) => WithPunchRejectionLogAsync(() => OvertimeStartCoreAsync(req));
+
+    private async Task<IActionResult> OvertimeStartCoreAsync(HttpRequest req)
     {
         var userId = await GetUserIdAsync(req);
         var body   = await req.ReadFromJsonAsync<ClockActionRequest>() ?? new ClockActionRequest(null, null);
@@ -456,7 +480,9 @@ public sealed class AttendanceHandler(
     }
 
     /// <summary>加班結束打卡</summary>
-    public async Task<IActionResult> OvertimeEndAsync(HttpRequest req)
+    public Task<IActionResult> OvertimeEndAsync(HttpRequest req) => WithPunchRejectionLogAsync(() => OvertimeEndCoreAsync(req));
+
+    private async Task<IActionResult> OvertimeEndCoreAsync(HttpRequest req)
     {
         var userId = await GetUserIdAsync(req);
         var body   = await req.ReadFromJsonAsync<ClockActionRequest>() ?? new ClockActionRequest(null, null);

@@ -12,6 +12,7 @@ public class AttendancePunchLogConfiguration : IEntityTypeConfiguration<Attendan
 
         builder.Property(l => l.Action).IsRequired().HasMaxLength(20);
         builder.Property(l => l.BlockReason).HasMaxLength(40);
+        builder.Property(l => l.BlockMessage).HasMaxLength(200);
         builder.Property(l => l.IpAddress).HasMaxLength(64);
         builder.Property(l => l.UserAgent).HasMaxLength(512);
         builder.Property(l => l.ChallengeNonce).HasMaxLength(64);

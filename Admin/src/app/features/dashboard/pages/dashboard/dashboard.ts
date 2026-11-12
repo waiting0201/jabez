@@ -72,6 +72,19 @@ export class Dashboard implements OnInit, OnDestroy {
   /** Toast message */
   toast = signal<{message: string; type: 'success' | 'warning' | 'error'} | null>(null);
 
+  /**
+   * 打卡進行中 / 失敗的全畫面遮罩（2026-11）。按下打卡到真正送出要 4–12 秒（定位＋挑戰碼最短停留），
+   * 這段時間畫面原本只有按鈕反灰，使用者以為已完成而鎖屏 / 切走 → 請求根本沒送出；
+   * 失敗訊息又只是 3 秒的 toast，很容易沒看到。故：進行中蓋住整頁並明講「請勿離開」，
+   * 失敗時遮罩留著、須按「我知道了」才關；成功才直接收掉（今日卡片與成功 toast 接手）。
+   */
+  punchState = signal<{label: string; phase: 'working' | 'failed'; message?: string} | null>(null);
+
+  private static readonly PUNCH_LABELS: Record<ClockActionType, string> = {
+    'clock-in': '上班打卡', 'clock-out': '下班打卡',
+    'overtime-start': '加班開始打卡', 'overtime-end': '加班結束打卡',
+  };
+
   /** LINE 推播用量（needs line-quota:read permission to load） */
   lineQuota = signal<LineQuota | null>(null);
   /** 用量查詢失敗（LINE API 不可用 / Token 無效），給卡片顯示提示用 */
@@ -472,8 +485,10 @@ export class Dashboard implements OnInit, OnDestroy {
    */
   async performAction(type: ClockActionType, reason: string | null = null, allocations: ProjectAllocationInput[] | null = null) {
     if (this.loading()) return;
+    const label = Dashboard.PUNCH_LABELS[type];
     this.loading.set(true);
     this.gpsStatus.set('locating');
+    this.punchState.set({label, phase: 'working'});
 
     try {
       const [coords, challenge, turnstileToken] = await Promise.all([
@@ -486,7 +501,7 @@ export class Dashboard implements OnInit, OnDestroy {
       this.gpsCoords.set(coords);
       this.gpsStatus.set(coords ? 'success' : 'failed');
       if (!coords) {
-        this.showToast('無法取得定位，請開啟手機／瀏覽器的定位權限後再打卡。', 'error');
+        this.punchState.set({label, phase: 'failed', message: '無法取得定位，請開啟手機／瀏覽器的定位權限後再打卡。'});
         return;
       }
 
@@ -516,15 +531,12 @@ export class Dashboard implements OnInit, OnDestroy {
 
       const record = await firstValueFrom(obs$);
       this.applyTodayRecord(record);
-      const labels: Record<ClockActionType, string> = {
-        'clock-in': '上班打卡', 'clock-out': '下班打卡',
-        'overtime-start': '加班開始', 'overtime-end': '加班結束',
-      };
-      this.showToast(`${labels[type]}成功！`, 'success');
+      this.punchState.set(null);
+      this.showToast(`${label}成功！`, 'success');
     } catch (err: any) {
       // 後端 ApiResponse.Fail 在 ExceptionMiddleware 包成 { success:false, message, errors } 結構
       const message = err?.error?.message ?? err?.message ?? '打卡失敗，請稍後重試';
-      this.showToast(message, 'error');
+      this.punchState.set({label, phase: 'failed', message});
     } finally {
       this.loading.set(false);
     }
