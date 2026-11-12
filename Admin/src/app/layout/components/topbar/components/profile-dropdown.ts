@@ -51,6 +51,15 @@ import {safeSession} from '@core/utils/safe-storage';
           <span class="font-medium">個人資訊</span>
         </a>
 
+        @if (canSeeAttendance) {
+          <a class="dropdown-item" routerLink="/account/my-attendance">
+            <svg class="sa-icon" style="width:1rem;height:1rem;stroke:currentColor">
+              <use href="/assets/icons/sprite.svg#calendar"></use>
+            </svg>
+            <span class="font-medium">個人出缺勤</span>
+          </a>
+        }
+
         <a class="dropdown-item" routerLink="/account/change-password">
           <svg class="sa-icon" style="width:1rem;height:1rem;stroke:currentColor">
             <use href="/assets/icons/sprite.svg#lock"></use>
@@ -123,6 +132,9 @@ export class ProfileDropdown implements OnInit {
   private auth = inject(AuthService);
   private router = inject(Router);
   private lineService = inject(LineService);
+
+  /** 「個人出缺勤」入口：與路由同一判準（能打卡者才有出缺勤可看） */
+  readonly canSeeAttendance = this.auth.hasPermission('attendances:read');
 
   user = this.auth.currentUser;
   avatarUrl = this.auth.avatarUrl;

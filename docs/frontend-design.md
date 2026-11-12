@@ -1790,6 +1790,14 @@ fetch(`/assets/fonts/NotoSansTC-Regular.subset.ttf?v=${FONT_SUBSET_VERSION}`)
 > 「應出勤時段」（`expectedStart` / `expectedEnd`）刻意**不做成欄位**，改掛在上下班兩格的 tooltip ——
 > 該表已 9 欄 + `min-w-[1040px]`，而絕大多數列都是恆定的 08:00–17:00，做成常駐欄是純雜訊。
 
+> **「加班時數」欄（2026-11）**：接在加班結束之後，統表與個人模式皆有（統表因此為 10 欄、`min-w-[1120px]`），Excel 同步多一欄。
+> 數字讀後端 `overtimeHours`、前端不重算；tooltip 依 `isOvertimeHoursSettled` 說明是「加班單結算時數」或「打卡起訖時數」。
+
+> **個人出缺勤（2026-11）共用同一個元件**：路由 `account/my-attendance` 以 `data: {selfMode: true}` 進入 `AttendanceReport`，
+> 資料改走 `GET /me/attendances`，並以 `@if (!selfMode)` 收掉員工下拉 / 姓名欄 / 操作欄 / 匯出（8 欄、`min-w-[940px]`，空列 colspan 讀 `columnCount`）。
+> 刻意不另寫一頁 —— 本頁的欄位 map 漏一欄會靜默顯示錯值，兩份 map 遲早對不起來。新增欄位或徽章時須一併確認個人模式該不該出現；
+> 後端在此模式不回 HR 備註，故「未打下班卡」只有單一黃色提示（無紅 / 綠兩態）。入口在頭像下拉（`profile-dropdown.ts`），持 `attendances:read` 才顯示。
+
 > ⚠️ `text-*-emphasis` 在 `tailwind.css` **只定義了 `text-warning-emphasis`**，配其他色時不可照抄 warning 的寫法，
 > 一律改用上表既有組合。同一列可能並存多顆徽章時（例：出缺勤紀錄的「系統補卡」黃 + 「請假」綠），
 > **必須挑不同色系**，否則兩顆同色徽章難以分辨。

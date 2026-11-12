@@ -453,7 +453,7 @@ Excel 匯出於時間後加註「（系統補卡）」，以區分本人打卡�
 
 | Code | Id | Module | 對象 | 端點 |
 |---|---|---|---|---|
-| `attendances:read` | 37 | 出勤打卡 | 員工對自己 | `GET /attendances/today` |
+| `attendances:read` | 37 | 出勤打卡 | 員工對自己 | `GET /attendances/today`、`GET /me/attendances`（個人出缺勤，2026-11） |
 | `attendances:write` | 38 | 出勤打卡 | 員工對自己 | `POST /attendances/clock-in` `clock-out` `overtime-start` `overtime-end` |
 | `reports-attendance:write` | 42 | Reports | 管理者對別人 | `PUT/PATCH /attendances/{id}` |
 
@@ -462,6 +462,30 @@ Excel 匯出於時間後加註「（系統補卡）」，以區分本人打卡�
 「員工對自己」與「管理者對別人」刻意分成兩組 —— 共用一組會變成「能打自己的卡＝能改全公司的卡」。規範見 [backend-design.md §3.4](../backend-design.md#34-權限表)。
 
 > **Id 37/38/42 是重用的歷史空號**（37/38 於 2026-03 被 `SyncSeedDataWithDatabase` 刪除，42 原為已刪除的 `reports-leave:read`）。刻意不取 78+，因為 `PermissionHandler.CreateAsync` 以 `max(Id)+1` 配號，78 起可能已被 UI 建立的權限占用；重用低號可免疫撞號。
+
+### 個人出缺勤：員工看自己的紀錄（2026-11）
+
+在此之前，員工只看得到「今天」（打卡頁）；歷史紀錄只有 `GET /attendances`，而它綁 `reports-attendance:read` 且範圍依部門可見性 —— 開給一般同仁會連同部門其他人一起看到，沒有「只看自己」這一檔。
+
+- **入口**：右上角頭像下拉「個人出缺勤」→ `/account/my-attendance`，持 `attendances:read` 才顯示（路由同權限）。
+- **資料**：`GET /me/attendances`，對象取 JWT `sub`、無法查別人；與 HR 的出缺勤報表**同一份合併**（打卡 / 請假 / **缺勤** / 颱風假列、遲到早退、系統補卡、出差、超過 9.5 小時），故同仁與 HR 看到的判定一致。
+- **唯讀**：無員工下拉、編輯、加班超時認定、Excel 匯出。
+- **不顯示 HR 備註**（2026-11-12 決議）：`Remark` 由後端抹除。連帶「未打下班卡」在個人頁無從分辨「待處理 / HR 已註記」，一律以黃色提示呈現並請同仁洽人事；本人打卡時填的遲到 / 早退 / 逾時原因照常顯示。
+- **加班超時認定**：只顯示結果（待認定 / 已認定 N 小時 / 不認定），確認主管、原因、登錄人不回傳。
+- **缺勤列照顯示**（2026-11-12 決議）：讓同仁自己發現漏打卡、及早補請假。
+- 前端與出缺勤報表共用同一個元件（路由 `data.selfMode`），見 [frontend-design.md §9.1](../frontend-design.md)。
+
+### 出缺勤清單的「加班時數」欄（2026-11）
+
+統表與個人出缺勤在「加班結束」之後多一欄「加班時數」（Excel 亦同），由後端 `AttendanceRecordDto.OvertimeHours` 帶回：
+
+| 情況 | 顯示 | `isOvertimeHoursSettled` |
+|---|---|---|
+| 連結的加班單已核准且已結算（`SettledHours` 非 null） | 結算時數＝加班費 / 補休的給付基準（不超過核准上限，認定後為認定時數），與加班報表一致 | true |
+| 其餘（舊制單、無連結加班單、尚未核准） | 加班打卡起訖時數，無條件捨去到 0.1 小時（`OvertimeSettlement.PunchedHours`，未扣正常上班時段） | false |
+| 加班起訖缺一 | 空白 | — |
+
+結算時數小於打卡時數時，差額原因見同列的「加班超時」徽章。
 
 ### 「誰能改」vs「能對誰改」
 

@@ -4,6 +4,7 @@ import {MainLayout} from '@layout/main-layout/main-layout';
 import {AuthLayout} from '@layout/auth-layout/auth-layout';
 import {authGuard} from '@core/auth/guards/auth.guard';
 import {noAuthGuard} from '@core/auth/guards/no-auth.guard';
+import {permissionGuard} from '@core/auth/guards/permission.guard';
 import {passwordChangeGuard} from '@core/auth/guards/password-change.guard';
 import {AuthService} from '@core/auth/services/auth.service';
 import {resolveLandingUrl} from '@core/auth/utils/landing';
@@ -48,6 +49,13 @@ export const routes: Routes = [
         path: 'account/my-profile',
         loadComponent: () => import('./features/account/pages/my-profile/my-profile').then(m => m.MyProfile),
         data: {title: '個人資訊'},
+      },
+      {
+        // 個人出缺勤（2026-11）：與出缺勤報表共用元件的 selfMode，資料走 GET /me/attendances（只回本人）
+        path: 'account/my-attendance',
+        canActivate: [permissionGuard],
+        loadComponent: () => import('./features/admin/reports/pages/attendance-report/attendance-report').then(m => m.AttendanceReport),
+        data: {title: '個人出缺勤', permission: 'attendances:read', selfMode: true},
       },
       {
         path: 'account/change-password',

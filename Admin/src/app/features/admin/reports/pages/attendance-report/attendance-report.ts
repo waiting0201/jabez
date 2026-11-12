@@ -3,6 +3,7 @@ import {CommonModule} from '@angular/common';
 import {FormsModule} from '@angular/forms';
 import {HttpClient} from '@angular/common/http';
 import {DomSanitizer} from '@angular/platform-browser';
+import {ActivatedRoute} from '@angular/router';
 import {environment} from '@/environments/environment';
 import {AttendanceService} from '@/app/features/dashboard/services/attendance.service';
 import {dayToRange, FilterMode, monthToRange, shiftDateString, snapToIsoWeek, todayString} from '@/app/features/admin/reports/utils/date-range';
@@ -87,6 +88,12 @@ export interface AttendanceRecordRow {
   overtimeRequestKind: string | null;
   overtimeEndTime: string;
   /**
+   * 加班時數（顯示用字串，無加班起訖為空）：已結算的加班單為結算時數，否則為打卡起訖時數。數字一律讀後端、前端不重算
+   */
+  overtimeHours: string;
+  /** overtimeHours 是否為加班單的結算時數（tooltip 用） */
+  isOvertimeHoursSettled: boolean;
+  /**
    * 加班超時（加班打卡時數 > 申請時數）的認定資訊；未超時為 null。
    * decision 為 null＝待人事處理（紅字）；recognized / rejected＝已處理（綠字）。數字一律讀後端、前端不重算
    */
@@ -142,16 +149,28 @@ export class AttendanceReport implements OnInit {
   private toastr = inject(ToastrService);
 
   /**
+   * 「個人出缺勤」模式（2026-11，路由 `account/my-attendance` 的 `data.selfMode`）：
+   * 同一個元件、同一份欄位 map 與 badge 判定，只換資料來源為 `GET /me/attendances`（後端以 JWT 鎖定本人），
+   * 並隱藏員工下拉 / 姓名欄 / 操作欄 / 匯出 / 編輯 / 加班超時認定。
+   * 刻意不另寫一頁：本頁的欄位 map 漏一欄就會靜默顯示錯值，兩份 map 遲早對不起來。
+   * 後端在此模式不回 HR 備註與加班超時認定的確認主管 / 原因 / 登錄人。
+   */
+  readonly selfMode = inject(ActivatedRoute).snapshot.data['selfMode'] === true;
+  private readonly listUrl = `${environment.apiUrl}${this.selfMode ? '/me/attendances' : '/attendances'}`;
+  /** 表格欄數（空列 colspan 用）：個人模式少「員工姓名」與「操作」兩欄 */
+  readonly columnCount = this.selfMode ? 8 : 10;
+
+  /**
    * 是否可編輯該列：必須有打卡紀錄，且**不是自己的紀錄**（Superadmin 除外）。
    * 後端 `PUT/PATCH /attendances/{id}` 對自己的紀錄回 403，這裡只是不讓人點了才被拒絕（縱深防禦，非唯一防線）。
    */
   canEditRow(row: {id: number | null; userId: string}): boolean {
-    if (!row.id) return false;
+    if (!row.id || this.selfMode) return false;
     return this.auth.isSuperAdmin() || row.userId !== this.auth.currentUser()?.id;
   }
 
   /** 是否持有出缺勤編輯權限（加班超時認定的 badge 是否可點） */
-  readonly canWrite = this.auth.hasPermission('reports-attendance:write');
+  readonly canWrite = !this.selfMode && this.auth.hasPermission('reports-attendance:write');
 
   /** 篩選條件 */
   selectedEmployeeId = signal('');
@@ -214,7 +233,7 @@ export class AttendanceReport implements OnInit {
     const today = todayString(now);
     this.selectedDate.set(today);
     this.selectedWeekDate.set(today);
-    this.loadEmployees();
+    if (!this.selfMode) this.loadEmployees();
     this.search();
   }
 
@@ -298,7 +317,7 @@ export class AttendanceReport implements OnInit {
       params.dateTo = range.dateTo;
     }
 
-    this.http.get<any>(`${environment.apiUrl}/attendances`, {params}).subscribe({
+    this.http.get<any>(this.listUrl, {params}).subscribe({
       next: (res) => {
         const data = res?.data ?? res ?? {};
         const items = data?.items ?? [];
@@ -346,6 +365,8 @@ export class AttendanceReport implements OnInit {
             isLongWorkday: this.isLongWorkday(r.clockInTime, r.clockOutTime),
             overtimeRequestKind: r.overtimeRequestKind ?? null,
             overtimeExcess: this.mapOvertimeExcess(r),
+            overtimeHours: r.overtimeHours != null ? String(Number(r.overtimeHours)) : '',
+            isOvertimeHoursSettled: !!r.isOvertimeHoursSettled,
             overtimeStartTime: r.overtimeStartTime ? new Date(r.overtimeStartTime).toLocaleTimeString('zh-TW', {hour: '2-digit', minute: '2-digit'}) : '',
             overtimeEndTime: r.overtimeEndTime ? new Date(r.overtimeEndTime).toLocaleTimeString('zh-TW', {hour: '2-digit', minute: '2-digit'}) : '',
             clockInLatitude: r.clockInLatitude ?? null,
@@ -492,7 +513,11 @@ export class AttendanceReport implements OnInit {
     const decision = (ex.decision ?? null) as OvertimeExcess['decision'];
     const handledAt = ex.handledAt ? new Date(ex.handledAt).toLocaleString('zh-TW', {hour12: false}) : '';
     const base = `申請 ${approved} 小時、加班打卡 ${punched} 小時`;
-    const tooltip = decision
+    const tooltip = this.selfMode
+      ? (decision
+        ? `${base}；人事已登錄${decision === 'recognized' ? '認定' : '不認定'}`
+        : `${base}；目前以申請時數結算，待人事向主管確認`)
+      : decision
       ? `${base}｜確認主管：${ex.supervisor ?? ''}｜原因：${ex.reason ?? ''}｜登錄：${ex.handledByName ?? ''} ${handledAt}`
       : `${base}；目前以申請時數結算，請向主管確認後登錄認定或不認定`;
     return {
@@ -705,6 +730,7 @@ export class AttendanceReport implements OnInit {
             : '',
           '加班開始': r.overtimeStartTime ? new Date(r.overtimeStartTime).toLocaleTimeString('zh-TW', {hour: '2-digit', minute: '2-digit'}) : '',
           '加班結束': r.overtimeEndTime ? new Date(r.overtimeEndTime).toLocaleTimeString('zh-TW', {hour: '2-digit', minute: '2-digit'}) : '',
+          '加班時數': r.overtimeHours != null ? Number(r.overtimeHours) : '',
           // 兩種虛擬列（請假 / 缺勤）匯出後仍需分辨得出來；出差與逾時註記與畫面 badge 同源
           '備註': [
             r.isManuallyAdjusted ? `管理者已修正${r.adjustedByName ? '（' + r.adjustedByName + '）' : ''}` : '',

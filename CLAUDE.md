@@ -221,7 +221,7 @@ Admin/src/app/
     │   └── pages/dashboard/
     ├── auth/
     │   └── pages/ (login, register, forgot-password, lock-screen, two-factor)
-    ├── account/             # 員工自助（change-password / line-bind-callback / my-profile）
+    ├── account/             # 員工自助（change-password / line-bind-callback / my-profile）；**個人出缺勤 `/account/my-attendance`**（2026-11，頭像下拉入口、持 `attendances:read` 才顯示）不在此目錄 —— 與出缺勤報表共用 `AttendanceReport` 元件的 `selfMode`（路由 data），資料走 `GET /me/attendances`（只回本人、不回 HR 備註與加班超時認定的主管 / 原因），唯讀無匯出；**統表與個人模式的加班結束後皆有「加班時數」欄**（後端 `overtimeHours`：已結算加班單取結算時數、否則為打卡起訖時數，Excel 同步），見 [docs/business/attendance-clock-rules.md §個人出缺勤](docs/business/attendance-clock-rules.md)
     │   ├── services/my-profile.service.ts   # 呼叫 /me/user + /me/profile + /me/files + /me/payroll（自助唯讀）
     │   └── pages/my-profile/                # 「個人資訊」唯讀頁：avatar 下拉進入（員工基本資料頁籤另有**補休時數卡**，走 `GET /me/compensatory-hours`，2026-10），**4 Tab** 全唯讀 —— 員工基本資料 / 人事資料卡 / 健保眷屬（前 3 個比照管理頁，含薪資）＋ **過往薪資**（2026-08 新增，走 `GET /me/payroll?months=12` 列出近 12 個月，一列一月，點「明細」展開共用元件 `<app-payroll-detail-card>`；到職前月份不列、當月標「本月尚未結算」；**薪資即時重算、無月結快照**，調薪後回溯歷史月份會用現行底薪，頁面已加註說明）
     ├── admin/

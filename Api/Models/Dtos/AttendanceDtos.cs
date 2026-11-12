@@ -74,7 +74,15 @@ public sealed record AttendanceRecordDto(
     /// <summary>該筆颱風假是否給薪；無颱風假為 null</summary>
     bool?     DisasterIsPaid = null,
     /// <summary>加班超時（打卡時數 &gt; 申請時數）的認定資訊；未超時為 null。見 <see cref="AttendanceOvertimeExcessDto"/></summary>
-    AttendanceOvertimeExcessDto? OvertimeExcess = null);
+    AttendanceOvertimeExcessDto? OvertimeExcess = null,
+    /// <summary>
+    /// 加班時數（2026-11，出缺勤清單「加班時數」欄）：連結的加班單已核准且已結算 → 結算時數（<c>SettledHours</c>，
+    /// 即加班費 / 補休的給付基準，不超過核准上限）；否則為加班打卡起訖的時數（無條件捨去到 0.1，未扣正常上班時段）。
+    /// 加班起訖缺一為 null。
+    /// </summary>
+    decimal?  OvertimeHours = null,
+    /// <summary><see cref="OvertimeHours"/> 是否為加班單的結算時數（false＝僅為打卡起訖時數）</summary>
+    bool      IsOvertimeHoursSettled = false);
 
 /// <summary>
 /// 加班超時認定（2026-11）：新制已核准加班單的加班打卡時數超過申請時數時帶回。
