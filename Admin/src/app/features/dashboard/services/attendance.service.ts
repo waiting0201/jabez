@@ -65,4 +65,9 @@ export class AttendanceService {
   update(id: number, body: {clockInTime?: string | null; clockOutTime?: string | null; overtimeStartTime?: string | null; overtimeEndTime?: string | null; remark?: string | null}): Observable<any> {
     return this.http.patch(`${environment.apiUrl}/attendances/${id}`, body);
   }
+
+  /** 加班超時認定（打卡時數 > 申請時數）：人事向主管確認後登錄認定 / 不認定；認定時數由後端計算 */
+  recognizeOvertime(id: number, body: {decision: 'recognized' | 'rejected'; supervisorName: string; reason: string}): Observable<any> {
+    return this.http.patch(`${environment.apiUrl}/attendances/${id}/overtime-recognition`, body);
+  }
 }

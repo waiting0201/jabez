@@ -26,7 +26,11 @@ public sealed class AttendanceReadService(IDbConnection db) : IAttendanceReadSer
                a.OvertimeRequestId, a.CreatedAt, a.IsBusinessTrip, a.Remark,
                a.IsManuallyAdjusted, a.LastAdjustedAt, adj.Name AS AdjustedByName,
                a.IsLate, a.IsEarlyLeave, a.LateReason, a.ClockOutReason,
-               otr.RequestKind AS OvertimeRequestKind
+               otr.RequestKind AS OvertimeRequestKind,
+               otr.ApprovalStatus AS OtStatus, otr.EstimatedHours AS OtEstimatedHours, otr.SettledHours AS OtSettledHours,
+               otr.ExtraRecognition AS OtRecognition, otr.RecognizedHours AS OtRecognizedHours,
+               otr.RecognitionSupervisor AS OtRecognitionSupervisor, otr.RecognitionReason AS OtRecognitionReason,
+               otr.RecognitionHandledByName AS OtRecognitionHandledByName, otr.RecognitionHandledAt AS OtRecognitionHandledAt
         FROM AttendanceRecords a
         INNER JOIN Users u ON a.UserId = u.Id
         LEFT JOIN Users adj ON a.LastAdjustedById = adj.Id
@@ -281,8 +285,37 @@ public sealed class AttendanceReadService(IDbConnection db) : IAttendanceReadSer
             IsEarlyLeave:       (bool)row.IsEarlyLeave,
             LateReason:         (string?)row.LateReason,
             ClockOutReason:     (string?)row.ClockOutReason,
-            OvertimeRequestKind: (string?)row.OvertimeRequestKind);
+            OvertimeRequestKind: (string?)row.OvertimeRequestKind,
+            OvertimeExcess:      MapOvertimeExcess(row));
             // RowKind / ExpectedStart / ExpectedEnd 由 AttendanceLeaveMerger 事後以 with { } 補上
+
+    /// <summary>
+    /// 加班超時的**候選**（2026-11）：新制已核准單、起訖齊全，且「未扣正常上班時段的打卡時數 &gt; 申請時數」或已有認定結果。
+    /// 這裡拿不到日別，PunchedHours / RecognizableHours 先填粗估值，由 AttendanceHandler 以
+    /// OvertimeSettlementService.EvaluateExcessAsync 精算後覆寫（不成立的候選會被拿掉）。
+    /// </summary>
+    private static AttendanceOvertimeExcessDto? MapOvertimeExcess(dynamic row)
+    {
+        if ((int?)row.OvertimeRequestId is not { } otId) return null;
+        if ((string?)row.OtStatus != "approved" || (decimal?)row.OtSettledHours is null) return null;
+
+        var start = (DateTime?)row.OvertimeStartTime;
+        var end   = (DateTime?)row.OvertimeEndTime;
+        if (start is null || end is null) return null;
+
+        var approved = (decimal)row.OtEstimatedHours;
+        var decision = (string?)row.OtRecognition;
+        var rough    = OvertimeSettlement.PunchedHours(start, end);
+        if (decision is null && rough <= approved) return null;
+
+        return new AttendanceOvertimeExcessDto(
+            otId, approved, rough, rough, decision,
+            (decimal?)row.OtRecognizedHours,
+            (string?)row.OtRecognitionSupervisor,
+            (string?)row.OtRecognitionReason,
+            (string?)row.OtRecognitionHandledByName,
+            (DateTime?)row.OtRecognitionHandledAt);
+    }
 
     private static TodayAttendanceDto MapTodayRow(dynamic row) =>
         new(

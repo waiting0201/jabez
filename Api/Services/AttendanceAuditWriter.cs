@@ -21,7 +21,8 @@ public static class AttendanceAuditWriter
         DateTime? clockOutAfter,
         DateTime? overtimeStartAfter,
         DateTime? overtimeEndAfter,
-        string? remarkAfter)
+        string? remarkAfter,
+        string? note = null)
     {
         db.AttendanceAuditLogs.Add(new AttendanceAuditLog
         {
@@ -38,6 +39,7 @@ public static class AttendanceAuditWriter
             OvertimeStartBefore = record.OvertimeStartTime, OvertimeStartAfter = overtimeStartAfter,
             OvertimeEndBefore   = record.OvertimeEndTime,   OvertimeEndAfter   = overtimeEndAfter,
             RemarkBefore        = record.Remark,            RemarkAfter        = remarkAfter,
+            Note                = note,
         });
     }
 }

@@ -439,6 +439,7 @@ public sealed class AppRouter(
             ("PUT",    ["attendances", "today", "project-allocations"]) => await attendances.UpdateTodayProjectAllocationsAsync(req),
             ("GET",    ["attendances", "missing-project-allocations"]) => await attendances.GetMissingProjectAllocationsAsync(req),
             ("PUT",    ["attendances", "missing-project-allocations"]) => await attendances.FillMissingProjectAllocationsAsync(req),
+            ("PATCH",  ["attendances", var id, "overtime-recognition"]) => await attendances.RecognizeOvertimeAsync(req, id),
             ("PUT",    ["attendances", var id])           => await attendances.UpdateAsync(req, id),
             ("PATCH",  ["attendances", var id])           => await attendances.UpdateAsync(req, id),
 
@@ -803,6 +804,8 @@ public sealed class AppRouter(
             ("GET",    ["attendances", "missing-project-allocations"]) => PermissionCodes.AttendancesRead,
             ("PUT",    ["attendances", "missing-project-allocations"]) => PermissionCodes.AttendancesWrite,
             ("PUT" or "PATCH", ["attendances", _])        => PermissionCodes.ReportsAttendanceWrite,
+            // 加班超時認定：與出缺勤修改同一權限（Handler 內另套不可處理自己 / 職級 / 部門 scope）
+            ("PATCH",  ["attendances", _, "overtime-recognition"]) => PermissionCodes.ReportsAttendanceWrite,
             // 未列舉的 attendances 子路由一律套較嚴的預設（新增端點時務必回來明確對應）
             ("GET",    ["attendances", ..])               => PermissionCodes.ReportsAttendanceRead,
             ("POST",   ["attendances", ..])               => PermissionCodes.AttendancesWrite,

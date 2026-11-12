@@ -133,6 +133,34 @@ public static class OvertimeRequestGuard
     }
 
     /// <summary>
+    /// 加班超時認定時重驗每月 / 每期上限（2026-11）：口徑同核准時（只計已核准的其他單 ＋ 本單），
+    /// 本單改以「認定後的時數」計。
+    /// </summary>
+    public static async Task EnsureLimitsOnRecognitionAsync(
+        AppDbContext db, Models.Entities.OvertimeRequest ot, decimal recognizedHours)
+    {
+        if (ot.EmployeeId is null) return;
+
+        if (await GetLimitAsync(db) is { } monthly)
+        {
+            var (monthStart, nextMonth) = MonthRange(ot.OvertimeDate);
+            var others = await SumRangeAsync(db, ot.EmployeeId.Value, monthStart, nextMonth, ot.Id, includePending: false);
+            if (others + recognizedHours > monthly)
+                throw AppException.BadRequest(
+                    $"{ot.OvertimeDate:yyyy 年 M 月}加班時數已達每月上限 {monthly} 小時（其他已核准 {others:0.#} 小時，加上本單認定 {recognizedHours:0.#} 小時），無法認定。");
+        }
+
+        var (start, end) = QuarterRange(ot.OvertimeDate);
+        if (start >= QuarterlyLimitEffectiveFrom && await GetQuarterlyLimitAsync(db) is { } quarterly)
+        {
+            var others = await SumRangeAsync(db, ot.EmployeeId.Value, start, end, ot.Id, includePending: false);
+            if (others + recognizedHours > quarterly)
+                throw AppException.BadRequest(
+                    $"{start:yyyy/M/d}～{end.AddDays(-1):yyyy/M/d} 加班時數已達每期上限 {quarterly} 小時（其他已核准 {others:0.#} 小時，加上本單認定 {recognizedHours:0.#} 小時），無法認定。");
+        }
+    }
+
+    /// <summary>
     /// 加班日所屬的期別 [期起日, 下一期起日)：期別固定自 2 / 5 / 8 / 11 月 1 日起算，各三個月
     /// （例：2026-12-15 → 2026-11-01 ～ 2027-02-01；2027-01-31 亦屬同一期）。
     /// </summary>
@@ -308,7 +336,9 @@ public static class OvertimeRequestGuard
                      && o.OvertimeDate >= start && o.OvertimeDate < end
                      && (excludeId == null || o.Id != excludeId)
                      && (o.ApprovalStatus == "approved" || (includePending && o.ApprovalStatus == "pending")))
-            .SumAsync(o => (decimal?)o.EstimatedHours) ?? 0m;
+            // 已認定超時的單以認定時數計（2026-11），其餘照申請時數
+            .SumAsync(o => (decimal?)(o.ExtraRecognition == OvertimeRecognitionDecisions.Recognized && o.RecognizedHours != null
+                ? o.RecognizedHours.Value : o.EstimatedHours)) ?? 0m;
     }
 
     private static void ThrowIfOver(int limit, decimal others, decimal thisHours, DateTime date)

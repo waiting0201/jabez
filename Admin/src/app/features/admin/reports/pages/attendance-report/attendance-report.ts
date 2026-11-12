@@ -86,6 +86,11 @@ export interface AttendanceRecordRow {
   /** 加班時段由事後申請核准寫入時為 'post_hoc'（下班卡與加班時段可能重疊的原因） */
   overtimeRequestKind: string | null;
   overtimeEndTime: string;
+  /**
+   * 加班超時（加班打卡時數 > 申請時數）的認定資訊；未超時為 null。
+   * decision 為 null＝待人事處理（紅字）；recognized / rejected＝已處理（綠字）。數字一律讀後端、前端不重算
+   */
+  overtimeExcess: OvertimeExcess | null;
   /** GPS 經緯度 */
   clockInLatitude: number | null;
   clockInLongitude: number | null;
@@ -102,6 +107,23 @@ export interface AttendanceRecordRow {
   rawClockOut: string | null;
   rawOvertimeStart: string | null;
   rawOvertimeEnd: string | null;
+}
+
+export interface OvertimeExcess {
+  approvedHours: number;
+  punchedHours: number;
+  /** 可認定時數＝min(打卡時數, 當日加班上限)，認定後的結算時數 */
+  recognizableHours: number;
+  /** 超出申請的時數（可認定 − 申請） */
+  extraHours: number;
+  decision: 'recognized' | 'rejected' | null;
+  recognizedHours: number | null;
+  supervisor: string;
+  reason: string;
+  handledBy: string;
+  handledAt: string;
+  /** badge 的 tooltip：待處理為說明、已處理為確認主管 / 原因 / 登錄人 */
+  tooltip: string;
 }
 
 /** 工時跨度提示門檻（小時）：下班 − 上班（含午休）超過此值即於清單標示 */
@@ -127,6 +149,9 @@ export class AttendanceReport implements OnInit {
     if (!row.id) return false;
     return this.auth.isSuperAdmin() || row.userId !== this.auth.currentUser()?.id;
   }
+
+  /** 是否持有出缺勤編輯權限（加班超時認定的 badge 是否可點） */
+  readonly canWrite = this.auth.hasPermission('reports-attendance:write');
 
   /** 篩選條件 */
   selectedEmployeeId = signal('');
@@ -320,6 +345,7 @@ export class AttendanceReport implements OnInit {
             workHours: this.computeWorkHours(r.clockInTime, r.clockOutTime),
             isLongWorkday: this.isLongWorkday(r.clockInTime, r.clockOutTime),
             overtimeRequestKind: r.overtimeRequestKind ?? null,
+            overtimeExcess: this.mapOvertimeExcess(r),
             overtimeStartTime: r.overtimeStartTime ? new Date(r.overtimeStartTime).toLocaleTimeString('zh-TW', {hour: '2-digit', minute: '2-digit'}) : '',
             overtimeEndTime: r.overtimeEndTime ? new Date(r.overtimeEndTime).toLocaleTimeString('zh-TW', {hour: '2-digit', minute: '2-digit'}) : '',
             clockInLatitude: r.clockInLatitude ?? null,
@@ -454,6 +480,95 @@ export class AttendanceReport implements OnInit {
     if (r.rowKind === 'absent') return `x${r.userId}_${date}`;
     if (r.rowKind === 'disaster') return `d${r.userId}_${date}`;
     return r.id != null ? `a${r.id}` : `l${r.userId}_${date}`;
+  }
+
+  /** 加班超時認定資訊（畫面 badge 與 Excel 備註共用同一份對應） */
+  private mapOvertimeExcess(r: any): OvertimeExcess | null {
+    const ex = r.overtimeExcess;
+    if (!ex) return null;
+    const approved = Number(ex.approvedHours ?? 0);
+    const punched = Number(ex.punchedHours ?? 0);
+    const recognizable = Number(ex.recognizableHours ?? 0);
+    const decision = (ex.decision ?? null) as OvertimeExcess['decision'];
+    const handledAt = ex.handledAt ? new Date(ex.handledAt).toLocaleString('zh-TW', {hour12: false}) : '';
+    const base = `申請 ${approved} 小時、加班打卡 ${punched} 小時`;
+    const tooltip = decision
+      ? `${base}｜確認主管：${ex.supervisor ?? ''}｜原因：${ex.reason ?? ''}｜登錄：${ex.handledByName ?? ''} ${handledAt}`
+      : `${base}；目前以申請時數結算，請向主管確認後登錄認定或不認定`;
+    return {
+      approvedHours: approved,
+      punchedHours: punched,
+      recognizableHours: recognizable,
+      extraHours: Math.round((recognizable - approved) * 10) / 10,
+      decision,
+      recognizedHours: ex.recognizedHours != null ? Number(ex.recognizedHours) : null,
+      supervisor: ex.supervisor ?? '',
+      reason: ex.reason ?? '',
+      handledBy: ex.handledByName ?? '',
+      handledAt,
+      tooltip,
+    };
+  }
+
+  /** 加班超時的文字（badge 與 Excel 備註共用） */
+  overtimeExcessLabel(ex: OvertimeExcess): string {
+    if (ex.decision === 'recognized') return `加班超時已認定 ${ex.recognizedHours} 小時`;
+    if (ex.decision === 'rejected') return '加班超時不認定';
+    return `加班超時 +${ex.extraHours} 小時`;
+  }
+
+  /** 加班打卡起訖（24 小時制 HH:mm–HH:mm），認定視窗用 */
+  overtimePunchWindow(row: AttendanceRecordRow): string {
+    return row.rawOvertimeStart && row.rawOvertimeEnd
+      ? `${this.isoTime(row.rawOvertimeStart)}–${this.isoTime(row.rawOvertimeEnd)}`
+      : '';
+  }
+
+  /** 加班超時認定 Modal */
+  recognizingRecord = signal<AttendanceRecordRow | null>(null);
+  recognitionForm = signal<{decision: 'recognized' | 'rejected'; supervisorName: string; reason: string}>(
+    {decision: 'recognized', supervisorName: '', reason: ''});
+  recognizing = signal(false);
+
+  openRecognition(row: AttendanceRecordRow) {
+    const ex = row.overtimeExcess;
+    if (!ex) return;
+    this.recognizingRecord.set(row);
+    this.recognitionForm.set({
+      decision: ex.decision ?? 'recognized',
+      supervisorName: ex.supervisor,
+      reason: ex.reason,
+    });
+  }
+
+  closeRecognition() {
+    this.recognizingRecord.set(null);
+  }
+
+  saveRecognition() {
+    const record = this.recognizingRecord();
+    if (!record?.id || this.recognizing()) return;
+    const form = this.recognitionForm();
+    const supervisorName = form.supervisorName.trim();
+    const reason = form.reason.trim();
+    if (!supervisorName || !reason) {
+      this.toastr.warning('請填寫確認主管與原因。');
+      return;
+    }
+
+    this.recognizing.set(true);
+    this.attendanceService.recognizeOvertime(record.id, {decision: form.decision, supervisorName, reason}).subscribe({
+      next: (res) => {
+        this.recognizing.set(false);
+        this.toastr.success(res?.message || '加班超時認定已儲存。');
+        this.closeRecognition();
+        this.fetchData();
+      },
+      error: (err) => {
+        this.recognizing.set(false);
+        this.toastr.error(err.error?.message || '儲存失敗，請稍後再試。', '無法儲存');
+      },
+    });
   }
 
   /** 開啟地圖 Modal */
@@ -602,6 +717,13 @@ export class AttendanceReport implements OnInit {
             this.disasterLabel(r),
             (!r.clockInTime && r.expectedStart && r.rowKind === 'clock') ? '未打上班卡' : '',
             r.isBusinessTrip ? '出差' : '',
+            ...(() => {
+              const ex = this.mapOvertimeExcess(r);
+              if (!ex) return [];
+              return [ex.decision
+                ? `${this.overtimeExcessLabel(ex)}（確認主管：${ex.supervisor}；原因：${ex.reason}）`
+                : `${this.overtimeExcessLabel(ex)}（待認定）`];
+            })(),
             r.isLate ? '遲到' : '',
             r.lateReason ? `遲到原因：${r.lateReason}` : '',
             r.isEarlyLeave ? '早退' : '',

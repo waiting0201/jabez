@@ -1768,6 +1768,7 @@ fetch(`/assets/fonts/NotoSansTC-Regular.subset.ttf?v=${FONT_SUBSET_VERSION}`)
 | 系統補卡 | 上班 | `bg-warning-subtle text-warning-emphasis` | `isClockInAuto`（登入時系統代打） |
 | 未打下班卡（待處理） | 下班 | `bg-danger-subtle text-danger` | `isMissingClockOut && !missingClockOutResolved`（系統補的下班卡 `isClockOutAuto`，或過去日期仍無下班卡；2026-10-07） |
 | 未打下班卡（已註記） | 下班 | `bg-success-subtle text-success` | `isMissingClockOut && missingClockOutResolved`（HR 於編輯填了備註＝原因，下班欄下方綠色小字顯示「原因：…」） |
+| 加班超時（待處理 / 已處理） | 加班結束 | 待處理 `bg-danger-subtle text-danger`、已認定・不認定 `bg-success-subtle text-success` | 後端 `overtimeExcess` 非 null（2026-11）。持 `reports-attendance:write` 且非本人的列，badge 為 `<button>`、點擊開「加班超時認定」視窗（認定結果 radio ＋ 確認主管 ＋ 原因，時數只顯示不可改）；其餘為純 `<span>`。數字一律讀後端、前端不重算 |
 | 超過 9.5 小時 | 下班 | `bg-danger-subtle text-danger` | `isLongWorkday`（純前端 derived） |
 | 颱風假 / 颱風假(上午) / 颱風假(下午) | 日期 | 給薪 `bg-warning-subtle text-warning-emphasis`；不給薪 `bg-danger-subtle text-danger` 且文字加「不給薪」 | `disasterSegment`（後端依員工工作地縣市判定；`clock` / `leave` 列也會帶，不只 `disaster` 虛擬列）；文字由 `disasterLabel(r)` 產生，畫面與 Excel 備註共用（2026-10） |
 

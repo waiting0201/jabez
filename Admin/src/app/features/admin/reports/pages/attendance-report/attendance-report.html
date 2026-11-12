@@ -193,6 +193,19 @@
                 </td>
                 <td class="text-center">
                   {{ row.overtimeEndTime }}
+                  @if (row.overtimeExcess; as ex) {
+                    <div>
+                      @if (canEditRow(row) && canWrite) {
+                        <button type="button" class="badge border-0 cursor-pointer"
+                                [class]="ex.decision ? 'bg-success-subtle text-success' : 'bg-danger-subtle text-danger'"
+                                [title]="ex.tooltip + '（點擊' + (ex.decision ? '重新處理' : '處理') + '）'"
+                                (click)="openRecognition(row)">{{ overtimeExcessLabel(ex) }}</button>
+                      } @else {
+                        <span class="badge" [class]="ex.decision ? 'bg-success-subtle text-success' : 'bg-danger-subtle text-danger'"
+                              [title]="ex.tooltip">{{ overtimeExcessLabel(ex) }}</span>
+                      }
+                    </div>
+                  }
                   @if (row.overtimeEndLatitude != null && row.overtimeEndLongitude != null) {
                     <button class="btn btn-sm btn-ghost-primary inline-flex items-center p-0 ms-1" title="查看打卡位置" (click)="openMap('加班結束', row.overtimeEndLatitude!, row.overtimeEndLongitude!)">
                       <svg class="sa-icon sa-icon-1x" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#map-pin"></use></svg>
@@ -330,6 +343,95 @@
       </div>
     </div>
   </div>
+}
+
+<!-- 加班超時認定 Modal -->
+@if (recognizingRecord(); as record) {
+  @if (record.overtimeExcess; as ex) {
+    <div class="modal-backdrop" (click)="closeRecognition()"></div>
+    <div class="modal show" style="display: block" (click)="closeRecognition()">
+      <div class="modal-dialog modal-dialog-centered" (click)="$event.stopPropagation()">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">加班超時認定</h5>
+            <button type="button" class="btn-close" (click)="closeRecognition()"></button>
+          </div>
+          <div class="modal-body">
+            <div class="mb-3">
+              <span class="text-muted text-sm">員工：</span>
+              <span class="fw-500">{{ record.employeeName }}</span>
+              <span class="text-muted text-sm ms-3">日期：</span>
+              <span>{{ record.recordDate }}</span>
+            </div>
+
+            <div class="grid grid-cols-3 gap-3 mb-4 text-center">
+              <div class="rounded bg-black/5 p-2">
+                <div class="text-muted small">申請時數</div>
+                <div class="fw-500">{{ ex.approvedHours }} 小時</div>
+              </div>
+              <div class="rounded bg-black/5 p-2">
+                <div class="text-muted small">加班打卡</div>
+                <div class="fw-500">{{ ex.punchedHours }} 小時</div>
+                <div class="text-muted small whitespace-nowrap">{{ overtimePunchWindow(record) }}</div>
+              </div>
+              <div class="rounded bg-black/5 p-2">
+                <div class="text-muted small">認定後結算</div>
+                <div class="fw-500">{{ ex.recognizableHours }} 小時</div>
+              </div>
+            </div>
+            @if (ex.recognizableHours < ex.punchedHours) {
+              <div class="text-muted small mb-3">打卡時數超過當日加班上限，最多認定 {{ ex.recognizableHours }} 小時。</div>
+            }
+
+            <div class="mb-3">
+              <label class="form-label">認定結果 <span class="text-danger">*</span></label>
+              <div class="flex gap-4">
+                <label class="inline-flex items-center gap-1">
+                  <input type="radio" class="form-check-input" name="recognitionDecision" value="recognized"
+                         [ngModel]="recognitionForm().decision"
+                         (ngModelChange)="recognitionForm.set({...recognitionForm(), decision: $event})">
+                  認定（以 {{ ex.recognizableHours }} 小時結算）
+                </label>
+                <label class="inline-flex items-center gap-1">
+                  <input type="radio" class="form-check-input" name="recognitionDecision" value="rejected"
+                         [ngModel]="recognitionForm().decision"
+                         (ngModelChange)="recognitionForm.set({...recognitionForm(), decision: $event})">
+                  不認定（維持 {{ ex.approvedHours }} 小時）
+                </label>
+              </div>
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label">確認主管 <span class="text-danger">*</span></label>
+              <input type="text" class="form-control" maxlength="50" placeholder="向哪位主管確認"
+                     [ngModel]="recognitionForm().supervisorName"
+                     (ngModelChange)="recognitionForm.set({...recognitionForm(), supervisorName: $event})">
+            </div>
+            <div>
+              <label class="form-label">原因 <span class="text-danger">*</span></label>
+              <textarea class="form-control" rows="3" maxlength="500"
+                        placeholder="例：活動延長收場，經主管確認為必要加班"
+                        [ngModel]="recognitionForm().reason"
+                        (ngModelChange)="recognitionForm.set({...recognitionForm(), reason: $event})"></textarea>
+            </div>
+            @if (ex.decision) {
+              <div class="text-muted small mt-3">上次登錄：{{ ex.handledBy }} {{ ex.handledAt }}。重新儲存會覆蓋並留下稽核紀錄。</div>
+            }
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-outline" (click)="closeRecognition()">取消</button>
+            <button type="button" class="btn btn-primary" [disabled]="recognizing()" (click)="saveRecognition()">
+              @if (recognizing()) {
+                儲存中...
+              } @else {
+                儲存認定
+              }
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  }
 }
 
 <!-- 地圖 Modal -->

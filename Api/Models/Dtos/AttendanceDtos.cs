@@ -72,7 +72,34 @@ public sealed record AttendanceRecordDto(
     /// <summary>該日本人適用的天然災害停班時段（full / am / pm）；無颱風假為 null。clock / leave / disaster 各種列都會帶</summary>
     string?   DisasterSegment = null,
     /// <summary>該筆颱風假是否給薪；無颱風假為 null</summary>
-    bool?     DisasterIsPaid = null);
+    bool?     DisasterIsPaid = null,
+    /// <summary>加班超時（打卡時數 &gt; 申請時數）的認定資訊；未超時為 null。見 <see cref="AttendanceOvertimeExcessDto"/></summary>
+    AttendanceOvertimeExcessDto? OvertimeExcess = null);
+
+/// <summary>
+/// 加班超時認定（2026-11）：新制已核准加班單的加班打卡時數超過申請時數時帶回。
+/// <see cref="Decision"/> 為 null＝待人事處理（紅字）；recognized / rejected＝已處理（綠字）。
+/// </summary>
+public sealed record AttendanceOvertimeExcessDto(
+    int      OvertimeRequestId,
+    /// <summary>核准的申請時數</summary>
+    decimal  ApprovedHours,
+    /// <summary>加班打卡時數（已扣正常上班時段、捨去到 0.1）</summary>
+    decimal  PunchedHours,
+    /// <summary>可認定時數＝min(打卡時數, 當日申請上限)；認定後的結算時數即此值</summary>
+    decimal  RecognizableHours,
+    string?  Decision,
+    decimal? RecognizedHours,
+    string?  Supervisor,
+    string?  Reason,
+    string?  HandledByName,
+    DateTime? HandledAt);
+
+/// <summary>加班超時認定請求：decision＝recognized / rejected；確認主管與原因必填。認定時數由後端計算，不接受前端傳入。</summary>
+public sealed record RecognizeOvertimeRequest(
+    string  Decision,
+    string? SupervisorName,
+    string? Reason);
 
 /// <summary>出缺勤報表列中的單張請假資訊（當日份）</summary>
 public sealed record AttendanceLeaveDto(
