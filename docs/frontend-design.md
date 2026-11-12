@@ -1342,6 +1342,7 @@ Input：`advanceRounds` / `writeOffHistory` / `currentGrandTotal` / `refundDue` 
 - **操作欄有「檢視」**（icon `#eye`），連到彙總頁 `['by-advance', advanceRequestId]`；因為整列本身是 toggle，連結必須 `(click)="$event.stopPropagation()"`，否則點檢視會順帶收合群組
 - 母層列不可用 `colspan` 蓋掉尾端欄位——尾欄要放操作鈕時，中間空白欄逐格補 `<td>`，且 `hidden lg:table-cell` 的欄位（如建立時間）空白 td 要**帶上同一組 class**，否則窄螢幕欄數對不齊
 - 母層金額欄顯示「已沖銷 / 預支總額」，狀態 / 時間欄留白（群組沒有單一狀態）
+- **「專案 / 活動名稱」欄（2026-11）**：三行 —— 專案代號（monospace）/ 專案名稱（`text-muted small`）/ 預支單的活動名稱（`small`）。同一專案常有多張預支單，只列專案時整頁看起來都一樣、分不出是哪個活動的沖銷；母層列、單筆列、子列三處同一寫法，資料為清單既有的 `activityName`
 
 彙總頁（[write-off-overview](../Admin/src/app/features/admin/write-off-requests/pages/write-off-overview/)）走**詳情頁版型**（`col-12 col-xl-10`）：預支資訊卡 → 沖銷單一覽表卡 → 預支費用明細卡 → `<app-installments-table>`（預支撥款）→ 逐張沖銷單卡（明細 / 附件 / 該次差額撥款 `<app-installments-table>`）。共用元件維持 card 結構，故一律放在卡片**外層同級**，不塞進 `card-body`（避免卡中卡）。
 
