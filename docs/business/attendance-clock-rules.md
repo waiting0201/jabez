@@ -111,10 +111,18 @@ SQL 端的判定片段收斂於 `LeaveRevocationService.NotRevokedClause`，EF �
    Cloudflare 官方測試 secret（`1x…` 一律通過 / `2x…` 一律失敗）回應不帶 action、hostname 固定 example.com，
    故僅在設定值為測試 secret 時跳過兩項比對（本機開發用）。
 4. **嘗試紀錄** `AttendancePunchLogs`：成功與被擋下的每一次嘗試都留一列（動作 / 時間 / 結果 / 擋下原因 /
-   GPS / 精度 / IP / User-Agent / 挑戰碼停留毫秒 / Turnstile 結果）。被擋下時先寫紀錄再丟 400；成功時與打卡紀錄同一次 SaveChanges，
-   後續業務檢查（例如「今日已打上班卡」）失敗則成功紀錄不落地、挑戰碼也不會被消耗。
+   GPS / 精度 / IP / User-Agent / 挑戰碼停留毫秒 / Turnstile 結果 / 回給使用者的訊息 `BlockMessage`）。被擋下時先寫紀錄再丟 400；成功時與打卡紀錄同一次 SaveChanges。
+   **通過四道關卡後才被業務檢查擋下的嘗試也留一列**（2026-11）：原因代碼 `business_rule`、`BlockMessage` ＝當下回給使用者的訊息
+   （例「請填寫逾時原因」「工時佔比合計須為 100%」「今日已打下班卡」），非預期錯誤（500）記 `server_error`；兩者皆 `Succeeded=0`、挑戰碼不視為已使用。
+   做法：`AttendanceHandler.WithPunchRejectionLogAsync` 包住四個打卡動作，失敗時呼叫 `AttendancePunchGuard.RecordRejectionAsync`
+   （先 `ChangeTracker.Clear()` 丟掉未落地的變更，再單獨寫入這一筆；紀錄寫不進去不得蓋掉原錯誤）。
+   起因：2026-11-11 有同仁回報「下班打卡已完成」但隔天被系統補卡，當時這類嘗試完全不留痕跡，查不出是沒送出、還是送出後被哪條規則擋下。
+   ⚠ **查無任何嘗試紀錄＝請求沒有送達伺服器**（前端取不到定位即不送出、或送出前就離開頁面）。
+5. **打卡處理中 / 未完成遮罩**（2026-11，前端）：按下打卡到真正送出要 4–12 秒（定位＋挑戰碼最短停留），這段期間以全畫面遮罩明講
+   「看到『○○成功』前，請勿關閉或離開此頁面」；失敗（含取不到定位）時遮罩改顯示「○○未完成」＋原因，**須按「我知道了」才關閉**
+   （原本只有 3 秒的 toast，容易沒看到）。成功才收掉遮罩，由今日卡片與成功 toast 接手。見 [frontend-design.md §8.4.3](../frontend-design.md)。
 
-擋下原因代碼：`no_gps` / `turnstile_missing` / `turnstile_failed` / `challenge_missing` / `challenge_invalid` / `too_fast` / `challenge_expired` / `challenge_reused`。
+擋下原因代碼：`no_gps` / `turnstile_missing` / `turnstile_failed` / `challenge_missing` / `challenge_invalid` / `too_fast` / `challenge_expired` / `challenge_reused` / `business_rule` / `server_error`（後兩者 2026-11 新增，見上方第 4 點）。
 `TurnstileResult`：`ok` / `missing` / `failed` / `unavailable` / `skipped`（GPS 未過即被擋者為 null）。
 
 ### Turnstile 上線步驟

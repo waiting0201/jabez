@@ -16,6 +16,8 @@ public class AttendancePunchLog
     public bool      Succeeded      { get; set; }
     /// <summary>被擋下的原因代碼（見 AttendancePunchGuard.BlockReasons），成功為 null</summary>
     public string?   BlockReason    { get; set; }
+    /// <summary>被擋下時回給使用者的訊息（2026-11）；business_rule 靠它分辨是哪一條業務檢查，成功為 null</summary>
+    public string?   BlockMessage   { get; set; }
     public double?   Latitude       { get; set; }
     public double?   Longitude      { get; set; }
     /// <summary>瀏覽器回報的定位精度（公尺）</summary>

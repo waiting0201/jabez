@@ -214,7 +214,7 @@ Admin/src/app/
 │       ├── footer/
 │       └── customizer/
 └── features/
-    ├── dashboard/              # 打卡系統（即時時鐘、上下班/加班打卡、GPS；**路由需 `attendances:read`**，選單同步；未持有者由根路由 `resolveLandingUrl()` 導向個人資訊；**打卡按鈕上方有「出差（在外辦公）」勾選框**（2026-08 新增）：整天一個旗標 `AttendanceRecord.IsBusinessTrip`，四個打卡動作皆帶出並覆寫，初始值由 `/attendances/today` 帶回故不會被第二次打卡誤清，出缺勤清單以「出差」badge 呈現）；**防機器人打卡（2026-10 hotfix）**：按下打卡時並行「取 GPS＋取一次性挑戰碼＋取 Turnstile token」、不足 3 秒自動補等，**GPS 必填**（2026-10-11 曾改選填，2026-11 依公司政策恢復必填；取定位失敗會自動降級改用 Wi-Fi／基地台定位重試一次，仍取不到即擋下），見 [docs/business/attendance-clock-rules.md §防機器人打卡](docs/business/attendance-clock-rules.md)
+    ├── dashboard/              # 打卡系統（即時時鐘、上下班/加班打卡、GPS；**路由需 `attendances:read`**，選單同步；未持有者由根路由 `resolveLandingUrl()` 導向個人資訊；**打卡按鈕上方有「出差（在外辦公）」勾選框**（2026-08 新增）：整天一個旗標 `AttendanceRecord.IsBusinessTrip`，四個打卡動作皆帶出並覆寫，初始值由 `/attendances/today` 帶回故不會被第二次打卡誤清，出缺勤清單以「出差」badge 呈現）；**防機器人打卡（2026-10 hotfix）**：按下打卡時並行「取 GPS＋取一次性挑戰碼＋取 Turnstile token」、不足 3 秒自動補等，**GPS 必填**（2026-10-11 曾改選填，2026-11 依公司政策恢復必填；取定位失敗會自動降級改用 Wi-Fi／基地台定位重試一次，仍取不到即擋下）；**打卡期間有全畫面「處理中，請勿離開」遮罩、失敗須按「我知道了」才關**（2026-11，`punchState`），見 [docs/business/attendance-clock-rules.md §防機器人打卡](docs/business/attendance-clock-rules.md)
     │   # **下班打卡視窗 `components/clock-out-modal/`**（2026-10-16）：取代原 ConfirmModal，新舊制皆跳窗，填專案工時佔比（合計須 100%）＋新制早退／逾時原因；已下班後今日卡片可「修改」（`PUT /attendances/today/project-allocations`，僅限今天）；**系統補下班卡日（上線日起）於進系統時強制逐日補填**（`services/missing-allocation-prompt.service.ts`，由 MainLayout 觸發，`GET/PUT /attendances/missing-project-allocations`，只能補一次）
     │   ├── models/attendance.model.ts
     │   ├── services/attendance.service.ts
@@ -596,7 +596,8 @@ Api/
 │   ├── TurnstileVerifier.cs           # **Cloudflare Turnstile siteverify**（2026-10）：比對 success ＋ action ＋ hostname；設定 `Turnstile__SecretKey` / `Turnstile__Mode`（off 預設・log 只記錄・enforce 擋下）/ `Turnstile__AllowedHostnames`；
 │   │                                    連不到回 unavailable（打卡端 fail-open）；secret 空白強制 off；官方測試 secret 跳過 action / hostname 比對
 │   ├── AttendancePunchGuard.cs        # **防機器人打卡（2026-10 hotfix）**：**強制 GPS**（2026-10-11 曾改選填、2026-11 恢復必填）＋ **Turnstile 人機驗證（依 `Turnstile:Mode`）** ＋ 一次性打卡挑戰碼（HMAC，由 Jwt:Secret 衍生專用金鑰；
-│   │                                    簽發後 ≥3 秒、5 分鐘內、限用一次）＋ 每次嘗試寫 `AttendancePunchLogs`（含被擋下、IP / UA）。
+│   │                                    簽發後 ≥3 秒、5 分鐘內、限用一次）＋ 每次嘗試寫 `AttendancePunchLogs`（含被擋下、IP / UA）；
+│   │                                    **通過關卡後被業務檢查擋下的嘗試也留一列**（2026-11，`RecordRejectionAsync`，`business_rule` ＋ `BlockMessage`；查無紀錄＝請求沒送達伺服器）。
 │   │                                    起因：正式站有人以排程腳本「登入 → 1 秒內打卡、不送 GPS」。⚠ 只是提高門檻＋留證據，改寫過的腳本仍可模仿
 │   ├── IJwtService.cs
 │   ├── JwtService.cs                  # HS256 JWT 產生與驗證

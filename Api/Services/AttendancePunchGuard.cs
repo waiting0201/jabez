@@ -24,6 +24,8 @@ namespace Jabez.Api.Services;
 ///      **簽發後至少 <see cref="MinAgeMs"/> 毫秒、至多 <see cref="MaxAgeMs"/> 毫秒內**才能使用，且只能成功使用一次。
 ///      前端在取得 GPS 的同時取碼、不足最短時間時自動補等，正常使用者不會察覺。
 ///   4. **嘗試紀錄**：成功與被擋下的每一次嘗試都寫入 AttendancePunchLogs（IP / User-Agent / GPS / 停留時間 / Turnstile 結果）。
+///      **通過關卡後才被業務檢查擋下的嘗試也留一列**（2026-11，<see cref="RecordRejectionAsync"/>，原因代碼 business_rule ＋ 當下回給使用者的訊息）——
+///      原本這類嘗試完全不留痕跡，員工回報「我明明有打卡」時查不出是沒送出、還是送出後被哪一條規則擋下。
 ///
 /// ⚠ GPS 與挑戰碼只是「提高門檻 + 留證據」：改寫過的腳本仍可模仿取碼與等待。
 ///   Turnstile 要求真的跑過 Cloudflare 的瀏覽器挑戰，腳本成本大幅提高；但仍擋不住「把手機交給同事代打」。
@@ -37,6 +39,9 @@ public sealed class AttendancePunchGuard(AppDbContext db, IConfiguration config,
 
     /// <summary>挑戰碼有效時間</summary>
     public const int MaxAgeMs = 5 * 60 * 1000;
+
+    /// <summary>BlockMessage 欄位長度（與 AttendancePunchLogConfiguration 同步）</summary>
+    public const int BlockMessageMaxLength = 200;
 
     /// <summary>可打卡的四個動作（與路由 /attendances/{action} 同名）</summary>
     public static readonly HashSet<string> Actions = ["clock-in", "clock-out", "overtime-start", "overtime-end"];
@@ -52,6 +57,10 @@ public sealed class AttendancePunchGuard(AppDbContext db, IConfiguration config,
         public const string ChallengeReused  = "challenge_reused";
         public const string TurnstileMissing = "turnstile_missing";
         public const string TurnstileFailed  = "turnstile_failed";
+        /// <summary>四道關卡都通過，但被打卡的業務檢查擋下（例：未填逾時原因、專案佔比合計不是 100%）；訊息見 BlockMessage</summary>
+        public const string BusinessRule     = "business_rule";
+        /// <summary>四道關卡都通過，但寫入時發生非預期錯誤（500）</summary>
+        public const string ServerError      = "server_error";
     }
 
     private readonly byte[] _key = DeriveKey(config["Jwt:Secret"]
@@ -70,6 +79,9 @@ public sealed class AttendancePunchGuard(AppDbContext db, IConfiguration config,
         return new ClockChallengeDto(token, MinAgeMs, MaxAgeMs);
     }
 
+    /// <summary>本次請求已通過關卡、尚未落地的成功紀錄；業務檢查失敗時由 <see cref="RecordRejectionAsync"/> 改寫成失敗紀錄</summary>
+    private AttendancePunchLog? _pending;
+
     public async Task GuardAsync(HttpRequest req, Guid userId, string action, ClockActionRequest body)
     {
         var log = new AttendancePunchLog
@@ -86,14 +98,45 @@ public sealed class AttendancePunchGuard(AppDbContext db, IConfiguration config,
 
         var (reason, message) = await EvaluateAsync(userId, action, body, log, log.IpAddress);
 
-        log.Succeeded   = reason is null;
-        log.BlockReason = reason;
+        log.Succeeded    = reason is null;
+        log.BlockReason  = reason;
+        log.BlockMessage = Truncate(message, BlockMessageMaxLength);
         db.AttendancePunchLogs.Add(log);
 
-        if (reason is null) return;
+        if (reason is null)
+        {
+            _pending = log;
+            return;
+        }
 
         await db.SaveChangesAsync();
         throw AppException.BadRequest(message!);
+    }
+
+    public async Task RecordRejectionAsync(Exception ex)
+    {
+        if (_pending is not { } log) return;   // 關卡沒過（已自行落地）或根本還沒走到關卡
+        _pending = null;
+
+        // 已隨打卡紀錄落地（Id 已產生）＝打卡本身成功，是之後的步驟（組回應等）出錯，不可改記成失敗
+        if (log.Id != 0) return;
+
+        try
+        {
+            // 請求已確定失敗：丟掉 DbContext 裡所有未落地的變更（含半途改過的打卡紀錄），只單獨寫入這一筆嘗試紀錄
+            db.ChangeTracker.Clear();
+
+            log.Succeeded   = false;   // 挑戰碼不視為已使用（filtered unique index 只約束成功列）
+            log.BlockReason = ex is AppException ? BlockReasons.BusinessRule : BlockReasons.ServerError;
+            log.BlockMessage = Truncate(ex is AppException ? ex.Message : ex.GetType().Name, BlockMessageMaxLength);
+
+            db.AttendancePunchLogs.Add(log);
+            await db.SaveChangesAsync();
+        }
+        catch
+        {
+            // 紀錄寫不進去不可蓋掉原本的錯誤：呼叫端會把原例外繼續往外丟
+        }
     }
 
     private async Task<(string? Reason, string? Message)> EvaluateAsync(
