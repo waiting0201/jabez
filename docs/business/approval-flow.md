@@ -128,7 +128,7 @@ draft → pending → approved / returned / rejected
 
 沖銷金額累計超過預支總額時，公司需補撥差額給員工。原本只有 `AdvanceRequest` 上單一組 `EstimatedRefundDate / RefundedAt`，**無法分次撥款**；改為第 5 種分期子表 `WriteOffInstallment`（FK → `WriteOffRecord`）。
 
-**應撥總額 `RefundDue`**（[WriteOffRefundCalculator](../../Api/Common/WriteOffRefundCalculator.cs)，前端同一份公式在 `write-off-request.model.ts` 的 `calcRefundDue()`）：
+**應撥總額 `RefundDue`**（[WriteOffRefundCalculator](../../Api/Common/WriteOffRefundCalculator.cs)；前端不重算，一律讀後端帶回的 `refundDue` / `refundDueToEmployee`）：
 
 ```
 RefundDue = max(0, 前次已沖銷 + 本次沖銷 − 預支總額)
@@ -136,6 +136,14 @@ RefundDue = max(0, 前次已沖銷 + 本次沖銷 − 預支總額)
 ```
 
 以「增額」而非「總超支」計算 —— 每張沖銷單各自算得出、彼此不重疊，加總即等於整張預支單的超支總額，**不必等結案**。
+
+> **月結差額與「同仁應繳回 / 應補撥同仁」分開看（2026-11-12）**：`RefundDue` 的算法**不變**（總額超支的增額），它是「財務要排的差額撥款」，同時涵蓋**補撥給同仁**與**月結超支、付給廠商**兩種款 —— 財務實務上就是用這組差額分期排月結超支的廠商付款（備註寫「支付廠商」），同仁手上剩餘的現金直接抵掉一部分。新增的是**拆分顯示**與**同仁側的結算規則**：
+>
+> - **同仁與公司之間的差額**一律走 `WriteOffRefundCalculator.Settle(現金差額, 總額差額)`（保守互抵）：兩者同方向時取絕對值較小者，否則為 0；現金＝總額 − 月結（`CashOf`）。月結由公司直接支付廠商，所以月結短支不算同仁應繳回、月結超支不算欠同仁；現金與月結互相抵銷的部分也不算（正式資料中同一筆費用在預支與沖銷常填在不同欄，只看現金欄會憑空多出應補撥金額）。
+> - `RefundDueToEmployee`（`CalculateToEmployee`，DTO 新欄位）＝ `RefundDue` 之中補撥給同仁的部分；`RefundDue − RefundDueToEmployee` ＝ 月結超支、付給廠商。畫面在「本次應撥差額」下方以一行說明拆分。
+> - 例：預支 現金 35,000、沖銷 現金 12,600 ＋ 月結 122,500 → `RefundDue` 100,100（＝ 122,500 − 現金剩餘 22,400）、`RefundDueToEmployee` 0；同仁側尚未結清 0，另標「月結實支較預支多 122,500」「現金剩餘 22,400 已與月結超支互抵」。
+> - 例：預支 月結 10,000、沖銷 月結 8,000（現金相同）→ `RefundDue` 0、尚未結清 0，只標「月結實支較預支少 2,000（公司直接支付廠商，無須繳回 / 補撥）」；結案後專案水位改算實際金額。
+> - **已知限制**：差額分期沒有標記收款對象，同一張預支單同時有「補撥同仁」與「月結超支」且只撥了其中一部分時，金額歷程無法分辨撥的是哪一邊，同仁側的尚未結清可能提早歸零；此時以差額分期的未撥款列為準。
 
 範例（預支 10,000）：
 
@@ -145,7 +153,7 @@ RefundDue = max(0, 前次已沖銷 + 本次沖銷 − 預支總額)
 | 第 2 次沖銷 | 3,000 | 15,000 | **3,000** |
 | | | | 合計 5,000 = 總超支 |
 
-**「前次已沖銷」的判定＝已核准且核准時間早於本單**（2026-08 修正，[`WriteOffRefundCalculator.PriorApprovedTotalAsync`](../../Api/Common/WriteOffRefundCalculator.cs)）：
+**「前次已沖銷」的判定＝已核准且核准時間早於本單**（2026-08 修正，[`WriteOffRefundCalculator.PriorApprovedTotalsAsync`](../../Api/Common/WriteOffRefundCalculator.cs)）：
 
 - 本單尚未核准（財務核准當下計算）→ 前次＝**當下全部已核准**的其他沖銷單
 - 本單已核准（核准後修改撥款明細 / 詳情頁顯示）→ 前次＝**`ReviewedAt` 早於本單**者；同時間以 Id 較小者為前序；舊資料 `ReviewedAt` 為 null 視為更早
@@ -197,7 +205,7 @@ RefundDue = max(0, 前次已沖銷 + 本次沖銷 − 預支總額)
 
 **結案當下的 `RefundAmount`**：只計 `ApprovalStatus == "approved"` 的沖銷單，**外加觸發本次結案的那一張**（`triggeringWriteOffId`）—— 結案發生在 `SaveChangesAsync` 之前，該張在 DB 仍是 `pending`。刻意不用 `!= "rejected"`，否則 `draft` / `returned` 的沖銷單會灌進差額，發出金額偏高的「[需匯款]」通知。基準與 `WriteOffRefundCalculator` 一致。
 
-**結案寫回實際金額、金額不同不擋（2026-11）**：結案時（四個入口皆經 `CloseAdvanceRequestAsync` / `CloseTravelRequestAsync`）把已核准沖銷（含觸發結案那張）的合計寫入 `AdvanceRequest.ActualAmount`（預支另寫 `ActualCashTotal` / `ActualCheckTotal`）/ `TravelRequest.ActualAmount`，**短支（沖銷 < 預支）與超支皆寫**；沖銷金額與預支不同時送簽 / 核准 / 結案**一律不擋**，只把差額如何處理（同仁繳回 / 公司補撥 / 結案時未處理）記在歷程。差額不落地，一律推導 `GrandTotal − ActualAmount`。完整歷程（預支批次 → 撥款 → 各次沖銷 → 繳回 / 補撥 → 結案）由 `AdvanceSettlementLedgerService` 產出 `settlementLedger`，見 [backend-design.md §13.4b](../backend-design.md)。`RefundedAmount` 為 deprecated，不再用於結餘。專案水位：未結案取 `MAX(預支, 已核准沖銷)`、已結案取實際金額。
+**結案寫回實際金額、金額不同不擋（2026-11）**：結案時（四個入口皆經 `CloseAdvanceRequestAsync` / `CloseTravelRequestAsync`）把已核准沖銷（含觸發結案那張）的合計寫入 `AdvanceRequest.ActualAmount`（預支另寫 `ActualCashTotal` / `ActualCheckTotal`）/ `TravelRequest.ActualAmount`，**短支（沖銷 < 預支）與超支皆寫**；沖銷金額與預支不同時送簽 / 核准 / 結案**一律不擋**，只把差額如何處理（同仁繳回 / 公司補撥 / 結案時未處理）記在歷程。差額不落地，一律推導 `GrandTotal − ActualAmount`。歷程的「尚未結清 / 差額未處理」只算**同仁與公司之間**的差額（`Settle`，2026-11-12）：月結實支與預支不同只附註「月結實支較預支少 / 多 N 元（公司直接支付廠商，無須繳回 / 補撥）」，現金與月結互抵的部分附註「現金剩餘 / 超支 N 元與月結互抵」，兩者皆不算未處理。結案的 `RefundAmount` 與「[需匯款]」通知仍為總額超支（與差額分期合計同基準）。完整歷程（預支批次 → 撥款 → 各次沖銷 → 繳回 / 補撥 → 結案）由 `AdvanceSettlementLedgerService` 產出 `settlementLedger`，見 [backend-design.md §13.4b](../backend-design.md)。`RefundedAmount` 為 deprecated，不再用於結餘。專案水位：未結案取 `MAX(預支, 已核准沖銷)`、已結案取實際金額。
 
 ### 依預支單彙總檢視（2026-07 新增）
 
@@ -213,7 +221,7 @@ RefundDue = max(0, 前次已沖銷 + 本次沖銷 − 預支總額)
 系統過去只有「公司補撥給員工」（`AdvanceRequest.RefundAmount / RefundedAmount`，方向相反），**從未記錄同仁把用不完的預支款繳回公司**，客戶因此無法在沖銷單上對平帳。2026-10 於 `WriteOffRecord` 新增 4 欄（`ReturnedAmount` / `ReturnedAt` / `ReturnedProofFileName` / `ReturnedProofUrl`，migration `AddWriteOffReturnedCash`）。
 
 - **不計入 `GrandTotal`**：繳回是「錢回到公司」，不是費用核銷，所以 `RefundDue`（超支增額）、專案水位、撥款分期、款項統計**完全不受影響**
-- **尚未結清金額 ＝ 預支總額 − 已核准核銷 − 已核准繳回**（「已」一律只計 `approved`，與「已沖銷金額」同基準）。**僅作顯示警示**（≠ 0 時以警示色提醒），**不擋結案、不擋送簽、不擋核准**
+- **尚未結清金額**（「已」一律只計 `approved`，與「已沖銷金額」同基準）：**2026-11-12 起為同仁與公司之間的差額** ＝ `Settle(現金預支 − 現金核銷 − 繳回, 預支總額 − 核銷 − 繳回)`，兩者同方向取較小者、否則 0（改制前為「預支總額 − 已核准核銷 − 已核准繳回」，月結短支會被算成同仁未結清）。月結預支 − 月結核銷另列「月結差額」一行，純列示、不掛警示。**繳回金額上限**同步改為同一規則（月結未用完的額度不能、也不需要繳回）。**僅作顯示警示**（≠ 0 時以警示色提醒），**不擋結案、不擋送簽、不擋核准**
 - **填寫（沖銷申請單）**：multipart 欄位 `returnedAmount` / `returnedAt` / `returnedProofFile`（Update 另有 `removeReturnedProof`），憑證經 `AttachmentProcessor.UploadItemFileAsync`（magic-byte＋10MB）存入既有的 `write-off-invoices` 容器，預覽沿用 `/files/write-off-invoices/{*path}`
 - **驗證（400）**：金額不可為負；金額為 0 或空＝無繳回（四欄一併清空，並刪舊憑證 blob）；金額 > 0 時**繳回日期與憑證皆必填**（日期過 `RequestDateGuard`）；金額不得超過「預支總額 − 他單已核准核銷 − 本單核銷 − 他單已核准繳回」，訊息會列出上限。修改明細金額後上限即時重算，故驗證排在 `GrandTotal` 更新之後
 - **純匯回、不填明細（2026-10-17）**：費用明細與繳回**至少擇一**——同仁只是把用不完的預支款匯回時，明細可為 0 列（`GrandTotal` = 0、`RefundDue` = 0、不需差額分期），只填繳回金額＋日期＋憑證即可送出。過去明細至少一列，同仁只能塞假發票而使實際費用核銷金額錯誤。後端 `WriteOffRequestHandler.EnsureItemsOrReturned` 於 Create / Update（繳回驗證之後）與 Submit 三處檢查，前端 `hasContent` 控按鈕

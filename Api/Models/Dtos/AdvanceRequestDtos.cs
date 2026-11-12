@@ -232,24 +232,34 @@ public sealed record AdvanceTaskDetailDto(
 /// 預支 / 出差預支「從預支到實際金額」的歷程單一真相（由 <c>AdvanceSettlementLedgerService</c> 產出）。
 /// 預支、沖銷、出差各頁的「已沖銷 / 尚未結清 / 實際金額 / 差額」一律讀這份，前端不得各自重算。
 /// 基準：只計已核准的沖銷；簽核中 / 退回 / 草稿的沖銷另列 <see cref="PendingWriteOffTotal"/>，不進累計。
+/// **「尚未結清」走保守互抵規則（2026-11，<c>WriteOffRefundCalculator.Settle</c>）**：現金差額與總額差額同方向取較小者。
+/// 月結（支票）由公司直接支付廠商，月結差額另列 <see cref="CheckDifference"/>；
+/// 現金與月結互抵的部分（<see cref="CashDifference"/> ≠ <see cref="Outstanding"/>）亦不算應繳回 / 應補撥。
 /// </summary>
 public sealed record AdvanceSettlementLedgerDto(
     decimal   AdvanceTotal,           // 預支總額（含已核准的追加批次）
     decimal   ApprovedWriteOffTotal,  // 已核准沖銷合計
     decimal   ReturnedTotal,          // 已核准沖銷登錄的同仁繳回合計（出差預支恆 0）
     decimal   OverspendPaidTotal,     // 公司已補撥的超支差額（已核准沖銷的差額分期已撥合計；出差預支恆 0）
-    decimal   Outstanding,            // = AdvanceTotal − ApprovedWriteOffTotal − ReturnedTotal + OverspendPaidTotal（>0 同仁尚應繳回，<0 公司尚應補撥）
+    decimal   Outstanding,            // 尚未結清 = Settle(CashDifference, 總額差額)：兩者同方向取較小者，否則 0（>0 同仁尚應繳回，<0 公司尚應補撥）
     decimal   PendingWriteOffTotal,   // 簽核中 / 退回 / 草稿的沖銷（不進累計）
     bool      IsClosed,
     DateTime? ClosedAt,
     string?   ClosedByName,
     decimal?  ActualAmount,           // 結案寫回的實際金額（未結案為 null；舊結案單由 migration 回填）
     decimal?  Difference,             // = AdvanceTotal − (ActualAmount ?? ApprovedWriteOffTotal)
-    List<AdvanceSettlementEventDto> Events);
+    List<AdvanceSettlementEventDto> Events,
+    // ── 月結（支票）分項（2026-11；出差預支恆 0）──
+    decimal   AdvanceCheckTotal = 0,          // 月結預支（已核准批次）
+    decimal   ApprovedWriteOffCheckTotal = 0, // 已核准沖銷的月結合計
+    decimal   CheckDifference = 0,            // = AdvanceCheckTotal − ApprovedWriteOffCheckTotal（>0 月結實支較預支少，<0 較多）；公司與廠商之間，不計入 Outstanding
+    decimal   CashDifference = 0);            // 現金側原始差額 = 現金預支 − 現金核銷 − ReturnedTotal + OverspendPaidTotal；≠ Outstanding 代表有一部分與月結互抵
 
 /// <summary>
 /// 歷程事件列。Kind：advance_round / advance_paid / write_off / returned / overspend_paid / closed。
 /// Running* 為該列（含）之前的累計；advance_paid 為資訊列，不影響 RunningOutstanding。
+/// RunningAdvance / RunningWrittenOff 為總額（含月結）；RunningOutstanding 同 Outstanding 的保守互抵規則，
+/// 含月結的列於 Note 標「含月結 N 元」。
 /// </summary>
 public sealed record AdvanceSettlementEventDto(
     DateTime? Date,

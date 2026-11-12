@@ -35,7 +35,7 @@ public sealed record WriteOffRequestDto(
     // ── 批次金額檢視 ──
     AdvanceRoundDto[]?        AdvanceRounds = null,       // 關聯預支單的各預支批次（含追加）
     WriteOffRoundDto[]?       WriteOffHistory = null,     // 同一預支單底下各張沖銷單
-    decimal                   RefundDue = 0,              // 本次沖銷造成的超支增額（公司應補撥金額）
+    decimal                   RefundDue = 0,              // 本次沖銷造成的超支增額（財務應排的差額撥款；含補撥同仁 + 月結超支付廠商）
     // ── 分期撥款 ──
     InstallmentDto[]?         Installments = null,        // 本沖銷單的差額撥款分期
     string?                   PaymentStatus = null,
@@ -52,7 +52,11 @@ public sealed record WriteOffRequestDto(
     decimal                   OverspendPaidTotal = 0,      // 同預支單已核准 ∪ 本單沖銷的已撥款差額分期合計
     DateTime?                 OverspendLastPaidAt = null, // 上述分期的最後撥款日
     AdvanceRequestItemDto[]?  AdvanceItems = null,        // 關聯預支單全批次明細（依 RoundNo, SortOrder, Id；僅 GET /write-off-requests/{id} 填入）
-    AdvanceSettlementLedgerDto? SettlementLedger = null);       // 關聯預支單的金額歷程（母單 ledger；僅 GET /write-off-requests/{id} 填入）
+    AdvanceSettlementLedgerDto? SettlementLedger = null,        // 關聯預支單的金額歷程（母單 ledger；僅 GET /write-off-requests/{id} 填入）
+    // ── 月結（支票）分項（2026-11）：拆出 RefundDue 中補撥同仁的部分、尚未結清走 WriteOffRefundCalculator.Settle ──
+    decimal                   AdvanceCheckTotal = 0,           // 關聯預支單的月結預支
+    decimal                   AdvanceWrittenOffCheckTotal = 0, // 本單之前已核准沖銷的月結合計（範圍同 AdvanceWrittenOffTotal）
+    decimal                   RefundDueToEmployee = 0);        // RefundDue 之中補撥給同仁的部分；RefundDue − 本值 ＝ 月結超支、付給廠商
 
 /// <summary>同一張預支單底下的各次沖銷（供沖銷資訊卡列出第 N 次沖銷金額）</summary>
 public sealed record WriteOffRoundDto(
@@ -159,7 +163,11 @@ public sealed record WriteOffTaskDetailDto(
     DateTime?           OverspendLastPaidAt = null,   // 上述分期的最後撥款日
     string              ActivityName = "",            // 關聯預支單的活動名稱
     AdvanceRequestItemDto[]? AdvanceItems = null,     // 關聯預支單全批次明細（簽核頁唯讀對照；恆填，無明細時為空陣列）
-    AdvanceSettlementLedgerDto? SettlementLedger = null);    // 關聯預支單的金額歷程（母單 ledger）
+    AdvanceSettlementLedgerDto? SettlementLedger = null,     // 關聯預支單的金額歷程（母單 ledger）
+    // ── 月結（支票）分項（2026-11）：拆出 RefundDue 中補撥同仁的部分、尚未結清走 WriteOffRefundCalculator.Settle ──
+    decimal             AdvanceCheckTotal = 0,        // 關聯預支單的月結預支
+    decimal             OtherWrittenOffCheckTotal = 0, // 本單之前已核准沖銷的月結合計（範圍同 OtherWrittenOffTotal）
+    decimal             RefundDueToEmployee = 0);     // RefundDue 之中補撥給同仁的部分；RefundDue − 本值 ＝ 月結超支、付給廠商
 
 // ── 支票已支付註記 ────────────────────────────────────────────────────────────
 

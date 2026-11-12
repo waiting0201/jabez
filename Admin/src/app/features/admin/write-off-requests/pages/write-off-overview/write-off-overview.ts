@@ -14,6 +14,7 @@ import {WriteOffReturnedInfo} from '../../../../../shared/components/write-off-r
 import {AdvanceSettlementLedgerComponent} from '../../../../../shared/components/advance-settlement-ledger';
 import {InstallmentsTable} from '../../../../../shared/components/installments-table';
 import {HasPermissionDirective} from '@shared/directives/has-permission.directive';
+import {refundDueSplitText} from '@shared/models/settlement-ledger.model';
 
 /**
  * 預支沖銷彙總頁：以「預支單」為母層，一次看完該張預支單的完整資訊
@@ -55,13 +56,18 @@ export class WriteOffOverview implements OnInit {
     return this.writeOffs().filter(w => w.approvalStatus !== 'rejected').reduce((acc, w) => acc + w.grandTotal, 0);
   });
 
-  /** 待沖銷餘額：有金額歷程時取後端 outstanding（預支 − 核銷 − 繳回），否則 預支總額 − 已沖銷加總 */
+  /** 尚未結清：有金額歷程時取後端 outstanding（同仁應繳回 / 公司應補撥；月結差額不計），否則 預支總額 − 已沖銷加總 */
   balance = computed(() => {
     const l = this.advance()?.settlementLedger;
     return l ? l.outstanding : (this.advance()?.grandTotal ?? 0) - this.writtenOffTotal();
   });
 
-  /** 應撥差額加總（沖銷超出預支、公司須補撥給員工的部分）*/
+  /** 應撥差額加總（沖銷超出預支、財務應排的差額撥款；含補撥同仁與月結超支付廠商）*/
+  refundDueToEmployeeTotal = computed(() =>
+    this.writeOffs().filter(w => w.approvalStatus !== 'rejected').reduce((acc, w) => acc + (w.refundDueToEmployee ?? 0), 0));
+  refundDueNote = computed(() =>
+    refundDueSplitText(this.refundDueTotal(), this.refundDueToEmployeeTotal()) ?? '沖銷超出預支，公司須補撥差額');
+
   refundDueTotal = computed(() =>
     this.writeOffs().filter(w => w.approvalStatus !== 'rejected').reduce((acc, w) => acc + (w.refundDue ?? 0), 0));
 

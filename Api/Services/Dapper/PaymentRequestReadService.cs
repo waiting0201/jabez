@@ -871,6 +871,16 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
                                OR w2.ReviewedAt IS NULL
                                OR w2.ReviewedAt < wo.ReviewedAt
                                OR (w2.ReviewedAt = wo.ReviewedAt AND w2.Id < wo.Id))), 0) AS OtherWrittenOffTotal,
+                   -- 同範圍的月結（支票）合計：供拆出 RefundDue 中「補撥同仁」的部分（WriteOffRefundCalculator.CalculateToEmployee）
+                   arx.CheckTotal AS AdvanceCheckTotal,
+                   ISNULL((SELECT SUM(w2.CheckTotal) FROM WriteOffRecords w2
+                           WHERE w2.AdvanceRequestId = wo.AdvanceRequestId
+                             AND w2.ApprovalStatus = 'approved'
+                             AND w2.Id <> wo.Id
+                             AND (wo.ReviewedAt IS NULL
+                               OR w2.ReviewedAt IS NULL
+                               OR w2.ReviewedAt < wo.ReviewedAt
+                               OR (w2.ReviewedAt = wo.ReviewedAt AND w2.Id < wo.Id))), 0) AS OtherWrittenOffCheckTotal,
                    ISNULL((SELECT SUM(w3.ReturnedAmount) FROM WriteOffRecords w3
                            WHERE w3.AdvanceRequestId = wo.AdvanceRequestId
                              AND w3.ApprovalStatus = 'approved'
@@ -1882,7 +1892,13 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
                 (decimal)row.OverspendPaidTotal,
                 (DateTime?)row.OverspendLastPaidAt,
                 ActivityName: (string?)row.ActivityName ?? "",
-                AdvanceItems: GetAdvanceItems((int)row.AdvanceRequestId)),
+                AdvanceItems: GetAdvanceItems((int)row.AdvanceRequestId),
+                AdvanceCheckTotal:         (decimal)row.AdvanceCheckTotal,
+                OtherWrittenOffCheckTotal: (decimal)row.OtherWrittenOffCheckTotal,
+                RefundDueToEmployee: WriteOffRefundCalculator.CalculateToEmployee(
+                    (decimal)row.AdvanceGrandTotal, (decimal)row.AdvanceCheckTotal,
+                    (decimal)row.OtherWrittenOffTotal, (decimal)row.OtherWrittenOffCheckTotal,
+                    (decimal)row.GrandTotal, (decimal)row.CheckTotal)),
             null,
             GetRecords("write_off", (int)row.Id),
             GetDesignatedReviewers("write_off", (int)row.Id),

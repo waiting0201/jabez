@@ -4,18 +4,6 @@ import {InstallmentDto, PaymentInstallmentStatus, WriteOffReturnedCash, WriteOff
 
 export type {WriteOffRound};
 
-/**
- * 本次沖銷造成的超支增額（公司應補撥給員工的金額）。
- * 與後端 Api/Common/WriteOffRefundCalculator.cs 同一份公式：以「增額」而非「總超支」計算，
- * 讓每張沖銷單各自算得出、彼此不重疊。
- */
-export const calcRefundDue = (
-  advanceGrandTotal: number, otherWrittenOffTotal: number, currentGrandTotal: number): number => {
-  const before = Math.max(0, otherWrittenOffTotal - advanceGrandTotal);
-  const after  = Math.max(0, otherWrittenOffTotal + currentGrandTotal - advanceGrandTotal);
-  return after - before;
-};
-
 export type ApprovalStatus = 'draft' | 'pending' | 'approved' | 'rejected' | 'returned';
 
 export const APPROVAL_STATUS_LABELS: Record<ApprovalStatus, string> = {
@@ -93,6 +81,10 @@ export interface WriteOffRequest extends WriteOffReturnedCash {
   designatedReviewers?: DesignatedReviewer[];
   advanceGrandTotal: number;
   advanceWrittenOffTotal: number;
+  /** 關聯預支單的月結（支票）預支；現金 ＝ 總額 − 月結 */
+  advanceCheckTotal?: number;
+  /** 本單之前已核准沖銷的月結合計（範圍同 advanceWrittenOffTotal） */
+  advanceWrittenOffCheckTotal?: number;
   advanceIsClosed: boolean;
   /** 關聯預支單的結案時間 */
   advanceClosedAt?: string;
@@ -114,8 +106,10 @@ export interface WriteOffRequest extends WriteOffReturnedCash {
   writeOffHistory?: WriteOffRound[];
   /** 關聯預支單的全批次費用明細（分類對照 / 預支明細唯讀卡） */
   advanceItems?: AdvanceRequestItem[];
-  /** 本次沖銷造成的超支增額 = 公司應補撥金額 */
+  /** 本次沖銷造成的超支增額 = 財務應排的差額撥款（含補撥同仁 + 月結超支付廠商；後端算好帶回） */
   refundDue?: number;
+  /** refundDue 之中補撥給同仁的部分；refundDue − 本值 ＝ 月結超支、付給廠商 */
+  refundDueToEmployee?: number;
   /** 本沖銷單的差額撥款分期（SUM 須等於 refundDue）*/
   installments?: InstallmentDto[];
   paymentStatus?: PaymentInstallmentStatus;

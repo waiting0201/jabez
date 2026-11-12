@@ -467,6 +467,10 @@ export interface WriteOffTaskDetail extends WriteOffReturnedCash {
   refundedAt?: string;
   advanceGrandTotal: number;
   otherWrittenOffTotal: number;
+  /** 關聯預支單的月結（支票）預支；現金 ＝ 總額 − 月結 */
+  advanceCheckTotal?: number;
+  /** 本單之前已核准沖銷的月結合計（範圍同 otherWrittenOffTotal） */
+  otherWrittenOffCheckTotal?: number;
   refundedBySignatureUrl?: string;
   advanceIsClosed?: boolean;
   /** 關聯預支單的結案時間 */
@@ -487,8 +491,10 @@ export interface WriteOffTaskDetail extends WriteOffReturnedCash {
   writeOffHistory?: WriteOffRound[];
   /** 關聯預支單的全批次費用明細（簽核頁唯讀對照） */
   advanceItems?: import('../../advance-requests/models/advance-request.model').AdvanceRequestItem[];
-  /** 本次沖銷造成的超支增額 = 公司應補撥金額（後端 WriteOffRefundCalculator 算好帶回）*/
+  /** 本次沖銷造成的超支增額 = 財務應排的差額撥款（含補撥同仁 + 月結超支付廠商；後端 WriteOffRefundCalculator 算好帶回）*/
   refundDue?: number;
+  /** refundDue 之中補撥給同仁的部分；refundDue − 本值 ＝ 月結超支、付給廠商 */
+  refundDueToEmployee?: number;
   /** 本沖銷單的差額撥款分期（SUM 須等於 refundDue）*/
   installments?: InstallmentDto[];
   paymentStatus?: PaymentInstallmentStatus;
