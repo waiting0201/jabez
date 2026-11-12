@@ -68,6 +68,16 @@ public sealed class WriteOffRequestReadService(IDbConnection db, IInstallmentRea
                            OR w2.ReviewedAt IS NULL
                            OR w2.ReviewedAt < wo.ReviewedAt
                            OR (w2.ReviewedAt = wo.ReviewedAt AND w2.Id < wo.Id))), 0) AS AdvanceWrittenOffTotal,
+               -- 同範圍的月結（支票）合計：供拆出 RefundDue 中「補撥同仁」的部分（WriteOffRefundCalculator.CalculateToEmployee）
+               ar.CheckTotal AS AdvanceCheckTotal,
+               ISNULL((SELECT SUM(w2.CheckTotal) FROM WriteOffRecords w2
+                       WHERE w2.AdvanceRequestId = wo.AdvanceRequestId
+                         AND w2.ApprovalStatus = 'approved'
+                         AND w2.Id <> wo.Id
+                         AND (wo.ReviewedAt IS NULL
+                           OR w2.ReviewedAt IS NULL
+                           OR w2.ReviewedAt < wo.ReviewedAt
+                           OR (w2.ReviewedAt = wo.ReviewedAt AND w2.Id < wo.Id))), 0) AS AdvanceWrittenOffCheckTotal,
                -- 他單已核准的繳回合計（不含本單）；與 AdvanceWrittenOffTotal 不同，繳回不分前後序，全部他單皆計
                ISNULL((SELECT SUM(w3.ReturnedAmount) FROM WriteOffRecords w3
                        WHERE w3.AdvanceRequestId = wo.AdvanceRequestId
@@ -178,6 +188,7 @@ public sealed class WriteOffRequestReadService(IDbConnection db, IInstallmentRea
             WriteOffHistory      = writeOffHistory,
             AdvanceItems         = advanceItems,
             RefundDue            = refundDue,
+            RefundDueToEmployee  = RefundDueToEmployee(dto),
             Installments         = ownInst.Count > 0 ? [.. ownInst] : null,
             PaymentStatus        = installments.ComputeStatus(ownInst),
             AdvanceInstallments  = advInst.Count > 0 ? [.. advInst] : null,
@@ -241,6 +252,7 @@ public sealed class WriteOffRequestReadService(IDbConnection db, IInstallmentRea
                 Attachments         = att.Length > 0 ? att : null,
                 RefundDue           = WriteOffRefundCalculator.Calculate(
                                           dto.AdvanceGrandTotal, dto.AdvanceWrittenOffTotal, dto.GrandTotal),
+                RefundDueToEmployee = RefundDueToEmployee(dto),
                 Installments        = inst.Count > 0 ? [.. inst] : null,
                 PaymentStatus       = installments.ComputeStatus(inst),
             };
@@ -428,6 +440,14 @@ public sealed class WriteOffRequestReadService(IDbConnection db, IInstallmentRea
             ReturnedProofUrl:      (string?)x.wo.ReturnedProofUrl,
             AdvanceReturnedTotal:  (decimal)x.wo.AdvanceReturnedTotal,
             OverspendPaidTotal:    (decimal)x.wo.OverspendPaidTotal,
-            OverspendLastPaidAt:   (DateTime?)x.wo.OverspendLastPaidAt));
+            OverspendLastPaidAt:   (DateTime?)x.wo.OverspendLastPaidAt,
+            AdvanceCheckTotal:           (decimal)x.wo.AdvanceCheckTotal,
+            AdvanceWrittenOffCheckTotal: (decimal)x.wo.AdvanceWrittenOffCheckTotal));
     }
+
+    /// <summary>RefundDue 之中補撥給同仁的部分（其餘為月結超支付廠商）；算法單一真相為 <see cref="WriteOffRefundCalculator"/>。</summary>
+    private static decimal RefundDueToEmployee(WriteOffRequestDto dto) => WriteOffRefundCalculator.CalculateToEmployee(
+        dto.AdvanceGrandTotal, dto.AdvanceCheckTotal,
+        dto.AdvanceWrittenOffTotal, dto.AdvanceWrittenOffCheckTotal,
+        dto.GrandTotal, dto.CheckTotal);
 }

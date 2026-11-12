@@ -1236,7 +1236,7 @@ private recomputeTotalHours() {
 
 主要 input：`totalAmount`（應撥總額）/ `installments` / `title` / `totalLabel` / `hint` / `required` / `statusLabel` / `statusClass` / `message` / `error`。
 
-> **預支沖銷的 `totalAmount` 不是整單金額**，而是 `refundDue`＝本次沖銷造成的超支增額（後端 `WriteOffRefundCalculator` 算好帶回）。`refundDue = 0` 時整個撥款區塊不顯示。
+> **預支沖銷的 `totalAmount` 不是整單金額**，而是 `refundDue`＝本次沖銷造成的超支增額（後端 `WriteOffRefundCalculator` 算好帶回；含補撥同仁與月結超支付廠商，拆分讀 `refundDueToEmployee`）。`refundDue = 0` 時整個撥款區塊不顯示。
 
 UI 行為規範（5 種申請類型一致）：
 
@@ -1272,11 +1272,11 @@ UI 行為規範（5 種申請類型一致）：
 |------|------|
 | 左：**預支批次** | 第 1 次 / 第 2 次…（`AdvanceRequestItem.RoundNo`，標籤共用 [`roundLabel()`](../Admin/src/app/features/admin/advance-requests/models/advance-request.model.ts)）+ 預支日期 + 金額，footer 為「預支加總」 |
 | 右：**已沖銷** | 第 1/2/3… 次沖銷（`WriteOffRecord.WriteOffNo`）+ 單號 + 金額，本單標 `本單` badge 並套底色，footer 為「已沖銷加總」 |
-| 下：**餘額列** | 本次沖銷 / 待沖銷餘額（負數為 `text-red`）/ 本次應撥差額（`refundDue > 0` 才顯示） |
+| 下：**餘額列** | 本次沖銷 / 待沖銷餘額（負數為 `text-red`）/ 本次應撥差額（`refundDue > 0` 才顯示；下方灰字一行由 `refundDueSplitText(refundDue, refundDueToEmployee)` 產生：全為同仁 →「沖銷超出預支，公司須補撥給同仁」／兩者皆有 →「其中補撥同仁 X 元、月結超支（支付廠商）Y 元」／全為月結 →「月結超支，款項支付廠商（非補撥同仁）」） |
 
 Input：`advanceRounds` / `writeOffHistory` / `currentGrandTotal` / `refundDue` / `advanceReturnedTotal`（他單已核准繳回，後端帶回）/ `currentReturnedAmount`（本單繳回）。加總一律由陣列 `reduce` 推導，不吃任何快取欄位。
 
-**2026-10 底部新增「結清對帳」四行表**：原始預支金額 / 實際費用核銷 / 現金・匯款繳回 / **尚未結清金額**（= 預支 − 核銷 − 繳回，`unsettled()`）。≠ 0 以 `text-warning` + 「未結清」badge 警示（**只警示、不擋結案**）。已沖銷歷史列若該次有繳回，金額下方以小字「繳回 N（yyyy-MM-dd）」呈現（日期取 `WriteOffRound.returnedAt`）。沖銷清單頁金額欄同樣以小字「繳回 N」標示（純匯回單金額為 0，不標會看不出有繳回）。**預支單詳情頁**於「結案與退款資訊」卡之前有「沖銷與繳回紀錄」卡：一張沖銷一列（次別 / 單號 / 狀態 badge / 費用核銷 / 同仁繳回 / 繳回日期 / 匯款證明 eye 鈕開 file-preview-modal），非已核准列 `text-muted`，表尾「已核准合計」與「尚未結清」（同 `unsettled()` 的警示樣式）。**尚未結清為負且公司已補撥足額**（`overspendSettled()`：`unsettled < 0 && overspendPaidTotal ≥ −unsettled`）時改為 `text-green` + `badge bg-success-subtle text-success`「已結清（yyyy-MM-dd 已撥匯）」，`write-off-summary`（inputs `overspendPaidTotal` / `overspendLastPaidAt`）與預支詳情卡同判準。
+**2026-10 底部新增「結清對帳」四行表**：原始預支金額 / 實際費用核銷 / 現金・匯款繳回 / **尚未結清金額**（**2026-11-12 起為同仁與公司之間的差額**：現金差額與總額差額同方向取較小者、否則 0，`unsettled()`；已核准讀後端 `ledger.outstanding`，含簽核中的試算用 `settleDifference()`。表尾另有兩行灰字、皆不掛警示：月結預支 − 月結核銷 ≠ 0 時的「月結差額」，以及現金與月結互抵時的說明 `offsetText()`）。≠ 0 以 `text-warning` + 「未結清」badge 警示（**只警示、不擋結案**）。已沖銷歷史列若該次有繳回，金額下方以小字「繳回 N（yyyy-MM-dd）」呈現（日期取 `WriteOffRound.returnedAt`）。沖銷清單頁金額欄同樣以小字「繳回 N」標示（純匯回單金額為 0，不標會看不出有繳回）。**預支單詳情頁**於「結案與退款資訊」卡之前有「沖銷與繳回紀錄」卡：一張沖銷一列（次別 / 單號 / 狀態 badge / 費用核銷 / 同仁繳回 / 繳回日期 / 匯款證明 eye 鈕開 file-preview-modal），非已核准列 `text-muted`，表尾「已核准合計」與「尚未結清」（同 `unsettled()` 的警示樣式）。**尚未結清為負且公司已補撥足額**（`overspendSettled()`：`unsettled < 0 && overspendPaidTotal ≥ −unsettled`）時改為 `text-green` + `badge bg-success-subtle text-success`「已結清（yyyy-MM-dd 已撥匯）」，`write-off-summary`（inputs `overspendPaidTotal` / `overspendLastPaidAt`）與預支詳情卡同判準。
 
 **同仁匯回預支餘額（現金／匯款繳回）**：
 - 唯讀呈現統一用 [`<app-write-off-returned-info>`](../Admin/src/app/shared/components/write-off-returned-info.ts)（金額 / 日期 / 證明檔），詳情頁、彙總頁（每張沖銷單卡內）、簽核頁共用；`amount` 為空或 0 整塊不顯示，點證明檔 emit `(preview)` 由父層開 `file-preview-modal`。
@@ -2527,6 +2527,7 @@ Angular 指令不會被編譯；自刻 CSS popover 又會被 FullCalendar 格子
 - 上方三格：預支金額 / 實際金額（未結案顯示已核准沖銷並標「核銷中」，`pendingWriteOffTotal > 0` 另提示「另有 N 元沖銷簽核中」）/ 差額（`outstanding > 0` 同仁應繳回、`< 0` 公司應補撥、`= 0` 已結清；結案事件 note 有值如「差額未處理 N 元」以警示 badge 呈現，不擋結案）。
 - 下方時間軸表格（手機橫向捲動，`min-width: 820px`）：日期 / 事項（kind badge）/ 單號 / 金額 / 累計預支 / 累計核銷 / 尚未結清。kind 對照 `SETTLEMENT_KIND_LABELS` / `SETTLEMENT_KIND_CLASSES`。
 - 掛載：advance-detail（置於「沖銷與繳回紀錄」之前，該卡不再自算尚未結清）、write-off-overview、write-off-detail、travel-detail、travel-write-off-detail、approval-task-review（advance / write_off / travel / travel_write_off 四型，由 `settlementLedger(task)` 取值）。
+- **差額只算同仁與公司之間（2026-11-12）**：`outstanding` 與時間軸「尚未結清」欄為後端保守互抵的結果；月結差額讀 `checkDifference`、互抵讀 `cashDifference`，各以灰字一行說明（文案單一真相 `checkDifferenceText()` / `offsetText()`，皆在 settlement-ledger.model.ts；未結案且尚有月結未核銷 →「月結尚有 N 元未核銷」），**不用警示色**。結案時 `outstanding ≠ 0` 才掛「結案時差額未處理」badge。
 - `<app-write-off-summary>` 新增 `[ledger]`：本單與同預支單所有沖銷皆已核准時，「尚未結清」取 `ledger.outstanding`；有簽核中 / 草稿沖銷時仍以含該筆的試算呈現（審核者要看核准後的結果）。
 - PDF：`shared/services/pdf-settlement-ledger.ts` 的 `drawSettlementLedger()`，預支 PDF 與出差預支 PDF 於撥款 / 沖銷段後、簽名欄前呼叫。
 - 清單頁（預支、出差預支）：已結案且 `actualAmount` 有值時，金額下方小字「實際 N」。

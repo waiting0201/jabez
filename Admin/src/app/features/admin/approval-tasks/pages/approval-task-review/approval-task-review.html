@@ -1012,7 +1012,7 @@
                     [writeOffHistory]="d.writeOffHistory"
                     [currentGrandTotal]="d.grandTotal"
                     [ledger]="d.settlementLedger"
-                    [refundDue]="d.refundDue ?? 0"
+                    [refundDue]="d.refundDue ?? 0" [refundDueToEmployee]="d.refundDueToEmployee"
                     [advanceReturnedTotal]="d.advanceReturnedTotal ?? 0"
                     [currentReturnedAmount]="d.returnedAmount"
           [overspendPaidTotal]="d.overspendPaidTotal" [overspendLastPaidAt]="d.overspendLastPaidAt" />
@@ -1632,7 +1632,7 @@
                     [installments]="getInstallments(task)"
                     [error]="installmentsError()"
                     [hint]="applicationType === 'write_off'
-                      ? '本次沖銷金額超出預支金額，財務核准時必須填寫差額撥款明細（加總須等於應撥差額）；核准後可回來修改未撥款的列或填入實際撥款日。'
+                      ? '本次沖銷金額超出預支金額，財務核准時必須填寫差額撥款明細（含補撥同仁與月結超支應付廠商的款項）（加總須等於應撥差額）；核准後可回來修改未撥款的列或填入實際撥款日。'
                       : '提示：核准撥款類申請時撥款明細必填（加總須等於申請總額）；核准後可在「設定撥款明細」區塊回來修改未撥款的列或填入實際撥款日。'" />
                 } @else if (applicationType === 'travel_write_off' && canSetPaymentDate(task)) {
                   <!-- 出差沖銷仍維持單一預計撥款日 -->

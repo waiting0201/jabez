@@ -1,6 +1,6 @@
 import { CIS, FONT_FAMILY, fmt } from './pdf-core.service';
 import type { SettlementLedger } from '../models/settlement-ledger.model';
-import { SETTLEMENT_KIND_LABELS } from '../models/settlement-ledger.model';
+import { SETTLEMENT_KIND_LABELS, checkDifferenceText, offsetText } from '../models/settlement-ledger.model';
 
 /**
  * 畫「金額歷程」小標題 + 摘要（預支 / 實際金額 / 差額）+ 時間軸表格。
@@ -31,6 +31,23 @@ export function drawSettlementLedger(
   const summary = `預支金額：${fmt(ledger.advanceTotal)} 元　　${ledger.isClosed ? '實際金額' : '實際金額（核銷中）'}：${fmt(actual)} 元　　差額：${fmt(Math.abs(ledger.outstanding))} 元（${diffLabel}）`;
   doc.text(summary, mx, y);
   y += 4;
+  // 月結差額：公司直接支付廠商，不算同仁應繳回 / 公司應補撥，另起一行說明
+  const checkNote = checkDifferenceText(ledger.checkDifference, ledger.isClosed);
+  if (checkNote) {
+    y += 1;
+    doc.setTextColor(...CIS.textMuted);
+    doc.text(checkNote, mx, y);
+    doc.setTextColor(...CIS.textPrimary);
+    y += 4;
+  }
+  const offsetNote = ledger.cashDifference != null ? offsetText(ledger.cashDifference, ledger.outstanding) : null;
+  if (offsetNote) {
+    y += 1;
+    doc.setTextColor(...CIS.textMuted);
+    doc.text(offsetNote, mx, y);
+    doc.setTextColor(...CIS.textPrimary);
+    y += 4;
+  }
 
   autoTable(doc, {
     startY: y,

@@ -2,7 +2,7 @@ import {Component, computed, input} from '@angular/core';
 import {DatePipe, DecimalPipe} from '@angular/common';
 import {
   SettlementEvent, SettlementLedger,
-  SETTLEMENT_KIND_CLASSES, SETTLEMENT_KIND_LABELS,
+  SETTLEMENT_KIND_CLASSES, SETTLEMENT_KIND_LABELS, checkDifferenceText, offsetText,
 } from '../models/settlement-ledger.model';
 
 /**
@@ -10,6 +10,8 @@ import {
  * 數字全部來自後端 settlementLedger（單一真相），前端不重算。
  *
  * 上方三格摘要：預支金額 / 實際金額（未結案顯示已核准沖銷並標「核銷中」）/ 差額；
+ * 差額（同仁應繳回 / 公司應補撥）為後端的保守互抵結果，月結差額另以灰字說明、不算未結清；
+ * 現金與月結互抵時另以灰字一行說明；
  * 下方時間軸表格：日期 / 事項 / 單號 / 金額 / 累計預支 / 累計核銷 / 尚未結清（手機橫向捲動）。
  * ledger 為 null（例如假日執行活動）整張卡不渲染。
  */
@@ -52,10 +54,16 @@ import {
                 {{ diffAmount() | number:'1.0-0' }}
                 <span class="badge ml-1" [class]="diffBadgeClass()">{{ diffLabel() }}</span>
               </div>
-              @if (l.isClosed && closedNote(); as n) {
+              @if (l.isClosed && l.outstanding !== 0) {
                 <div class="mt-1">
-                  <span class="badge bg-warning-subtle text-warning-emphasis">{{ n }}</span>
+                  <span class="badge bg-warning-subtle text-warning-emphasis">結案時差額未處理</span>
                 </div>
+              }
+              @if (checkNote(); as n) {
+                <div class="text-muted small mt-1">{{ n }}</div>
+              }
+              @if (offsetNote(); as n) {
+                <div class="text-muted small mt-1">{{ n }}</div>
               }
             </div>
           </div>
@@ -131,9 +139,14 @@ export class AdvanceSettlementLedgerComponent {
     return o === 0 ? 'bg-success-subtle text-success' : 'bg-warning-subtle text-warning-emphasis';
   });
 
-  /** 結案事件的 note（例如「差額未處理 N 元」）*/
-  closedNote = computed(() =>
-    this.ledger()?.events.find(e => e.kind === 'closed')?.note ?? null);
+  /** 月結差額說明（月結實支較預支少 / 多 N 元）；無差額為 null */
+  checkNote = computed(() => checkDifferenceText(this.ledger()?.checkDifference, this.ledger()?.isClosed ?? false));
+
+  /** 現金與月結互抵的提醒（後端 cashDifference ≠ outstanding）；出差預支無此欄位，不顯示 */
+  offsetNote = computed(() => {
+    const l = this.ledger();
+    return l && l.cashDifference != null ? offsetText(l.cashDifference, l.outstanding) : null;
+  });
 
   kindLabel(e: SettlementEvent) { return SETTLEMENT_KIND_LABELS[e.kind] ?? e.kind; }
   kindClass(e: SettlementEvent) { return SETTLEMENT_KIND_CLASSES[e.kind] ?? 'bg-secondary'; }

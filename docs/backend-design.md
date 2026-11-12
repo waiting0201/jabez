@@ -708,6 +708,8 @@ RefundDue = max(0, 前次已沖銷 + 本次沖銷 − 預支總額)
           − max(0, 前次已沖銷            − 預支總額)
 ```
 
+`RefundDue` 是「財務要排的差額撥款」，含**補撥同仁**與**月結超支付廠商**兩種款（2026-11-12 釐清，算法未變）；拆分由 `CalculateToEmployee` 算出 `RefundDueToEmployee` 帶給前端。**凡是判斷「同仁應繳回 / 公司應補撥給同仁 / 尚未結清」一律用 `WriteOffRefundCalculator.Settle(現金差額, 總額差額)`**（保守互抵：同方向取絕對值較小者，否則 0；現金＝`CashOf` ＝ 總額 − 月結），不得直接拿 `GrandTotal` 相減、也不得只看 `CashTotal`。消費點：金額歷程 `Outstanding`、繳回上限 `ApplyReturnedCashAsync`、`RefundDueToEmployee`。
+
 以「增額」而非「總超支」計算，讓每張沖銷單各自算得出、彼此不重疊，加總即等於整張預支單的超支總額，**不需等到結案**。`RefundDue = 0`（未超支）的沖銷單不會有任何 installment，財務核准時也不要求填寫。
 
 > 新增第 6 種分期父表時必須同步：`IInstallmentEntity` 實作 + EF Config + `InstallmentParentTable` enum + Router 的 `IsFinanceOrSuperAdminRoute` + `UserHandler.DeleteAsync` 的 `PaidByUserId` 清洗清單。
@@ -1304,8 +1306,8 @@ Superadmin，只有 Create 沒有）。
 
 預支 / 出差預支的「預支 → 撥款 → 各次沖銷 → 繳回 / 補撥 → 結案實際金額」歷程，數字**只在** [`Services/AdvanceSettlementLedgerService`](../Api/Services/AdvanceSettlementLedgerService.cs) 計算（Dapper、`QueryMultiple` 一次撈回避免 N+1；`GetForAdvanceAsync` / `GetForTravelAsync`），前端與 PDF 不得各自重算「已沖銷 / 尚未結清」。
 
-- **基準**：只計 `approved` 沖銷；簽核中 / 退回 / 草稿另列 `PendingWriteOffTotal`、不進累計。`Outstanding = AdvanceTotal − ApprovedWriteOffTotal − ReturnedTotal + OverspendPaidTotal`（>0 同仁應繳回，<0 公司應補撥）；`Difference = AdvanceTotal − (ActualAmount ?? ApprovedWriteOffTotal)`。
-- **事件**（`Events`，依日期排序、null 排前，`closed` 恆最後）：`advance_round`（日期取各批次預支日期；進行中、尚未核准的追加批次不列）/ `advance_paid`（資訊列，不影響 Outstanding）/ `write_off`（日期＝核准時間，舊資料退回送簽 / 建立時間）/ `returned` / `overspend_paid` / `closed`（`Outstanding ≠ 0` 時 Note 寫「差額未處理 N 元」，**不擋結案**）。
+- **基準**：只計 `approved` 沖銷；簽核中 / 退回 / 草稿另列 `PendingWriteOffTotal`、不進累計。`Outstanding`（**同仁與公司之間的差額**，2026-11-12）`= Settle(CashDifference, 總額差額)`，其中 總額差額 `= AdvanceTotal − ApprovedWriteOffTotal − ReturnedTotal + OverspendPaidTotal`、`CashDifference = 總額差額 − CheckDifference`（>0 同仁應繳回，<0 公司應補撥）；月結差額另列 `CheckDifference = AdvanceCheckTotal − ApprovedWriteOffCheckTotal`（>0 實支較預支少、<0 較多；公司直接支付廠商；出差預支無月結恆 0）；`CashDifference ≠ Outstanding` 代表有一部分與月結互抵；`Difference = AdvanceTotal − (ActualAmount ?? ApprovedWriteOffTotal)`。
+- **事件**（`Events`，依日期排序、null 排前，`closed` 恆最後）：`advance_round`（日期取各批次預支日期；進行中、尚未核准的追加批次不列）/ `advance_paid`（資訊列，不影響 Outstanding）/ `write_off`（日期＝核准時間，舊資料退回送簽 / 建立時間）/ `returned` / `overspend_paid` / `closed`（`Outstanding ≠ 0` 時 Note 寫「差額未處理 N 元」，另視情況附「現金剩餘 / 超支 N 元與月結互抵」「月結實支較預支少 / 多 N 元」，**不擋結案**）。`RunningAdvance` / `RunningWrittenOff` 為總額（含月結），`RunningOutstanding` 同 `Outstanding` 規則；含月結的 `advance_round` / `write_off` 列於 Note 標「含月結 N 元」。
 - **掛載**：由各 ReadService 的單筆 `GetByIdAsync`（Advance / Travel / WriteOff / TravelWriteOff）與 `PaymentRequestReadService.GetApprovalTaskByIdAsync(id, type)` 呼叫；**列表端點不帶**（避免 N+1）。DI：`IAdvanceSettlementLedgerService` scoped。
 - **實際金額寫入**：`ApprovalTaskHandler.CloseAdvanceRequestAsync` / `CloseTravelRequestAsync`（四個結案入口的唯一落點）寫 `ActualAmount`（預支另寫現金 / 支票分項），短支超支皆寫。
 - **專案水位**：`ProjectWaterLevelReadService` 逐張預支計算 `IsClosed ? ISNULL(ActualAmount, 已核准沖銷) : MAX(GrandTotal, 已核准沖銷)`，預支限 `approved`、出差限 `IsHolidayTravel=0`。

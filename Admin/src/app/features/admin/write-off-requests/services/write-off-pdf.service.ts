@@ -2,6 +2,7 @@ import { Injectable, inject, signal } from '@angular/core';
 import { WriteOffRequest } from '../models/write-off-request.model';
 import { ApprovalRecord, ApprovalFlow, writeOffRoundStatus, priorWriteOffRounds } from '../../approval-tasks/models/approval-task.model';
 import { drawWriteOffTable } from '../../../../shared/services/pdf-write-off-table';
+import { settleDifference } from '../../../../shared/models/settlement-ledger.model';
 import { PdfCoreService, SignBlock, CIS, FONT_FAMILY, fmtDT, fmt, buildDynamicSignBlocks, designatedStepOrdersOf } from '../../../../shared/services/pdf-core.service';
 
 @Injectable({ providedIn: 'root' })
@@ -167,7 +168,12 @@ export class WriteOffPdfService {
       const totalWrittenOff = r.advanceWrittenOffTotal + r.grandTotal;
       // 同仁匯回預支餘額（他單已核准 + 本單）；不計入沖銷金額，但要從結餘扣除
       const returnedTotal = (r.advanceReturnedTotal ?? 0) + (r.returnedAmount ?? 0);
-      const balance = r.advanceGrandTotal - totalWrittenOff - returnedTotal;
+      // 結餘＝同仁與公司之間的差額（現金差額與總額差額同方向取較小者，同後端 Settle）：
+      // 月結由公司直接支付廠商，月結差額另列；現金與月結互抵的部分不算應繳回 / 應補撥
+      const checkDiff = (r.advanceCheckTotal ?? 0) - (r.advanceWrittenOffCheckTotal ?? 0) - (r.checkTotal ?? 0);
+      const hasCheck = (r.advanceCheckTotal ?? 0) !== 0 || (r.advanceWrittenOffCheckTotal ?? 0) !== 0 || (r.checkTotal ?? 0) !== 0;
+      const totalBalance = r.advanceGrandTotal - totalWrittenOff - returnedTotal;
+      const balance = settleDifference(totalBalance - checkDiff, totalBalance);
       bodyRows.push([
         { content: '預支金額', colSpan: 6, styles: { halign: 'right', fontStyle: 'bold' } },
         { content: fmt(r.advanceGrandTotal), colSpan: 2, styles: { fontStyle: 'bold', halign: 'right' } },
@@ -217,11 +223,19 @@ export class WriteOffPdfService {
           ]);
         }
       }
+      if (checkDiff !== 0) {
+        bodyRows.push([
+          { content: '月結差額（月結預支 − 月結核銷）', colSpan: 6, styles: { halign: 'right' } },
+          { content: fmt(checkDiff), colSpan: 2, styles: { halign: 'right' } },
+          '',
+          '公司直接支付廠商',
+        ]);
+      }
       bodyRows.push([
-        { content: '結餘', colSpan: 6, styles: { halign: 'right', fontStyle: 'bold' } },
+        { content: hasCheck ? '結餘（同仁應繳回 / 應補撥，月結不計）' : '結餘', colSpan: 6, styles: { halign: 'right', fontStyle: 'bold' } },
         { content: fmt(balance), colSpan: 2, styles: { fontStyle: 'bold', halign: 'right', textColor: balance < 0 ? [...CIS.red] : [...CIS.textPrimary] } },
         '',
-        // 沖銷大於預支且公司已補撥足額 → 備註標「已結清」（與頁面 write-off-summary 同判準）
+        // 結餘為負（公司應補撥）且公司已補撥足額 → 備註標「已結清」（與頁面 write-off-summary 同判準）
         balance < 0 && (r.overspendPaidTotal ?? 0) >= -balance ? '已結清' : '',
       ]);
       // 差額撥款分期（沖銷超支時公司補撥給員工，可分多期）

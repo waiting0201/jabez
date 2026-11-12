@@ -585,7 +585,7 @@ Api/
 │   ├── LoginAttemptTracker.cs         # 登入失敗鎖定（2026-10）：以 Email 為鍵、5 次 / 15 分鐘，回 429；每次嘗試寫 `LoginAttempts`（常數在 Common/AuthPolicy.cs）
 │   ├── RefreshTokenRevoker.cs         # 撤銷某人全部 refresh token 的單一入口（改密碼 / 管理員設密碼 / 寄帳號通知 / 停用 / 角色變更 / 重用偵測）；同時換新 `Users.SecurityStamp`（2026-10 第二輪）使舊 access token 立即 401；`BumpSecurityStampAsync` 只換戳記不撤 refresh（改部門 / 職稱用），見 [docs/authentication.md](docs/authentication.md)
 │   ├── UserRateLimiter.cs             # 每人速率限制（2026-10 第二輪）：記憶體滑動視窗、以 JWT sub 為鍵，AppRouter 對 OCR（`/invoice-ocr` `/quote-ocr`）與 GCIS 統編查詢套用，超限 429；每實例獨立，數值集中在 `Limits`
-│   ├── AdvanceSettlementLedgerService.cs # **預支 / 出差預支金額歷程（2026-11）**：Dapper 唯讀、`QueryMultiple`，產出 `settlementLedger`（預支批次→撥款→已核准沖銷→繳回→補撥→結案事件列 + 三格摘要，只計 approved），全站「已沖銷 / 尚未結清 / 實際金額 / 差額」單一真相，前端不得重算；掛在各單筆詳情與簽核詳情，列表不帶；見 backend-design.md §13.4b
+│   ├── AdvanceSettlementLedgerService.cs # **預支 / 出差預支金額歷程（2026-11）**：Dapper 唯讀、`QueryMultiple`，產出 `settlementLedger`（預支批次→撥款→已核准沖銷→繳回→補撥→結案事件列 + 三格摘要，只計 approved），全站「已沖銷 / 尚未結清 / 實際金額 / 差額」單一真相，前端不得重算；**尚未結清＝同仁與公司之間的差額（`Settle`），月結差額 `CheckDifference`、互抵 `CashDifference` 另列（2026-11-12）**；掛在各單筆詳情與簽核詳情，列表不帶；見 backend-design.md §13.4b
 │   ├── OvertimeSettlementService.cs   # 加班依實際打卡結算（2026-10）：`SettledHours` = min(核准時數, 加班打卡)，終局核准 / 打加班結束卡 / 管理者改出缺勤時冪等重算並同步加班費快照與補休 lot；
 │   │                                    給付基準單一真相 `Common/OvertimeSettlement.BillableHours`（`SettledHours ?? EstimatedHours`，舊單 null 不 backfill）；支援跨日加班結束卡（隔天 06:00 前）
 │   │                                    **加班超時認定（2026-11）**：打卡時數 > 申請時數時，出缺勤報表加班結束欄標紅字「加班超時 +N 小時」，人事向主管確認後登錄
@@ -1057,7 +1057,7 @@ master        # 正式環境（push → victorious-field SWA + jabez-api）
 
 2026-05 上線「分期撥款」，**5 種**申請類型（PaymentRequest / AdvanceRequest / TravelRequest / TravelPaymentRequest / **WriteOffRecord**）的撥款資料**統一由子表 `XxxInstallment[]`** 表達：
 
-> **WriteOffRecord（預支沖銷）為 2026-07 新增的第 5 種，規則不同**：`SUM(Amount)` 對應的不是整單金額，而是 [WriteOffRefundCalculator](Api/Common/WriteOffRefundCalculator.cs) 算出的 `RefundDue`＝**本次沖銷造成的超支增額**。未超支（RefundDue = 0）不會有任何 installment，財務核准時也不要求填寫。詳見 [docs/business/approval-flow.md](docs/business/approval-flow.md#預支沖銷差額分期撥款2026-07-新增)。
+> **WriteOffRecord（預支沖銷）為 2026-07 新增的第 5 種，規則不同**：`SUM(Amount)` 對應的不是整單金額，而是 [WriteOffRefundCalculator](Api/Common/WriteOffRefundCalculator.cs) 算出的 `RefundDue`＝**本次沖銷造成的超支增額**（財務要排的差額撥款，含補撥同仁與**月結超支付廠商**；**2026-11-12** 新增 `RefundDueToEmployee` 拆分顯示，算法不變）。**同仁應繳回 / 應補撥同仁 / 尚未結清一律走 `WriteOffRefundCalculator.Settle`**（現金差額與總額差額同方向取較小者；月結差額、現金與月結互抵皆不算同仁的帳），金額歷程 `Outstanding` 與繳回上限共用。未超支（RefundDue = 0）不會有任何 installment，財務核准時也不要求填寫。詳見 [docs/business/approval-flow.md](docs/business/approval-flow.md#預支沖銷差額分期撥款2026-07-新增)。
 
 - **撥款狀態**：由 [InstallmentReadService.ComputeStatus](Api/Services/Dapper/InstallmentReadService.cs) 計算三態（`Unpaid` / `PartiallyPaid` / `FullyPaid`），全部從子表推算
 - **List filter「已撥款 / 未撥款」**：[PaymentRequestReadService](Api/Services/Dapper/PaymentRequestReadService.cs) 的 `PaymentStatusClause` 用 `EXISTS / NOT EXISTS` 子查詢 `XxxInstallments`

@@ -1644,11 +1644,14 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
         var itemSums = await db.WriteOffItems
             .Where(i => woIds.Select(w => w.Id).Contains(i.WriteOffRecordId))
             .GroupBy(_ => 1)
-            .Select(g => new { Cash = g.Sum(i => i.CashAmount), Check = g.Sum(i => i.CheckAmount) })
+            .Select(g => new { Check = g.Sum(i => i.CheckAmount) })
             .FirstOrDefaultAsync();
-        ApplyActualAmounts(advance, totalWrittenOff, itemSums?.Cash ?? 0m, itemSums?.Check ?? 0m);
+        // 現金一律以「總額 − 月結」推導（與 WriteOffRefundCalculator.CashOf 同一基準）
+        var checkWrittenOff = itemSums?.Check ?? 0m;
+        var cashWrittenOff  = WriteOffRefundCalculator.CashOf(totalWrittenOff, checkWrittenOff);
+        ApplyActualAmounts(advance, totalWrittenOff, cashWrittenOff, checkWrittenOff);
 
-        // 檢查是否有退還差額（沖銷累計 > 預支金額）
+        // 檢查是否有應撥差額（沖銷累計 > 預支金額；含補撥同仁與月結超支付廠商，與差額分期合計同基準）
         var diff = totalWrittenOff - advance.GrandTotal;
         if (diff > 0)
         {
