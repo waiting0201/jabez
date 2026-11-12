@@ -15,6 +15,8 @@ interface WriteOffGroup {
   advanceRequestNo: string;
   projectCode: string;
   projectName: string;
+  /** 預支單的活動名稱（同專案多張預支單時靠它分辨） */
+  activityName: string;
   count: number;
   advanceGrandTotal: number;
   advanceWrittenOffTotal: number;
@@ -73,6 +75,7 @@ export class WriteOffList {
           advanceRequestNo: r.advanceRequestNo,
           projectCode: r.projectCode,
           projectName: r.projectName,
+          activityName: r.activityName,
           count: 0,
           advanceGrandTotal: r.advanceGrandTotal,
           advanceWrittenOffTotal: r.advanceWrittenOffTotal,

@@ -22,7 +22,7 @@
             <tr>
               <th>沖銷單號</th>
               <th>預支單號</th>
-              <th>專案</th>
+              <th>專案 / 活動名稱</th>
               <th class="text-right">金額</th>
               <th>簽核狀態</th>
               <th class="hidden lg:table-cell">申請日期</th>
@@ -40,6 +40,9 @@
                     <div class="font-monospace fw-500">{{ r.projectCode || '—' }}</div>
                     @if (r.projectName) {
                       <div class="text-muted small">{{ r.projectName }}</div>
+                    }
+                    @if (r.activityName) {
+                      <div class="small">{{ r.activityName }}</div>
                     }
                   </td>
                   <td class="text-right fw-500">
@@ -95,6 +98,9 @@
                     @if (g.projectName) {
                       <div class="text-muted small">{{ g.projectName }}</div>
                     }
+                    @if (g.activityName) {
+                      <div class="small">{{ g.activityName }}</div>
+                    }
                   </td>
                   <td class="text-right fw-600">
                     {{ g.advanceWrittenOffTotal | number:'1.0-0' }}
@@ -122,6 +128,9 @@
                         <div class="font-monospace fw-500">{{ r.projectCode || '—' }}</div>
                         @if (r.projectName) {
                           <div class="text-muted small">{{ r.projectName }}</div>
+                        }
+                        @if (r.activityName) {
+                          <div class="small">{{ r.activityName }}</div>
                         }
                       </td>
                       <td class="text-right fw-500">
