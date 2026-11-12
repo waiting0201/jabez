@@ -588,6 +588,9 @@ Api/
 │   ├── AdvanceSettlementLedgerService.cs # **預支 / 出差預支金額歷程（2026-11）**：Dapper 唯讀、`QueryMultiple`，產出 `settlementLedger`（預支批次→撥款→已核准沖銷→繳回→補撥→結案事件列 + 三格摘要，只計 approved），全站「已沖銷 / 尚未結清 / 實際金額 / 差額」單一真相，前端不得重算；掛在各單筆詳情與簽核詳情，列表不帶；見 backend-design.md §13.4b
 │   ├── OvertimeSettlementService.cs   # 加班依實際打卡結算（2026-10）：`SettledHours` = min(核准時數, 加班打卡)，終局核准 / 打加班結束卡 / 管理者改出缺勤時冪等重算並同步加班費快照與補休 lot；
 │   │                                    給付基準單一真相 `Common/OvertimeSettlement.BillableHours`（`SettledHours ?? EstimatedHours`，舊單 null 不 backfill）；支援跨日加班結束卡（隔天 06:00 前）
+│   │                                    **加班超時認定（2026-11）**：打卡時數 > 申請時數時，出缺勤報表加班結束欄標紅字「加班超時 +N 小時」，人事向主管確認後登錄
+│   │                                    認定 / 不認定（轉綠字），`PATCH /attendances/{id}/overtime-recognition`（`reports-attendance:write`，限制同出缺勤修改）；
+│   │                                    認定後結算上限＝`OvertimeSettlement.ApprovedCap`（認定時數，最高到當日上限），加班起訖再被修改即清除，見 [attendance-clock-rules.md §加班超時認定](docs/business/attendance-clock-rules.md)
 │   ├── OvertimeRequestGuard.cs        # 加班送件檢查（2026-10）：補登最多 7 天、同人同日一張、全天有薪假不可加班、每月上限 `SystemSetting.MonthlyOvertimeLimit` ＋ **每期（三個月）上限 `QuarterlyOvertimeLimit`**（2026-10-28，期別固定 11–1 / 2–4 / 5–7 / 8–10 月、自 2026-11 那一期起檢查；送簽與核准）
 │   ├── HolidayTravelParticipantGuard.cs # 假日津貼重複給付防線（2026-10）：參與人員須在職；同人同一假日不得跨單、不得同時有已核准加班費單或有薪假
 │   ├── TurnstileVerifier.cs           # **Cloudflare Turnstile siteverify**（2026-10）：比對 success ＋ action ＋ hostname；設定 `Turnstile__SecretKey` / `Turnstile__Mode`（off 預設・log 只記錄・enforce 擋下）/ `Turnstile__AllowedHostnames`；

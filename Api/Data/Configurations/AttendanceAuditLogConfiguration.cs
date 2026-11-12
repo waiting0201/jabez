@@ -14,6 +14,7 @@ public class AttendanceAuditLogConfiguration : IEntityTypeConfiguration<Attendan
         builder.Property(l => l.ModifiedByName).IsRequired().HasMaxLength(100);
         builder.Property(l => l.RemarkBefore).HasMaxLength(500);
         builder.Property(l => l.RemarkAfter).HasMaxLength(500);
+        builder.Property(l => l.Note).HasMaxLength(1000);
 
         builder.HasIndex(l => new { l.AttendanceRecordId, l.ModifiedAt });
         builder.HasIndex(l => new { l.OwnerUserId, l.RecordDate });

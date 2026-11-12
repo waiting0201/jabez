@@ -54,7 +54,7 @@ public static class OvertimeSettlementService
 
         var window = await ResolveRegularWindowAsync(db, shiftSchedule, scheduleProvider, ot);
         return OvertimeSettlement.ComputeSettled(
-            ot.EstimatedHours, rec.OvertimeStartTime, rec.OvertimeEndTime, window?.Start, window?.End);
+            OvertimeSettlement.ApprovedCap(ot), rec.OvertimeStartTime, rec.OvertimeEndTime, window?.Start, window?.End);
     }
 
     /// <summary>該加班日的正常上班時段（結算時要扣掉重疊）；非工作日或無對象回 null。</summary>
@@ -84,11 +84,45 @@ public static class OvertimeSettlementService
 
         var window = await ResolveRegularWindowAsync(db, shiftSchedule, scheduleProvider, ot);
         ot.SettledHours = OvertimeSettlement.ComputeSettled(
-            ot.EstimatedHours, overtimeStart, overtimeEnd, window?.Start, window?.End);
+            OvertimeSettlement.ApprovedCap(ot), overtimeStart, overtimeEnd, window?.Start, window?.End);
 
         // 快照與 lot 都以剛寫入的 SettledHours 為準（refreshSettlement:false 避免被 DB 舊值蓋回）
         await OvertimeCompensationService.ApplyAsync(db, shiftSchedule, scheduleProvider, ot, refreshSettlement: false);
         await CompensatoryLotService.ApplyAsync(db, shiftSchedule, scheduleProvider, ot);
+        return true;
+    }
+
+    /// <summary>
+    /// 加班超時評估（2026-11）：打卡時數（已扣正常上班時段）與「可認定時數」＝min(打卡時數, 當日申請上限)。
+    /// 可認定時數 &gt; 申請時數才算超時；出缺勤報表的紅字與認定端點共用這一支，兩邊不會各算各的。
+    /// </summary>
+    public static async Task<(decimal Punched, decimal Recognizable)> EvaluateExcessAsync(
+        IShiftScheduleReadService shiftSchedule, IWorkdayScheduleProvider scheduleProvider,
+        Guid ownerId, DateTime overtimeDate, DateTime? overtimeStart, DateTime? overtimeEnd)
+    {
+        var day      = overtimeDate.Date;
+        var rawType  = await shiftSchedule.ResolveDayTypeAsync(ownerId, day);
+        var schedule = await scheduleProvider.ForAsync(day);
+        var window   = OvertimeSettlement.RegularWindowFor(day, rawType, schedule);
+        var punched  = OvertimeSettlement.PunchedHours(overtimeStart, overtimeEnd, window?.Start, window?.End);
+
+        var (dayType, isAssignee) = await OvertimePayCalculator.ResolveDayContextAsync(
+            shiftSchedule, scheduleProvider, ownerId, day);
+        var cap = OvertimePayCalculator.MaxRequestableHours(dayType, isAssignee);
+        return (punched, Math.Min(punched, cap));
+    }
+
+    /// <summary>清空加班超時認定（加班起訖被修改時呼叫：舊的認定不得套到新的打卡上）。回傳是否真的有清。</summary>
+    public static bool ClearRecognition(OvertimeRequest ot)
+    {
+        if (ot.ExtraRecognition is null) return false;
+        ot.ExtraRecognition         = null;
+        ot.RecognizedHours          = null;
+        ot.RecognitionSupervisor    = null;
+        ot.RecognitionReason        = null;
+        ot.RecognitionHandledById   = null;
+        ot.RecognitionHandledByName = null;
+        ot.RecognitionHandledAt     = null;
         return true;
     }
 

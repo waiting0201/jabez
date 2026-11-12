@@ -32,6 +32,12 @@ public class AttendanceAuditLog
     public string?   RemarkBefore        { get; set; }
     public string?   RemarkAfter         { get; set; }
 
+    /// <summary>
+    /// 非欄位異動的操作說明（2026-11）：加班超時的「認定 / 不認定 / 因加班起訖異動而清除認定」。
+    /// 一般的時間 / 備註修改為 null。
+    /// </summary>
+    public string?   Note                { get; set; }
+
     // Navigation
     public AttendanceRecord? AttendanceRecord { get; set; }
 }

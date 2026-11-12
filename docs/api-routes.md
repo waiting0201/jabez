@@ -206,6 +206,7 @@
 | POST | `/attendances/overtime-start` | `attendances:write` | 加班開始打卡（不受請假時段阻擋）。需帶**屬於自己**且當日已核准的加班申請；一般上班日須先打下班卡，**休假日（行事曆 `IsHoliday` / 該年度無行事曆時的六日）或當日全日已核准請假時免下班卡**，且今日無打卡紀錄時自動建立「只含加班時間」的 AttendanceRecord |
 | POST | `/attendances/overtime-end` | `attendances:write` | 加班結束打卡（不受請假時段阻擋） |
 | PUT/PATCH | `/attendances/{id}` | `reports-attendance:write` | 人工修改出缺勤紀錄（上下班 / 加班起訖）。權限碼控管「誰能改」，Handler 內另套**部門可見性 scope** 控管「能改誰」（與 `GET /attendances` 同範圍，讀得到才改得到，非同範圍回 403）。`Remark` 於「未打下班卡」的列即為 HR 填寫的原因（報表紅字轉綠字） |。**2026-10**：不可修改自己的紀錄（403，Superadmin 除外）；下班須晚於上班、加班結束須晚於開始；每次實質修改寫 `AttendanceAuditLogs`，並設 `IsManuallyAdjusted`（不再清除系統補卡標記）；修改加班起訖會重算該日已核准加班單的 `SettledHours`
+| PATCH | `/attendances/{id}/overtime-recognition` | `reports-attendance:write` | **加班超時認定**（2026-11）：加班打卡時數 > 申請時數時，人事登錄 `{decision: recognized｜rejected, supervisorName, reason}`。認定時數由後端計算（min(打卡時數, 當日上限)）；限制同上一列（不可處理自己的 / 職級須高於對方 / 部門 scope），認定時重驗每月・每期加班上限。`GET /attendances` 每列另帶 `overtimeExcess`（未超時為 null）。見 [attendance-clock-rules.md §加班超時認定](business/attendance-clock-rules.md) |
 
 > **請假時段阻擋規則**：上下班打卡以 `Clock.Now`（Asia/Taipei）比對員工 `LeaveRequests` 中 `ApprovalStatus='approved'` 的紀錄，落在 `StartDate <= now < EndDate` 半開區間內即阻擋並回含請假單編號 / 假別 / 時段的錯誤訊息。半天 / 小時請假時段已編碼於 datetime，時段外仍可打卡（如上午半天請假，下午可打上班卡；09:00–12:00 病假，12:00 整點可打卡）。加班打卡不套用此規則。實作於 [Api/Handlers/AttendanceHandler.cs](../Api/Handlers/AttendanceHandler.cs) `EnsureNotOnLeaveAsync`，Dapper SQL 於 [Api/Services/Dapper/AttendanceReadService.cs](../Api/Services/Dapper/AttendanceReadService.cs) `GetActiveLeaveAtAsync`。
 

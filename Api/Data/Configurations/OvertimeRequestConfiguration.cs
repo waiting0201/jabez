@@ -38,6 +38,13 @@ public class OvertimeRequestConfiguration : IEntityTypeConfiguration<OvertimeReq
         builder.Property(o => o.SettledHours)
                .HasColumnType("decimal(5,1)");
 
+        // 加班超時認定（2026-11）：全部 nullable、不 backfill（null＝未處理）
+        builder.Property(o => o.ExtraRecognition).HasMaxLength(20);
+        builder.Property(o => o.RecognizedHours).HasColumnType("decimal(5,1)");
+        builder.Property(o => o.RecognitionSupervisor).HasMaxLength(50);
+        builder.Property(o => o.RecognitionReason).HasMaxLength(500);
+        builder.Property(o => o.RecognitionHandledByName).HasMaxLength(100);
+
         // 補償方式（補休 / 加班費，整單二擇一）。預設 compensatory 同時是舊資料的 backfill 值，
         // 讓上線前所有已核准加班單原封不動留在補休池（見 LeaveRequestHandler.ComputeCompensatoryAsync）。
         builder.Property(o => o.CompensationType)

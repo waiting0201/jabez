@@ -1203,6 +1203,10 @@ namespace Jabez.Api.Data.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
 
+                    b.Property<string>("Note")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
                     b.Property<DateTime?>("OvertimeEndAfter")
                         .HasColumnType("datetime2");
 
@@ -3412,6 +3416,10 @@ namespace Jabez.Api.Data.Migrations
                     b.Property<decimal?>("ExcessHours")
                         .HasColumnType("decimal(5,1)");
 
+                    b.Property<string>("ExtraRecognition")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
                     b.Property<decimal?>("HourlyRateSnapshot")
                         .HasColumnType("decimal(18,2)");
 
@@ -3435,6 +3443,27 @@ namespace Jabez.Api.Data.Migrations
                         .IsRequired()
                         .HasMaxLength(500)
                         .HasColumnType("nvarchar(500)");
+
+                    b.Property<DateTime?>("RecognitionHandledAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("RecognitionHandledById")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("RecognitionHandledByName")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("RecognitionReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("RecognitionSupervisor")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<decimal?>("RecognizedHours")
+                        .HasColumnType("decimal(5,1)");
 
                     b.Property<string>("RequestKind")
                         .IsRequired()

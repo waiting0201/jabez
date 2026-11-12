@@ -65,7 +65,31 @@ public sealed class AttendanceHandler(
         var switchDate = await workdaySchedule.GetSwitchDateAsync();
         var result = await AttendanceLeaveMerger.BuildPagedAsync(
             reader, calendarReader, scope, page, pageSize, employeeId, dateFrom, dateTo, switchDate, shiftReader, disasterReader);
+        result = result with { Items = await RefineOvertimeExcessAsync(result.Items) };
         return new OkObjectResult(ApiResponse.Ok(result));
+    }
+
+    /// <summary>
+    /// 加班超時候選的精算（2026-11）：ReadService 只能粗估（拿不到日別），這裡逐筆以
+    /// <see cref="OvertimeSettlementService.EvaluateExcessAsync"/> 扣掉正常上班時段並套用當日上限。
+    /// 尚未處理且「可認定時數 ≤ 申請時數」者不算超時、拿掉；已有認定結果者一律保留（留存紀錄）。
+    /// 候選只會是當頁少數幾筆，逐筆解析日別的成本可接受。
+    /// </summary>
+    private async Task<List<AttendanceRecordDto>> RefineOvertimeExcessAsync(IEnumerable<AttendanceRecordDto> items)
+    {
+        var list = items.ToList();
+        for (int i = 0; i < list.Count; i++)
+        {
+            if (list[i].OvertimeExcess is not { } ex) continue;
+            var row = list[i];
+            var (punched, recognizable) = await OvertimeSettlementService.EvaluateExcessAsync(
+                shiftReader, workdaySchedule, row.UserId, row.RecordDate, row.OvertimeStartTime, row.OvertimeEndTime);
+
+            list[i] = ex.Decision is null && recognizable <= ex.ApprovedHours
+                ? row with { OvertimeExcess = null }
+                : row with { OvertimeExcess = ex with { PunchedHours = punched, RecognizableHours = recognizable } };
+        }
+        return list;
     }
 
     /// <summary>取得當前使用者今日打卡紀錄（含當日已核准請假時段；無打卡紀錄時回傳僅含請假資訊的空殼 DTO）</summary>
@@ -532,31 +556,7 @@ public sealed class AttendanceHandler(
         EnsureInWindow(body.OvertimeStartTime, record.OvertimeStartTime, "加班開始時間");
         EnsureInWindow(body.OvertimeEndTime,   record.OvertimeEndTime,   "加班結束時間");
 
-        // 層級（V21）：修改者職級須嚴格高於被修改者（JobTitle.Level 數字越小越高）；同級或更低一律 403。
-        // 被修改者無職稱視為最低層級；修改者無職稱則無從比較，拒絕。Superadmin 例外。
-        if (!IsSuperAdmin(req))
-        {
-            var callerLevel = await db.Users.AsNoTracking()
-                .Where(u => u.Id == callerId).Select(u => (int?)u.JobTitle!.Level).FirstOrDefaultAsync();
-            var ownerLevel = await db.Users.AsNoTracking()
-                .Where(u => u.Id == record.UserId).Select(u => (int?)u.JobTitle!.Level).FirstOrDefaultAsync();
-            if (callerLevel is null || (ownerLevel is not null && callerLevel.Value >= ownerLevel.Value))
-                throw AppException.Forbidden("僅能修改職級低於自己的員工出缺勤紀錄。");
-        }
-
-        var scope = await access.ResolveAsync(req.HttpContext.User);
-        if (!scope.SeeAll)
-        {
-            // 比照 AttendanceReadService.BuildDeptScopeFilter：以「該筆紀錄所屬員工的部門」判定
-            var ownerDeptId = await db.Users
-                .AsNoTracking()
-                .Where(u => u.Id == record.UserId)
-                .Select(u => u.DepartmentId)
-                .FirstOrDefaultAsync();
-
-            if (ownerDeptId is null || !scope.AllowedDepartmentIds.Contains(ownerDeptId.Value))
-                throw AppException.Forbidden("您沒有權限修改此員工的出缺勤紀錄。");
-        }
+        await EnsureCanModifyOthersRecordAsync(req, record, callerId);
 
         var newRemark = string.IsNullOrWhiteSpace(body.Remark) ? null : body.Remark.Trim();
 
@@ -570,6 +570,12 @@ public sealed class AttendanceHandler(
         bool clockChanged    = record.ClockInTime  != body.ClockInTime
                             || record.ClockOutTime != body.ClockOutTime;
 
+        // 加班起訖被改動時先找出對應的加班單：稽核列要記下「原超時認定被清除」，結算也用同一張單
+        var linkedOt = overtimeChanged ? await OvertimeSettlementService.FindForRecordAsync(db, record) : null;
+        string? recognitionNote = linkedOt?.ExtraRecognition is { } prevDecision
+            ? $"加班起訖異動，原加班超時認定（{RecognitionLabel(prevDecision, linkedOt.RecognizedHours)}，確認主管：{linkedOt.RecognitionSupervisor}）已清除，須重新認定。"
+            : null;
+
         if (changed)
         {
             // 異動紀錄（2026-10）：修改前後的各欄位值 + 修改人快照，每次實質修改寫一列。
@@ -578,7 +584,8 @@ public sealed class AttendanceHandler(
                 .Where(u => u.Id == callerId).Select(u => u.Name).FirstOrDefaultAsync() ?? "—";
             var now = Clock.Now;
             AttendanceAuditWriter.Add(db, record, callerId, modifierName, now,
-                body.ClockInTime, body.ClockOutTime, body.OvertimeStartTime, body.OvertimeEndTime, newRemark);
+                body.ClockInTime, body.ClockOutTime, body.OvertimeStartTime, body.OvertimeEndTime, newRemark,
+                note: recognitionNote);
 
             // 「系統補卡」旗標**不再清除**：IsClockInAuto / IsClockOutAuto 記的是「這個值最初怎麼來的」，
             // 管理者改過另以 IsManuallyAdjusted 標示，報表兩個 badge 可並存（原本是系統補的、後來被誰改過）。
@@ -614,10 +621,12 @@ public sealed class AttendanceHandler(
         // 這是「補登期限外」或「忘了打加班結束卡」的唯一補正路徑：沒有結算時數就沒有給付。
         if (overtimeChanged)
         {
-            var ot = await OvertimeSettlementService.FindForRecordAsync(db, record);
+            var ot = linkedOt;
             if (ot is not null)
             {
                 record.OvertimeRequestId ??= ot.Id;   // 以日期比對找到的單順手綁定，之後的重算就不必再猜
+                // 加班起訖變了 → 舊的超時認定不得套到新的打卡上，清空後重新變紅、由人事再確認一次（2026-11）
+                OvertimeSettlementService.ClearRecognition(ot);
                 await OvertimeSettlementService.SyncFromPunchesAsync(
                     db, shiftReader, workdaySchedule, ot, record.OvertimeStartTime, record.OvertimeEndTime);
             }
@@ -628,7 +637,124 @@ public sealed class AttendanceHandler(
         return new OkObjectResult(ApiResponse.Ok<object?>(null, "出缺勤紀錄更新成功。"));
     }
 
+    /// <summary>
+    /// 加班超時認定（2026-11）：加班打卡時數 &gt; 申請時數時，人事向主管確認後登錄「認定 / 不認定」。
+    /// 認定 → 結算上限提高為 min(打卡時數, 當日申請上限)，加班費快照與補休 lot 隨之重算；
+    /// 不認定 → 維持申請時數，留下公司未同意的紀錄。可重複處理（改判），每次寫一列稽核。
+    /// 「誰能處理、能處理誰」完全比照 <see cref="UpdateAsync"/>：reports-attendance:write（AppRouter）
+    /// ＋ 不可處理自己的 ＋ 職級須高於對方 ＋ 部門可見範圍。
+    /// </summary>
+    public async Task<IActionResult> RecognizeOvertimeAsync(HttpRequest req, string id)
+    {
+        if (!int.TryParse(id, out var recordId))
+            throw AppException.BadRequest("無效的 ID。");
+
+        var body = await req.ReadFromJsonAsync<RecognizeOvertimeRequest>()
+            ?? throw AppException.BadRequest("請提供認定資料。");
+
+        if (!OvertimeRecognitionDecisions.IsValid(body.Decision))
+            throw AppException.BadRequest("請選擇「認定」或「不認定」。");
+        var supervisor = body.SupervisorName?.Trim();
+        var reason     = body.Reason?.Trim();
+        if (string.IsNullOrEmpty(supervisor))
+            throw AppException.BadRequest("請填寫確認主管。");
+        if (supervisor.Length > 50)
+            throw AppException.BadRequest("確認主管長度不可超過 50 字。");
+        if (string.IsNullOrEmpty(reason))
+            throw AppException.BadRequest("請填寫原因。");
+        if (reason.Length > RemarkMaxLength)
+            throw AppException.BadRequest($"原因長度不可超過 {RemarkMaxLength} 字。");
+
+        var record = await db.AttendanceRecords.FindAsync(recordId)
+            ?? throw AppException.BadRequest("找不到指定的出缺勤紀錄。");
+
+        var callerId = await GetUserIdAsync(req);
+        if (record.UserId == callerId && !IsSuperAdmin(req))
+            throw AppException.Forbidden("不可處理自己的加班超時認定，請洽主管或人事處理。");
+        await EnsureCanModifyOthersRecordAsync(req, record, callerId);
+
+        var ot = await OvertimeSettlementService.FindForRecordAsync(db, record);
+        if (ot is null || ot.ApprovalStatus != "approved" || ot.SettledHours is null)
+            throw AppException.BadRequest("此筆紀錄沒有可認定的加班單（僅限依打卡結算的已核准加班單）。");
+        if (record.OvertimeStartTime is null || record.OvertimeEndTime is null)
+            throw AppException.BadRequest("加班開始 / 結束打卡不完整，請先補正加班起訖時間。");
+
+        var (punched, recognizable) = await OvertimeSettlementService.EvaluateExcessAsync(
+            shiftReader, workdaySchedule, record.UserId, record.RecordDate, record.OvertimeStartTime, record.OvertimeEndTime);
+        if (recognizable <= ot.EstimatedHours)
+            throw AppException.BadRequest(
+                $"加班打卡 {punched:0.#} 小時未超過申請時數 {ot.EstimatedHours:0.#} 小時（或已達當日加班上限），無需認定。");
+
+        bool recognized = body.Decision == OvertimeRecognitionDecisions.Recognized;
+        if (recognized)
+            await OvertimeRequestGuard.EnsureLimitsOnRecognitionAsync(db, ot, recognizable);
+
+        var handlerName = await db.Users.AsNoTracking()
+            .Where(u => u.Id == callerId).Select(u => u.Name).FirstOrDefaultAsync() ?? "—";
+        var now = Clock.Now;
+
+        ot.ExtraRecognition         = body.Decision;
+        ot.RecognizedHours          = recognized ? recognizable : null;
+        ot.RecognitionSupervisor    = supervisor;
+        ot.RecognitionReason        = reason;
+        ot.RecognitionHandledById   = callerId;
+        ot.RecognitionHandledByName = handlerName;
+        ot.RecognitionHandledAt     = now;
+        record.OvertimeRequestId  ??= ot.Id;
+
+        // 稽核：打卡欄位沒變，前後值相同，認定內容寫在 Note
+        AttendanceAuditWriter.Add(db, record, callerId, handlerName, now,
+            record.ClockInTime, record.ClockOutTime, record.OvertimeStartTime, record.OvertimeEndTime, record.Remark,
+            note: $"加班超時認定：{RecognitionLabel(body.Decision, ot.RecognizedHours)}（申請 {ot.EstimatedHours:0.#} 小時、打卡 {punched:0.#} 小時）｜確認主管：{supervisor}｜原因：{reason}");
+
+        // 結算上限已變（OvertimeSettlement.ApprovedCap），重算結算時數 / 加班費快照 / 補休 lot
+        await OvertimeSettlementService.SyncFromPunchesAsync(
+            db, shiftReader, workdaySchedule, ot, record.OvertimeStartTime, record.OvertimeEndTime);
+
+        await db.SaveChangesAsync();
+
+        return new OkObjectResult(ApiResponse.Ok<object?>(null,
+            recognized ? $"已認定加班 {recognizable:0.#} 小時。" : "已登錄為不認定，維持申請時數。"));
+    }
+
+    private static string RecognitionLabel(string decision, decimal? recognizedHours) =>
+        decision == OvertimeRecognitionDecisions.Recognized ? $"認定 {recognizedHours:0.#} 小時" : "不認定";
+
     // ── Helper ──────────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// 「能改誰」的共用檢查（出缺勤修改與加班超時認定共用）：職級須嚴格高於對方 ＋ 部門可見範圍。
+    /// 「不可改自己」由呼叫端先行檢查（訊息依情境不同）。
+    /// </summary>
+    private async Task EnsureCanModifyOthersRecordAsync(HttpRequest req, AttendanceRecord record, Guid callerId)
+    {
+        // 層級（V21）：修改者職級須嚴格高於被修改者（JobTitle.Level 數字越小越高）；同級或更低一律 403。
+        // 被修改者無職稱視為最低層級；修改者無職稱則無從比較，拒絕。Superadmin 例外。
+        if (!IsSuperAdmin(req))
+        {
+            var callerLevel = await db.Users.AsNoTracking()
+                .Where(u => u.Id == callerId).Select(u => (int?)u.JobTitle!.Level).FirstOrDefaultAsync();
+            var ownerLevel = await db.Users.AsNoTracking()
+                .Where(u => u.Id == record.UserId).Select(u => (int?)u.JobTitle!.Level).FirstOrDefaultAsync();
+            if (callerLevel is null || (ownerLevel is not null && callerLevel.Value >= ownerLevel.Value))
+                throw AppException.Forbidden("僅能修改職級低於自己的員工出缺勤紀錄。");
+        }
+
+        var scope = await access.ResolveAsync(req.HttpContext.User);
+        if (!scope.SeeAll)
+        {
+            // 比照 AttendanceReadService.BuildDeptScopeFilter：以「該筆紀錄所屬員工的部門」判定
+            var ownerDeptId = await db.Users
+                .AsNoTracking()
+                .Where(u => u.Id == record.UserId)
+                .Select(u => u.DepartmentId)
+                .FirstOrDefaultAsync();
+
+            if (ownerDeptId is null || !scope.AllowedDepartmentIds.Contains(ownerDeptId.Value))
+                throw AppException.Forbidden("您沒有權限修改此員工的出缺勤紀錄。");
+        }
+    }
+
 
     /// <summary>Superadmin 判定（比照 ApprovalTaskHandler：is_superadmin claim）。principal 由 AppRouter 寫入 HttpContext.User。</summary>
     private static bool IsSuperAdmin(HttpRequest req) =>

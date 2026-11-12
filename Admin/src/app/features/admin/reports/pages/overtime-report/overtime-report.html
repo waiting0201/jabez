@@ -120,7 +120,7 @@
                 <td class="text-center">{{ row.estimatedHours }} h</td>
                 <td class="text-center">
                   @if (row.settledHours !== null) {
-                    <span class="fw-500" title="依實際加班打卡結算（給付基準），不超過申請時數">{{ row.settledHours }} h</span>
+                    <span class="fw-500" title="依實際加班打卡結算（給付基準）；一般不超過申請時數，超時經人事登錄認定者以認定時數為上限">{{ row.settledHours }} h</span>
                   } @else {
                     <span class="text-muted" title="舊單：給付沿用申請時數">—</span>
                   }

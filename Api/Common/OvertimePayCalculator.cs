@@ -91,6 +91,14 @@ public static class OvertimePayCalculator
         ToPayableTierHours(requestedHours, dayType, isActivityAssignee) > CapHoursFor(dayType);
 
     /// <summary>
+    /// 該日「申請時數」的上限（＝<see cref="ExceedsCap"/> 不成立的最大值）：計酬上限，
+    /// 國定假日來源 B 另加不進級距的前 8 小時。加班超時認定以此為認定時數的天花板。
+    /// </summary>
+    public static decimal MaxRequestableHours(string dayType, bool isActivityAssignee) =>
+        CapHoursFor(dayType)
+        + (dayType == WorkDayTypes.PublicHoliday && !isActivityAssignee ? PublicHolidayFreeHours : 0m);
+
+    /// <summary>
     /// 擋件訊息文案 —— Handler 的 400 例外訊息與試算端點的 <c>BlockMessage</c> 共用同一份，
     /// 避免「送出時的錯誤」與「表單試算顯示的警示」文字兜不起來。
     /// </summary>

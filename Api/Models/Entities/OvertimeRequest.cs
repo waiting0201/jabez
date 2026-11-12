@@ -20,6 +20,28 @@ public class OvertimeRequest
     public decimal? SettledHours     { get; set; }
 
     /// <summary>
+    /// 加班超時認定（2026-11）：加班打卡時數 &gt; 核准的申請時數時，出缺勤報表以紅字標示，
+    /// 由人事向主管確認後登錄「認定 / 不認定」（<see cref="Jabez.Api.Common.OvertimeRecognitionDecisions"/>）。
+    /// null ＝ 尚未處理（或不需處理）。認定後結算上限由 EstimatedHours 提高為 <see cref="RecognizedHours"/>，
+    /// 單一真相 <see cref="Jabez.Api.Common.OvertimeSettlement.ApprovedCap"/>；加班起訖再被修改時整組清空、重新認定。
+    /// </summary>
+    public string?  ExtraRecognition { get; set; }
+
+    /// <summary>認定時數＝min(加班打卡時數, 當日加班上限)，由系統計算、人事不可自填；不認定 / 未處理為 null。</summary>
+    public decimal? RecognizedHours  { get; set; }
+
+    /// <summary>線下確認的主管姓名（人事自填，主管確認不在系統內發生，此欄為唯一佐證）。</summary>
+    public string?  RecognitionSupervisor { get; set; }
+
+    /// <summary>認定 / 不認定的原因。</summary>
+    public string?  RecognitionReason { get; set; }
+
+    /// <summary>登錄者（刻意不設 FK，比照 AttendanceAuditLog.ModifiedById，另存姓名快照）。</summary>
+    public Guid?    RecognitionHandledById   { get; set; }
+    public string?  RecognitionHandledByName { get; set; }
+    public DateTime? RecognitionHandledAt    { get; set; }
+
+    /// <summary>
     /// 補償方式（整張單層級，二擇一）：compensatory＝補休 / pay＝加班費。
     /// 選 compensatory 才會計入補休池（見 LeaveRequestHandler.ComputeCompensatoryAsync）；
     /// 選 pay 則依勞基法分段累進倍率試算金額，隨「加班日次月」薪資發放。
