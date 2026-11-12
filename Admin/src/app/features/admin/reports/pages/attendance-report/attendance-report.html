@@ -5,12 +5,14 @@
       <svg class="sa-icon sa-icon-2x text-primary" style="stroke: currentColor">
         <use href="/assets/icons/sprite.svg#bar-chart-2"></use>
       </svg>
-      <h4 class="mb-0">出缺勤紀錄</h4>
+      <h4 class="mb-0">{{ selfMode ? '個人出缺勤' : '出缺勤紀錄' }}</h4>
     </div>
-    <button class="btn btn-outline inline-flex items-center gap-1" [disabled]="exporting() || records().length === 0" (click)="exportExcel()">
-      <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#download"></use></svg>
-      @if (exporting()) { 匯出中... } @else { 匯出 Excel }
-    </button>
+    @if (!selfMode) {
+      <button class="btn btn-outline inline-flex items-center gap-1" [disabled]="exporting() || records().length === 0" (click)="exportExcel()">
+        <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#download"></use></svg>
+        @if (exporting()) { 匯出中... } @else { 匯出 Excel }
+      </button>
+    }
   </div>
 
   <div class="card border-0 shadow-sm">
@@ -19,13 +21,15 @@
       <!-- Toolbar: 篩選列 -->
       <div class="px-4 py-3 border-b">
         <div class="flex flex-wrap items-center gap-2">
-          <select class="form-select w-full sm:w-auto sm:min-w-[160px]"
-                  [ngModel]="selectedEmployeeId()" (ngModelChange)="selectedEmployeeId.set($event)">
-            <option value="">全部員工</option>
-            @for (emp of employees(); track emp.id) {
-              <option [value]="emp.id">{{ emp.code }} {{ emp.name }}</option>
-            }
-          </select>
+          @if (!selfMode) {
+            <select class="form-select w-full sm:w-auto sm:min-w-[160px]"
+                    [ngModel]="selectedEmployeeId()" (ngModelChange)="selectedEmployeeId.set($event)">
+              <option value="">全部員工</option>
+              @for (emp of employees(); track emp.id) {
+                <option [value]="emp.id">{{ emp.code }} {{ emp.name }}</option>
+              }
+            </select>
+          }
           <div class="inline-flex border rounded-md overflow-hidden">
             <button type="button" class="px-3 py-1.5 text-sm"
                     [class.bg-primary]="filterMode()==='day'" [class.text-white]="filterMode()==='day'"
@@ -72,10 +76,10 @@
 
       <!-- Table -->
       <div class="table-responsive">
-        <table class="table table-hover table-sticky-first mb-0 min-w-[1040px]">
+        <table class="table table-hover table-sticky-first mb-0" [class]="selfMode ? 'min-w-[940px]' : 'min-w-[1120px]'">
           <thead class="table-light">
             <tr>
-              <th>員工姓名</th>
+              @if (!selfMode) { <th>員工姓名</th> }
               <th class="text-center">日期</th>
               <th class="text-center">請假</th>
               <th class="text-center">當日時數</th>
@@ -83,13 +87,14 @@
               <th class="text-center">下班時間</th>
               <th class="text-center">加班開始</th>
               <th class="text-center">加班結束</th>
-              <th class="text-right">操作</th>
+              <th class="text-center">加班時數</th>
+              @if (!selfMode) { <th class="text-right">操作</th> }
             </tr>
           </thead>
           <tbody>
             @for (row of records(); track row.key) {
               <tr>
-                <td class="fw-500">{{ row.employeeName }}</td>
+                @if (!selfMode) { <td class="fw-500">{{ row.employeeName }}</td> }
                 <td class="text-center text-muted small">
                   {{ row.recordDate }}
                   @if (row.isBusinessTrip) {
@@ -147,7 +152,13 @@
                 </td>
                 <td class="text-center" [title]="row.expectedWindow">
                   {{ row.clockOutTime }}
-                  @if (row.isMissingClockOut) {
+                  @if (row.isMissingClockOut && selfMode) {
+                    <!-- 個人模式拿不到 HR 備註，無從分辨「待處理 / 已註記」，一律以單一提示色呈現 -->
+                    <span class="badge bg-warning-subtle text-warning-emphasis ms-1"
+                          [title]="row.isClockOutAuto
+                            ? '當天沒有下班打卡紀錄，系統於登入時以上班時間 + 9 小時補上；如與實際不符請洽人事'
+                            : '有上班卡但沒有下班卡；如需補正請洽人事'">未打下班卡</span>
+                  } @else if (row.isMissingClockOut) {
                     @if (row.missingClockOutResolved) {
                       <span class="badge bg-success-subtle text-success ms-1"
                             [title]="'HR 已註記原因：' + row.remark">未打下班卡</span>
@@ -212,20 +223,28 @@
                     </button>
                   }
                 </td>
-                <td class="text-right" style="white-space: nowrap">
-                  <div class="flex justify-end gap-1">
-                    @if (canEditRow(row)) {
-                      <button *appHasPermission="'reports-attendance:write'"
-                              class="btn btn-sm btn-ghost-primary inline-flex items-center" title="編輯" (click)="openEdit(row)">
-                        <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#edit"></use></svg>
-                      </button>
-                    }
-                  </div>
+                <td class="text-center text-muted small whitespace-nowrap"
+                    [title]="!row.overtimeHours ? '' : row.isOvertimeHoursSettled
+                      ? '加班單結算時數（依加班打卡結算，不超過核准時數）'
+                      : '加班打卡起訖的時數（無已結算的加班單）'">
+                  @if (row.overtimeHours) { {{ row.overtimeHours }} 小時 }
                 </td>
+                @if (!selfMode) {
+                  <td class="text-right" style="white-space: nowrap">
+                    <div class="flex justify-end gap-1">
+                      @if (canEditRow(row)) {
+                        <button *appHasPermission="'reports-attendance:write'"
+                                class="btn btn-sm btn-ghost-primary inline-flex items-center" title="編輯" (click)="openEdit(row)">
+                          <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#edit"></use></svg>
+                        </button>
+                      }
+                    </div>
+                  </td>
+                }
               </tr>
             } @empty {
               <tr>
-                <td colspan="9" class="text-center text-muted py-4">
+                <td [attr.colspan]="columnCount" class="text-center text-muted py-4">
                   @if (loading()) {
                     載入中...
                   } @else {

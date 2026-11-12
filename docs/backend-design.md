@@ -1214,7 +1214,8 @@ public sealed class GcisService(HttpClient http, ILogger<GcisService> logger) : 
 - **即時計算型自助端點** [`PayrollHandler.GetMineAsync`](../Api/Handlers/PayrollHandler.cs)（`GET /me/payroll?months=12`）：資料不是「查一張表」而是「算出來的」，故不新增 Read Service，改在既有 `CalculateMonthlyPayrollAsync` 加上可為 null 的 `employeeId` 過濾（7 段 SQL 各加 `AND (@EmployeeId IS NULL OR ... = @EmployeeId)`），Handler 逐月呼叫並取 `Employees.FirstOrDefault()`。兩點必須注意：
   1. `months` 一律 clamp（1~24），避免有人送 `months=99999` 打爆 DB。
   2. **必須自行擋掉到職日之前的月份** —— 員工查詢 SQL 只濾 `Status` / `ResignDate`，不擋的話到職前的月份會算出一筆「全額底薪」的假資料。
-- **權限對應**：`me` 路由在 `GetRequiredPermission` 無對應項，落到 `_ => null`（登入即可），且不在 `IsPublicRoute`（強制 JWT）。
+- **合併型自助端點** [`AttendanceHandler.GetMineAsync`](../Api/Handlers/AttendanceHandler.cs)（`GET /me/attendances`，2026-11）：與管理端 `GetAllAsync` 共用 `AttendanceLeaveMerger.BuildPagedAsync`，只做三件事 —— ① `employeeId` 強制為 JWT `sub`（query 的 `employeeId` 一律忽略）、部門 scope 給 `SeeAll`（範圍已由 employeeId 收斂；本人未必落在自己的可見部門集合內）；② 不開匯出模式；③ **以 `with` 抹除管理端欄位**（`Remark`、加班超時認定的 `Supervisor` / `Reason` / `HandledByName`）。共用 DTO 時「自己讀自己」不等於「全部欄位都給」：HR 寫給 HR 看的註記要在 Handler 抹掉，不能只靠前端不顯示。
+- **權限對應**：`me` 路由在 `GetRequiredPermission` 多數無對應項，落到 `_ => null`（登入即可），且不在 `IsPublicRoute`（強制 JWT）。**例外：`GET /me/attendances` 對應 `attendances:read`** —— 沒有打卡權限的角色（約聘 / 外聘）本來就沒有出缺勤，入口與端點一起收掉。
 - **前端對應**：`<img src>` 不能帶 Authorization header，故簽名 / 頭像（公開容器）走公開 `/files/...`；其餘 PII 改以 HttpClient 下載 blob（interceptor 帶 token）再 `URL.createObjectURL` 顯示 / 開新分頁。
 
 ### 13.2 設計原則

@@ -534,6 +534,7 @@ public sealed class AppRouter(
             ("GET",    ["me", "profile"])                                 => await employeeProfile.GetMineAsync(req),
             ("GET",    ["me", "files", var container, var fileName])      => await files.GetMineAsync(req, container, fileName),
             ("GET",    ["me", "payroll"])                                 => await payroll.GetMineAsync(req),
+            ("GET",    ["me", "attendances"])                             => await attendances.GetMineAsync(req),
             // 自己的補休餘額：與 /leave-requests/compensatory-hours 同一支（對象恆為 JWT sub），但只需登入、免 leave-requests:read
             ("GET",    ["me", "compensatory-hours"])                      => await leaveRequests.GetCompensatoryHoursAsync(req),
 
@@ -792,6 +793,8 @@ public sealed class AppRouter(
             // Attendances — 2026-08 起納入權限管理（原本一律 null＝登入即可）。
             // 兩組權限刻意分離：attendances:* 是「員工對自己」、reports-attendance:* 是「管理者對別人」。
             ("GET",    ["attendances", "today"])          => PermissionCodes.AttendancesRead,
+            // 員工看自己的出缺勤（對象取 JWT sub，無法查別人）：能進打卡頁者即可，不需 reports-attendance:read
+            ("GET",    ["me", "attendances"])             => PermissionCodes.AttendancesRead,
             ("POST",   ["attendances", "clock-challenge"]) => PermissionCodes.AttendancesWrite,
             ("POST",   ["attendances", "clock-in"])       => PermissionCodes.AttendancesWrite,
             ("POST",   ["attendances", "clock-out"])      => PermissionCodes.AttendancesWrite,

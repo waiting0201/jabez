@@ -286,8 +286,27 @@ public sealed class AttendanceReadService(IDbConnection db) : IAttendanceReadSer
             LateReason:         (string?)row.LateReason,
             ClockOutReason:     (string?)row.ClockOutReason,
             OvertimeRequestKind: (string?)row.OvertimeRequestKind,
-            OvertimeExcess:      MapOvertimeExcess(row));
+            OvertimeExcess:      MapOvertimeExcess(row),
+            // 參數先轉成具體型別再呼叫：對 dynamic 引數的呼叫結果仍是 dynamic，執行期取不到 tuple 的欄位名稱
+            OvertimeHours:          MapOvertimeHours((DateTime?)row.OvertimeStartTime, (DateTime?)row.OvertimeEndTime,
+                                                     (string?)row.OtStatus, (decimal?)row.OtSettledHours).Hours,
+            IsOvertimeHoursSettled: MapOvertimeHours((DateTime?)row.OvertimeStartTime, (DateTime?)row.OvertimeEndTime,
+                                                     (string?)row.OtStatus, (decimal?)row.OtSettledHours).Settled);
             // RowKind / ExpectedStart / ExpectedEnd 由 AttendanceLeaveMerger 事後以 with { } 補上
+
+    /// <summary>
+    /// 「加班時數」欄（2026-11）：已核准且已結算的加班單取 SettledHours（給付基準，與加班報表一致）；
+    /// 其餘（舊制單 / 無連結加班單 / 尚未核准）取打卡起訖時數，捨入規則共用 <see cref="OvertimeSettlement.PunchedHours"/>。
+    /// </summary>
+    private static (decimal? Hours, bool Settled) MapOvertimeHours(
+        DateTime? start, DateTime? end, string? otStatus, decimal? otSettledHours)
+    {
+        if (start is null || end is null) return (null, false);
+
+        if (otStatus == "approved" && otSettledHours is { } settled)
+            return (settled, true);
+        return (OvertimeSettlement.PunchedHours(start, end), false);
+    }
 
     /// <summary>
     /// 加班超時的**候選**（2026-11）：新制已核准單、起訖齊全，且「未扣正常上班時段的打卡時數 &gt; 申請時數」或已有認定結果。

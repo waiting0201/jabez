@@ -14,6 +14,7 @@ namespace Jabez.Api.Handlers;
 /// <summary>
 /// GET  /attendances           → 打卡紀錄列表
 /// GET  /attendances/today     → 取得當前使用者今日打卡紀錄
+/// GET  /me/attendances        → 員工查看自己的出缺勤紀錄（唯讀，attendances:read）
 /// POST /attendances/clock-challenge → 取得一次性打卡挑戰碼（防機器人打卡）
 /// POST /attendances/clock-in  → 上班打卡
 /// POST /attendances/clock-out → 下班打卡（須帶 projectAllocations 專案工時佔比）
@@ -67,6 +68,47 @@ public sealed class AttendanceHandler(
             reader, calendarReader, scope, page, pageSize, employeeId, dateFrom, dateTo, switchDate, shiftReader, disasterReader);
         result = result with { Items = await RefineOvertimeExcessAsync(result.Items) };
         return new OkObjectResult(ApiResponse.Ok(result));
+    }
+
+    /// <summary>
+    /// GET /me/attendances — 員工查看**自己**的出缺勤紀錄（2026-11，「個人出缺勤」唯讀頁）。
+    /// 與 <see cref="GetAllAsync"/> 共用同一份合併（打卡 ∪ 請假 ∪ 缺勤 ∪ 颱風假），差別只有三點：
+    /// ① 對象一律取 JWT sub、不接受 employeeId（無法查別人），故不套部門 scope；
+    /// ② 不提供匯出模式；
+    /// ③ 抹除管理端欄位：HR 備註（Remark）與加班超時認定的確認主管 / 原因 / 登錄人。
+    /// 權限為 attendances:read（能進打卡頁者），不需 reports-attendance:read。
+    /// </summary>
+    public async Task<IActionResult> GetMineAsync(HttpRequest req)
+    {
+        var userId = await GetUserIdAsync(req);
+
+        int page     = int.TryParse(req.Query["page"],     out var p)  ? Math.Max(1, p)         : 1;
+        int pageSize = int.TryParse(req.Query["pageSize"], out var ps) ? Math.Clamp(ps, 1, 100) : 20;
+
+        var dateTo   = DateOnly.TryParse(req.Query["dateTo"],   out var dt) ? dt : DateOnly.FromDateTime(Clock.Today);
+        var dateFrom = DateOnly.TryParse(req.Query["dateFrom"], out var df) ? df : dateTo.AddMonths(-1);
+
+        if (dateTo < dateFrom)
+            throw AppException.BadRequest("結束日期不可早於開始日期。");
+        if (dateTo.DayNumber - dateFrom.DayNumber > AttendanceLeaveMerger.MaxRangeDays)
+            throw AppException.BadRequest($"查詢區間請勿超過 {AttendanceLeaveMerger.MaxRangeDays} 天。");
+
+        // 範圍由 employeeId = 本人 收斂，部門 scope 給 SeeAll（本人未必落在自己的可見部門集合內）
+        var selfScope  = new ProjectAccessScope(SeeAll: true, AllowedDepartmentIds: []);
+        var switchDate = await workdaySchedule.GetSwitchDateAsync();
+        var result = await AttendanceLeaveMerger.BuildPagedAsync(
+            reader, calendarReader, selfScope, page, pageSize, userId, dateFrom, dateTo, switchDate, shiftReader, disasterReader);
+
+        var items = (await RefineOvertimeExcessAsync(result.Items))
+            .Select(r => r with
+            {
+                Remark = null,
+                OvertimeExcess = r.OvertimeExcess is { } ex
+                    ? ex with { Supervisor = null, Reason = null, HandledByName = null }
+                    : null,
+            })
+            .ToList();
+        return new OkObjectResult(ApiResponse.Ok(result with { Items = items }));
     }
 
     /// <summary>
