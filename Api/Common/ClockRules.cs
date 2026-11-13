@@ -42,6 +42,8 @@ public static class ClockRules
     /// 半天假 13:00 交接的容許帶（前後各 5 分鐘）。
     /// 下午請假者於此區間打**下班**卡、上午請假者於此區間打**上班**卡，皆視為準時。
     /// 同一個容許帶也用於「請假開始前 5 分鐘提前解鎖下班打卡鍵」（§5.1.4）。
+    /// 2026-11-13：下班卡在假開始「後」同樣保留 5 分鐘（13:05 這一分鐘內仍可打），
+    /// 前端 dashboard.ts 的 LEAVE_CLOCK_OUT_GRACE_MINUTES 須同步。
     /// </summary>
     public const int LeaveHandoverToleranceMinutes = 5;
 

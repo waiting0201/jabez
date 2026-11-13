@@ -177,7 +177,7 @@
             <div class="col-6 col-md-3">
               <button class="btn btn-warning w-100 py-3 flex flex-col items-center gap-2"
                       [disabled]="!canClockOut()"
-                      [title]="clockLockReason() || (currentLeave() ? '目前在請假時段內，無法打卡' : '')"
+                      [title]="clockLockReason() || (clockOutBlockedByLeave() ? '目前在請假時段內，無法打卡' : '')"
                       (click)="confirmAndClockOut()">
                 <svg class="sa-icon sa-icon-2x" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#log-out"></use></svg>
                 <span class="fw-600">下班打卡</span>

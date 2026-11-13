@@ -921,7 +921,10 @@ public sealed class AttendanceHandler(
         if (flexible)
         {
             var tolerance = TimeSpan.FromMinutes(ClockRules.LeaveHandoverToleranceMinutes);
-            if (forClockOut && when >= active.StartDate - tolerance) return;   // 假快開始了，先打下班卡
+            // 下班卡：假開始後再留 5 分鐘緩衝（2026-11-13，13:00 起假者 13:05 這一分鐘內仍可打；之後擋下）。
+            // 假開始「前」本就不在假內、不會走到這裡。原寫法 `when >= StartDate - tolerance` 在假內恆成立，
+            // 等於後端完全不擋（實際是前端在 13:00 整就鎖鍵），此處一併收斂成與前端同一條界線。
+            if (forClockOut && when < active.StartDate + tolerance + TimeSpan.FromMinutes(1)) return;
             if (!forClockOut && when >= active.EndDate - tolerance)   return;   // 假快結束了，先打上班卡
         }
 

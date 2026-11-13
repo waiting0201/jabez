@@ -11,7 +11,7 @@
 > | 上班打卡 | 08:30 才開放（請上午半天假者不受此限）；超過遲到界線記 `IsLate` 且**必填遲到原因**（`LateReason`，2026-10-06；出差亦同，見下方「出差註記」）。界線＝`ClockRules.LateThreshold`：公司 09:30／自訂時段 S+2 分／請上午半天假者 13:05；打卡頁依 `/attendances/today` 的 `lateAfter` 先跳原因視窗 |
 > | 下班打卡 | 以「實際上班打卡 ＋ 9 小時」為應下班時間，分早退／正常（T～T+30 分）／逾時三態；早退與逾時**必填原因**（出差亦同）（`ClockOutReason`）；自訂時段者見下方 |
 | 出缺勤紀錄 | 上班欄「遲到」badge ＋ 遲到原因、下班欄「早退」badge ＋ 早退／逾時原因（2026-10-06）；Excel 備註一併列出；管理者修改上下班時間後依紀錄日期重算遲到／早退 |
-> | 請假時段 | 半天假 13:00 交接容許前後各 5 分鐘；同一容許帶也讓「請假開始前 5 分鐘」可提前打下班卡 |
+> | 請假時段 | 半天假 13:00 交接容許前後各 5 分鐘；同一容許帶也讓「請假開始前 5 分鐘」可提前打下班卡；**下班卡於假開始後 5 分鐘內仍可打**（下午請假者 12:55–13:05，13:05 這一分鐘內皆可；2026-11-13 修正：原本前端在 13:00 整即鎖鍵、後端則完全不擋，兩端收斂為同一條界線，前端常數 `LEAVE_CLOCK_OUT_GRACE_MINUTES` 與 `ClockRules.LeaveHandoverToleranceMinutes` 須同步） |
 >
 > 規則收斂於 [Api/Common/ClockRules.cs](../../Api/Common/ClockRules.cs)（含 `ClockDayPolicy`、`ClockProfile`），
 > 前端只吃 `GET /attendances/today` 回傳的旗標、**不自行重組規則**（逾時界線 `normalClockOutUntil` 亦由後端帶回）。
