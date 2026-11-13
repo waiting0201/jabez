@@ -4,11 +4,13 @@ import {FormArray, FormBuilder, FormGroup, FormsModule, ReactiveFormsModule, Val
 import {NgbActiveModal} from '@ng-bootstrap/ng-bootstrap';
 import {ProjectService} from '@features/admin/projects/services/project.service';
 import {ProjectOption, ProjectTypeahead} from '@/app/shared/components/project-typeahead';
-import {ProjectAllocation, ProjectAllocationInput} from '../../models/attendance.model';
+import {OVERTIME_REASON_APPLY, ProjectAllocation, ProjectAllocationInput} from '../../models/attendance.model';
 
 /** 下班打卡視窗的結果。`reason` 只在有開原因欄位時有值。 */
 export interface ClockOutModalResult {
   reason: string | null;
+  /** 逾時原因選了「加班」：呼叫端於打卡成功後導向加班申請（事後申請） */
+  applyOvertime: boolean;
   allocations: ProjectAllocationInput[];
   /** 補填模式：是否把同一份佔比套用到其餘待補日（只在 `applyToRestCount > 0` 時可能為 true） */
   applyToRest: boolean;
@@ -17,6 +19,8 @@ export interface ClockOutModalResult {
 /**
  * 下班打卡視窗：取代原本的 ConfirmModal（規格不允許跳兩個視窗）。
  * 上方沿用出勤時長說明與早退／逾時原因欄（新制才有），下方為專案工時佔比（新舊制皆必填、合計須 = 100%）。
+ * 逾時原因（2026-11）：呼叫端帶 `reasonOptions` 時改為「固定選項 radio ＋ 自填欄」二擇一（互斥），
+ * 選項文字原樣當作 `reason` 回傳；未帶（早退）維持純文字欄。
  * 當日修改佔比：沒有原因欄與時長說明，以 `initial` 帶入既有佔比。
  * 系統補卡日補填：`forced = true`（無關閉鈕，呼叫端另需 `keyboard: false`），`allocationLabel` 改標日期，
  * `applyToRestCount > 0` 時多一個「其餘 N 天套用相同佔比」勾選框。
@@ -51,12 +55,29 @@ export interface ClockOutModalResult {
           @if (reasonRequired) { <span style="color: var(--red)">*</span> }
           @else { <span class="text-secondary small">（選填）</span> }
         </label>
+        @if (reasonOptions.length) {
+          <div class="flex flex-wrap gap-x-6 gap-y-2 mb-2">
+            @for (opt of reasonOptions; track opt; let i = $index) {
+              <div class="form-check mb-0">
+                <input class="form-check-input" type="radio" name="clockOutReasonOption"
+                       [id]="'clockOutReasonOption' + i"
+                       [checked]="selectedOption() === opt" (change)="selectOption(opt)">
+                <label class="form-check-label" [for]="'clockOutReasonOption' + i">{{ opt }}</label>
+              </div>
+            }
+          </div>
+          @if (isApplyOvertime()) {
+            <div class="text-secondary small mb-2">確認後會先完成下班打卡，再前往加班申請（事後申請）。</div>
+          }
+        }
         <textarea class="form-control mb-1" rows="2" maxlength="500"
                   [ngModel]="reason()" (ngModelChange)="onReasonChange($event)"
                   [ngModelOptions]="{standalone: true}"
-                  [placeholder]="reasonPlaceholder"></textarea>
+                  [placeholder]="reasonOptions.length ? '非以上請改填寫本欄位' : reasonPlaceholder"></textarea>
         @if (showReasonError()) {
-          <div class="small mt-1" style="color: var(--red)">請填寫{{ reasonLabel }}。</div>
+          <div class="small mt-1" style="color: var(--red)">
+            @if (reasonOptions.length) { 請選擇{{ reasonLabel }}，或於上方欄位填寫。 } @else { 請填寫{{ reasonLabel }}。 }
+          </div>
         }
         <hr class="my-3">
       }
@@ -139,6 +160,8 @@ export class ClockOutModal implements OnInit {
   reasonLabel = '';
   reasonRequired = false;
   reasonPlaceholder = '';
+  /** 原因的固定選項（逾時用）；空陣列＝純文字欄。與自填欄互斥，擇一即可 */
+  reasonOptions: readonly string[] = [];
   /** 編輯模式的既有佔比（也可能含已結案專案，會併入候選清單） */
   initial: ProjectAllocation[] = [];
   /** 佔比區塊標題（補填模式改標日期） */
@@ -149,6 +172,7 @@ export class ClockOutModal implements OnInit {
   applyToRestCount = 0;
 
   reason = signal('');
+  selectedOption = signal<string | null>(null);
   applyToRest = signal(false);
   showReasonError = signal(false);
   submitted = signal(false);
@@ -224,13 +248,26 @@ export class ClockOutModal implements OnInit {
     this.total.set(Math.round(sum * 100) / 100);
   }
 
+  isApplyOvertime(): boolean { return this.selectedOption() === OVERTIME_REASON_APPLY; }
+
+  /** 點選項 → 清掉自填文字（兩者互斥） */
+  selectOption(opt: string): void {
+    this.selectedOption.set(opt);
+    this.reason.set('');
+    this.showReasonError.set(false);
+  }
+
   onReasonChange(value: string): void {
     this.reason.set(value);
-    if (value.trim()) this.showReasonError.set(false);
+    if (value.trim()) {
+      this.selectedOption.set(null);     // 自填 → 取消已選的選項
+      this.showReasonError.set(false);
+    }
   }
 
   confirm(): void {
-    if (this.reasonLabel && this.reasonRequired && !this.reason().trim()) {
+    const reasonText = this.selectedOption() ?? this.reason().trim();
+    if (this.reasonLabel && this.reasonRequired && !reasonText) {
       this.showReasonError.set(true);
       return;
     }
@@ -248,7 +285,8 @@ export class ClockOutModal implements OnInit {
     }
     this.errorText.set('');
     const result: ClockOutModalResult = {
-      reason: this.reason().trim() || null,
+      reason: reasonText || null,
+      applyOvertime: this.isApplyOvertime(),
       allocations,
       applyToRest: this.applyToRestCount > 0 && this.applyToRest(),
     };

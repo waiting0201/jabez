@@ -77,6 +77,9 @@
                   <label class="form-check-label" for="kind-post-hoc">事後申請</label>
                 </div>
               </div>
+              @if (lockedPostHoc) {
+                <div class="form-text">由下班打卡帶入，申請類別與加班日期已鎖定為事後申請，不可變更。</div>
+              }
               <div class="form-text">
                 「事後申請」適用於已親自打下班卡、事後才補報實際加班時段，須於加班日後一個工作日 23:59 前提出（遇週六日、國定假日順延）；核准後系統自動寫入出缺勤。
               </div>
