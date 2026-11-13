@@ -646,7 +646,7 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
             return parts.Length > 0 ? " WHERE " + string.Join(" AND ", parts) : "";
         }
 
-        // ── 撥款/退款狀態篩選（僅在已核准頁籤且有 paymentStatus 時生效）───
+        // ── 撥款/退款狀態篩選（有 paymentStatus 時生效；前端於「已核准」與「已簽核（流程中）」頁籤提供）───
         // 改從子表 installments 推算（Phase 2 已移除父表 cache），對應三態：
         //   paid    = 已全數撥款（有 installments 且所有 PaidAt 都非 null）
         //   partial = 部分撥款（至少一期 PaidAt 非 null，且至少一期 PaidAt 為 null）

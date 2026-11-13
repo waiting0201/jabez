@@ -182,7 +182,7 @@
         </div>
       }
 
-      @if (activeTab() === 'approved' && canSeePaymentFilter()) {
+      @if (showPaymentFilter()) {
         <div class="flex gap-1">
           <button class="btn btn-sm"
                   [class]="paymentStatus() === '' ? 'btn-outline-primary' : 'btn-outline-secondary'"
@@ -207,13 +207,15 @@
             <svg class="sa-icon me-1" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#check-circle"></use></svg>
             全部撥款
           </button>
-          <!-- 已結案：僅預支 / 出差預支有結案概念，其餘類型後端不回傳 -->
-          <button class="btn btn-sm"
-                  [class]="paymentStatus() === 'closed' ? 'btn-outline-primary' : 'btn-outline-secondary'"
-                  (click)="setPaymentStatus('closed')">
-            <svg class="sa-icon me-1" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#archive"></use></svg>
-            已結案
-          </button>
+          <!-- 已結案：僅預支 / 出差預支有結案概念，其餘類型後端不回傳；流程中的單不會是已結案，故「已簽核（流程中）」頁籤不提供 -->
+          @if (activeTab() === 'approved') {
+            <button class="btn btn-sm"
+                    [class]="paymentStatus() === 'closed' ? 'btn-outline-primary' : 'btn-outline-secondary'"
+                    (click)="setPaymentStatus('closed')">
+              <svg class="sa-icon me-1" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#archive"></use></svg>
+              已結案
+            </button>
+          }
         </div>
       }
   </div>
@@ -314,7 +316,10 @@
                 <td [attr.colspan]="(activeTab() === 'pending' && canBatchApprove()) ? 8 : showPaymentPlan() ? 9 : 7" class="text-center text-muted py-4">
                   {{ activeTab() === 'director' ? '目前沒有' + DIRECTOR_STATUS_LABELS[directorStatus()] + '的總監室簽核作業。'
                      : activeTab() === 'pending' ? '目前沒有待審核的簽核作業。'
-                     : activeTab() === 'reviewed' ? '目前沒有您已核准、仍在簽核中的申請。'
+                     : activeTab() === 'reviewed' ? (paymentStatus() === 'unpaid' ? '目前沒有尚未撥款、仍在簽核中的申請。'
+                        : paymentStatus() === 'partial' ? '目前沒有部分撥款、仍在簽核中的申請。'
+                        : paymentStatus() === 'paid' ? '目前沒有全部撥款、仍在簽核中的申請。'
+                        : '目前沒有您已核准、仍在簽核中的申請。')
                      : activeTab() === 'returned' ? '目前沒有退回修改中的簽核作業。'
                      : activeTab() === 'rejected' ? '目前沒有已拒絕的簽核作業。'
                      : submittedByFilter() ? '目前沒有此申請人的已核准簽核作業。'

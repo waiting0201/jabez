@@ -90,11 +90,15 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
         // 「已簽核（流程中）」頁籤（scope=reviewed）：協理以上（JobTitle.Level ≤ 3，同高階主管假判準）
         // 查看「我已核准、但整張單仍在簽核中」的單。狀態固定為 pending，忽略 status 參數。
         // Superadmin 不開放（待審核頁籤本就列出全部 pending）。
+        // 2026-11-13：財務管理部 / 會計室（DirectorPendingView）不論職級一併開放 —— 會計關卡多在流程中段，
+        // 簽完後需追蹤單子走到哪；資料範圍仍只有「本人核准過」的單，不因此多看到別人的單。
         bool reviewedScope = scope == "reviewed";
         if (reviewedScope)
         {
-            if (callerIsSuperAdmin || callerJobLevel is null || callerJobLevel > SeniorReviewerMaxLevel)
-                return new ObjectResult(ApiResponse.Fail("僅協理以上可查看已簽核（流程中）清單。")) { StatusCode = 403 };
+            bool isSenior      = callerJobLevel is not null && callerJobLevel <= SeniorReviewerMaxLevel;
+            bool isFinanceView = DepartmentCodes.DirectorPendingView.Contains(callerDeptCode ?? "");
+            if (callerIsSuperAdmin || (!isSenior && !isFinanceView))
+                return new ObjectResult(ApiResponse.Fail("僅協理以上或財務管理部 / 會計室可查看已簽核（流程中）清單。")) { StatusCode = 403 };
             status = "pending";
         }
 

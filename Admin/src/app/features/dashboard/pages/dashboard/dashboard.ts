@@ -20,6 +20,9 @@ import {LEAVE_TYPE_LABELS} from '@features/admin/leave-requests/models/leave-req
 
 const DAY_NAMES = ['日', '一', '二', '三', '四', '五', '六'];
 
+/** 請假開始後仍可打下班卡的緩衝分鐘數，須與後端 ClockRules.LeaveHandoverToleranceMinutes 同步 */
+const LEAVE_CLOCK_OUT_GRACE_MINUTES = 5;
+
 @Component({
   selector: 'app-dashboard',
   templateUrl: './dashboard.html',
@@ -156,7 +159,18 @@ export class Dashboard implements OnInit, OnDestroy {
 
   canClockOut = computed(() => {
     const r = this.todayRecord();
-    return !!r?.clockInTime && !r?.clockOutTime && !this.loading() && !this.currentLeave() && this.dayAllowsClock();
+    return !!r?.clockInTime && !r?.clockOutTime && !this.loading() && !this.clockOutBlockedByLeave() && this.dayAllowsClock();
+  });
+
+  /**
+   * 下班卡是否被請假時段擋住：假開始後保留 5 分鐘緩衝（13:00 起假者 13:05 這一分鐘內仍可打下班卡），
+   * 與後端 AttendanceHandler.EnsureNotOnLeaveAsync（ClockRules.LeaveHandoverToleranceMinutes）同一條界線。
+   */
+  clockOutBlockedByLeave = computed(() => {
+    const lv = this.currentLeave();
+    if (!lv) return false;
+    const graceEnd = new Date(lv.startDate).getTime() + (LEAVE_CLOCK_OUT_GRACE_MINUTES + 1) * 60_000;
+    return this.now().getTime() >= graceEnd;
   });
 
   /** 當日日別是否允許上下班打卡（舊制恆 true） */
