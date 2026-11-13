@@ -1,4 +1,5 @@
 import {Component, computed, inject, signal, OnInit, OnDestroy, ChangeDetectionStrategy, ElementRef, viewChild} from '@angular/core';
+import {Router} from '@angular/router';
 import {NgbModal} from '@ng-bootstrap/ng-bootstrap';
 import {ConfirmModal, ConfirmModalResult} from '@/app/shared/components/confirm-modal';
 import {ClockOutModal, ClockOutModalResult} from '../../components/clock-out-modal/clock-out-modal';
@@ -13,7 +14,7 @@ import {GeminiUsageService} from '../../services/gemini-usage.service';
 import {GEMINI_SOURCE_LABELS, GeminiUsage} from '../../models/gemini-usage.model';
 import {OvertimeRequestService} from '@features/admin/overtime-requests/services/overtime-request.service';
 import {OvertimeRequest} from '@features/admin/overtime-requests/models/overtime-request.model';
-import {TodayAttendance, ClockActionType, ProjectAllocationInput, ActiveLeave, SHIFT_DAY_TYPE_LABELS} from '../../models/attendance.model';
+import {TodayAttendance, ClockActionType, ProjectAllocationInput, ActiveLeave, SHIFT_DAY_TYPE_LABELS, OVERTIME_REASON_OPTIONS, OVERTIME_REASON_APPLY} from '../../models/attendance.model';
 import {DisasterDayService} from '@features/admin/disaster-days/services/disaster-day.service';
 import {DISASTER_SEGMENT_LABELS, MyDisasterDayOff} from '@features/admin/disaster-days/models/disaster-day.model';
 import {LEAVE_TYPE_LABELS} from '@features/admin/leave-requests/models/leave-request.model';
@@ -31,6 +32,7 @@ const LEAVE_CLOCK_OUT_GRACE_MINUTES = 5;
 })
 export class Dashboard implements OnInit, OnDestroy {
   private auth = inject(AuthService);
+  private router = inject(Router);
   private attendanceService = inject(AttendanceService);
   private modal = inject(NgbModal);
   private overtimeService = inject(OvertimeRequestService);
@@ -393,6 +395,9 @@ export class Dashboard implements OnInit, OnDestroy {
         ci.detail = `已超過應下班時間（${this.timeText(expected!)}）${Math.abs(diffMin)} 分鐘。`;
         ci.reasonLabel = '逾時原因';
         ci.reasonRequired = true;
+        // 逾時原因改為固定選項＋自填欄（2026-11）。「加班」會在打卡後導向加班申請，無申請權限者不列
+        const canApplyOvertime = this.auth.hasPermission('overtime-requests:write');
+        ci.reasonOptions = OVERTIME_REASON_OPTIONS.filter(o => canApplyOvertime || o !== OVERTIME_REASON_APPLY);
       } else if (expected) {
         ci.detail = `應下班時間 ${this.timeText(expected)}，屬正常下班。`;
       }
@@ -404,11 +409,17 @@ export class Dashboard implements OnInit, OnDestroy {
     } catch {
       return;
     }
-    this.performAction('clock-out', result.reason, result.allocations);
+    const ok = await this.performAction('clock-out', result.reason, result.allocations);
+    // 逾時原因選「加班」：事後申請的資格是「本人已打下班卡」，故必須打卡成功後才導頁；
+    // 表單依 query 鎖定為事後申請＋今天，起訖自動帶入應下班時間～下班卡時間
+    if (ok && result.applyOvertime) {
+      const today = new Intl.DateTimeFormat('en-CA', {timeZone: 'Asia/Taipei'}).format(new Date());
+      this.router.navigate(['/admin/overtime-requests/new'], {queryParams: {kind: 'post_hoc', date: today}});
+    }
   }
 
   /**
-   * 專案工時上線前的下班打卡（2026-10-16 前的原行為，上線日後即不再走到）：
+   * 專案工時上線前的下班打卡（2026-10-16 前的原行為，上線日後即不再走到；逾時原因選項未套用到這條路）：
    * 舊制不跳對話框；新制跳 ConfirmModal，早退／逾時須填原因。
    */
   private async legacyConfirmAndClockOut(): Promise<void> {
@@ -496,9 +507,10 @@ export class Dashboard implements OnInit, OnDestroy {
    * 打卡：同時「取得 GPS」「向後端取一次性挑戰碼」「取得 Turnstile token」→ 不足挑戰碼最短停留時間則補等 → 送出。
    * 防機器人打卡（後端 AttendancePunchGuard）：沒有 GPS 或挑戰碼不合規一律擋下（GPS 2026-11 恢復必填），
    * 前端先擋 GPS 是為了給明確指引，不是唯一防線。Turnstile token 取不到時送 null，放不放行由後端模式決定。
+   * 回傳是否打卡成功（供下班打卡後接續導頁）。
    */
-  async performAction(type: ClockActionType, reason: string | null = null, allocations: ProjectAllocationInput[] | null = null) {
-    if (this.loading()) return;
+  async performAction(type: ClockActionType, reason: string | null = null, allocations: ProjectAllocationInput[] | null = null): Promise<boolean> {
+    if (this.loading()) return false;
     const label = Dashboard.PUNCH_LABELS[type];
     this.loading.set(true);
     this.gpsStatus.set('locating');
@@ -516,7 +528,7 @@ export class Dashboard implements OnInit, OnDestroy {
       this.gpsStatus.set(coords ? 'success' : 'failed');
       if (!coords) {
         this.punchState.set({label, phase: 'failed', message: '無法取得定位，請開啟手機／瀏覽器的定位權限後再打卡。'});
-        return;
+        return false;
       }
 
       // 挑戰碼簽發後須停留 minWaitMs；以「收到回應」起算並多留緩衝，避免與後端時間差擦邊被擋
@@ -547,10 +559,12 @@ export class Dashboard implements OnInit, OnDestroy {
       this.applyTodayRecord(record);
       this.punchState.set(null);
       this.showToast(`${label}成功！`, 'success');
+      return true;
     } catch (err: any) {
       // 後端 ApiResponse.Fail 在 ExceptionMiddleware 包成 { success:false, message, errors } 結構
       const message = err?.error?.message ?? err?.message ?? '打卡失敗，請稍後重試';
       this.punchState.set({label, phase: 'failed', message});
+      return false;
     } finally {
       this.loading.set(false);
     }

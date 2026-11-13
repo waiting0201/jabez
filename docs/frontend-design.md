@@ -2414,7 +2414,7 @@ try {
 
 ### 11.7.1 下班打卡視窗（`<app-clock-out-modal>`）
 
-下班打卡不再使用 `ConfirmModal`，改用 [dashboard/components/clock-out-modal](../Admin/src/app/features/dashboard/components/clock-out-modal/clock-out-modal.ts)（規格不允許跳兩個視窗）：上方沿用出勤時長說明與新制早退／逾時必填原因，下方為**專案工時佔比** FormArray（每列 `<app-project-typeahead>` ＋ 百分比 input ＋ 刪除鈕，「＋新增專案」；首列預設 100、新增列預填剩餘 %、同專案不可重複、合計須 ＝ 100% 否則紅字且鎖住確認鈕）。新舊制皆會跳窗。`initial` 帶入既有佔比即為編輯模式（打卡頁「今日專案工時」的「修改」鈕，無原因欄）。用法同 ConfirmModal：`componentInstance` 塞欄位、`await ref.result`（取消 reject）。
+下班打卡不再使用 `ConfirmModal`，改用 [dashboard/components/clock-out-modal](../Admin/src/app/features/dashboard/components/clock-out-modal/clock-out-modal.ts)（規格不允許跳兩個視窗）：上方沿用出勤時長說明與新制早退／逾時必填原因，下方為**專案工時佔比** FormArray（每列 `<app-project-typeahead>` ＋ 百分比 input ＋ 刪除鈕，「＋新增專案」；首列預設 100、新增列預填剩餘 %、同專案不可重複、合計須 ＝ 100% 否則紅字且鎖住確認鈕）。新舊制皆會跳窗。`initial` 帶入既有佔比即為編輯模式（打卡頁「今日專案工時」的「修改」鈕，無原因欄）。**原因欄的選項模式（2026-11-13）**：呼叫端帶 `reasonOptions`（逾時用，`OVERTIME_REASON_OPTIONS`）時，在 textarea 上方以 `form-check` radio（`flex flex-wrap gap-x-6 gap-y-2`）列出固定選項，textarea placeholder 改為「非以上請改填寫本欄位」，**選項與自填互斥、擇一即可**；結果的 `reason` 為選項文字或自填文字，另帶 `applyOvertime`（選了「加班」）供打卡頁於打卡成功後導向加班事後申請。未帶 `reasonOptions`（早退）維持純文字欄。用法同 ConfirmModal：`componentInstance` 塞欄位、`await ref.result`（取消 reject）。
 
 **強制補填模式**（2026-10-16，系統補下班卡日，由 `dashboard/services/missing-allocation-prompt.service.ts` 於 `MainLayout.ngOnInit` 觸發）：`forced = true` 隱藏 X 與取消鈕，呼叫端須同時 `backdrop: 'static', keyboard: false`；`allocationLabel` 改標日期；`applyToRestCount > 0` 顯示「其餘 N 天套用相同佔比」，結果帶 `applyToRest`。強制視窗的三條守則：
 - **一定要留逃生口**：只在「根本填不了」時才可關（`closable()`：專案清單載入完成卻是空的，含載入失敗），否則主檔出問題就把整站鎖死。

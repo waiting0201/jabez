@@ -57,6 +57,8 @@ export class OvertimeRequestForm implements OnInit {
   approvalStatus: ApprovalStatus = 'draft';
   /** 載入的單是否為事後申請（唯讀顯示 badge 用；新增時以表單 requestKind 為準） */
   isPostHoc = false;
+  /** 由下班打卡（逾時原因選「加班」）帶入：申請類別與加班日期鎖定為事後申請＋指定日，不可改 */
+  lockedPostHoc = false;
   requestNo = '';   // OT-yyyyMMdd-NNN；草稿尚未取號故為空
   /**
    * 台北時區今天（yyyy-MM-dd）與事後申請可選的最早日期。事後申請期限＝加班日後一個工作日（遇六日 / 國定假日順延），
@@ -456,6 +458,19 @@ export class OvertimeRequestForm implements OnInit {
     } else {
       // 新增模式：預設一列空白明細（關聯專案必填）
       this.projectsArray.push(this.buildProjectGroup());
+
+      // 下班打卡帶入（?kind=post_hoc&date=yyyy-MM-dd）：鎖定事後申請＋該日。
+      // 兩個 patch 都不發事件、資格只明確查一次；鎖定用 disable()，故 _buildPayload 須讀 getRawValue()
+      const q = this.route.snapshot.queryParamMap;
+      const date = q.get('date') ?? '';
+      if (q.get('kind') === 'post_hoc' && /^\d{4}-\d{2}-\d{2}$/.test(date)
+          && date >= this.postHocMinStr && date <= this.todayStr) {
+        this.form.patchValue({requestKind: 'post_hoc', overtimeDate: date}, {emitEvent: false});
+        this.form.get('requestKind')!.disable({emitEvent: false});
+        this.form.get('overtimeDate')!.disable({emitEvent: false});
+        this.lockedPostHoc = true;
+        this.loadPostHocContext();
+      }
     }
   }
 
@@ -541,7 +556,7 @@ export class OvertimeRequestForm implements OnInit {
   }
 
   private _buildPayload(): OvertimeRequestPayload {
-    const v = this.form.value;
+    const v = this.form.getRawValue();   // 鎖定（disabled）的類別 / 日期不在 .value 裡
     const reviewers = this._pickerPayload;
     const actual = v.requestKind === 'post_hoc' ? this.composeActual() : null;
     return {

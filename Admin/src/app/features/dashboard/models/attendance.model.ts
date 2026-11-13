@@ -45,9 +45,9 @@ export interface TodayAttendance {
   clockLockReason?: string | null;
   /** 應下班時間 ＝ 實際上班打卡 ＋ 9 小時（請上午半天假者為 ＋4 小時）；尚未打上班卡為 null */
   expectedClockOutTime?: string | null;
-  /** 正常下班帶終點（公司預設應下班 +30 分、自訂上下班時段 +5 分），晚於此即逾時 */
+  /** 正常下班帶終點（公司預設與自訂上下班時段皆為應下班 +30 分），晚於此即逾時 */
   normalClockOutUntil?: string | null;
-  /** 今日遲到界線（公司 09:30、自訂上下班時段 S+2 分、請上午半天假者 13:05），晚於此打上班卡須填遲到原因；未切換為 null */
+  /** 今日遲到界線（公司 09:30、自訂上下班時段 S+10 分、請上午半天假者 13:05），晚於此打上班卡須填遲到原因；未切換為 null */
   lateAfter?: string | null;
   /** 今日下班打卡時填的專案工時佔比（尚未下班或系統補卡為空陣列） */
   projectAllocations?: ProjectAllocation[];
@@ -90,7 +90,17 @@ export const SHIFT_DAY_TYPE_LABELS: Record<ShiftDayTypeValue, string> = {
   public_holiday: '國定假日',
 };
 
-export type ClockActionType = 'clock-in' | 'clock-out' | 'overtime-start' | 'overtime-end';
+/**
+ * 逾時下班原因的固定選項（2026-11）：下班打卡視窗以 radio 列出，另有自填欄「非以上請改填寫本欄位」。
+ * 選項文字**原樣存入** `AttendanceRecord.ClockOutReason`（無分類欄位），故改字會讓新舊資料統計對不起來。
+ * 早退原因、遲到原因仍為自由文字。
+ */
+export const OVERTIME_REASON_OPTIONS: readonly string[] = ['忘記打卡', '等候家人接送', '非處理公務', '加班'];
+
+/** 選此項＝打卡成功後導向加班申請（鎖定事後申請）；無 `overtime-requests:write` 者不顯示 */
+export const OVERTIME_REASON_APPLY = '加班';
+
+export type ClockActionType ='clock-in' | 'clock-out' | 'overtime-start' | 'overtime-end';
 
 export interface ClockActionRequest {
   latitude?: number;
@@ -98,7 +108,7 @@ export interface ClockActionRequest {
   overtimeRequestId?: number;
   /** 本次打卡為出差：後端以此值覆寫當日紀錄的 isBusinessTrip */
   isBusinessTrip?: boolean;
-  /** 上班打卡的遲到原因／下班打卡的早退・逾時原因。非出差且遲到／早退／逾時時為必填，後端會擋 */
+  /** 上班打卡的遲到原因／下班打卡的早退・逾時原因。遲到／早退／逾時時為必填（出差亦同），後端會擋 */
   reason?: string | null;
   /** 瀏覽器回報的定位精度（公尺），僅供稽核 */
   accuracy?: number;
