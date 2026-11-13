@@ -115,9 +115,11 @@ export class ApprovalTaskList {
 
   /**
    * 「已簽核（流程中）」tab：協理以上（職級 Level ≤ 3，同高階主管假判準）可見。
-   * 與後端 ApprovalTaskHandler.SeniorReviewerMaxLevel 同步；Superadmin 不開放（待審核本就列出全部）。
+   * 2026-11-13：財務管理部 / 會計室（DIRECTOR_SCOPE_DEPT_CODES）不論職級一併可見，資料範圍仍只有本人核准過的單。
+   * 與後端 ApprovalTaskHandler.GetAllAsync 的 reviewedScope 判定同步；Superadmin 不開放（待審核本就列出全部）。
    */
-  canSeeReviewedTab = computed(() => !this.auth.isSuperAdmin() && this.auth.isSeniorExecutive());
+  canSeeReviewedTab = computed(() => !this.auth.isSuperAdmin()
+    && (this.auth.isSeniorExecutive() || DIRECTOR_SCOPE_DEPT_CODES.has(this.auth.departmentCode() ?? '')));
 
   /** 是否具備全選核准權限（待審核 tab 才啟用 UI） */
   canBatchApprove = computed(() =>
@@ -129,6 +131,13 @@ export class ApprovalTaskList {
    * 與撥款子篩選同一判準。其他人的已核准清單維持原欄位。
    */
   showPaymentPlan = computed(() => this.activeTab() === 'approved' && this.canSeePaymentFilter());
+
+  /**
+   * 撥款子篩選（全部 / 尚未撥款 / 部分撥款 / 全部撥款）的顯示條件：財務體系 / Superadmin，
+   * 且在「已核准」或「已簽核（流程中）」頁籤。流程中的單也可能已有撥款紀錄（追加預支重跑簽核、已撥款後退回重送）。
+   */
+  showPaymentFilter = computed(() =>
+    (this.activeTab() === 'approved' || this.activeTab() === 'reviewed') && this.canSeePaymentFilter());
 
   /** 匯出 Excel 執行中 */
   exporting = signal(false);
@@ -166,10 +175,15 @@ export class ApprovalTaskList {
     return tab;
   }
 
-  /** 撥款子篩選：僅「已核准」頁籤且具權限時才還原（與篩選列的顯示條件一致） */
+  /**
+   * 撥款子篩選：僅「已核准」/「已簽核（流程中）」頁籤且具權限時才還原（與篩選列的顯示條件一致）。
+   * 「已結案」只在已核准頁籤提供，流程中的單不還原該值。
+   */
   private initialPaymentStatus(): PaymentStatusFilter {
-    if (this.initialTab() !== 'approved' || !this.canSeePaymentFilter()) return '';
-    return this.pick('pay', PAYMENT_STATUSES, '' as PaymentStatusFilter);
+    const tab = this.initialTab();
+    if ((tab !== 'approved' && tab !== 'reviewed') || !this.canSeePaymentFilter()) return '';
+    const v = this.pick('pay', PAYMENT_STATUSES, '' as PaymentStatusFilter);
+    return tab === 'reviewed' && v === 'closed' ? '' : v;
   }
 
   private initialApplicationType(): '' | ApplicationType {

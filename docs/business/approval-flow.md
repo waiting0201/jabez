@@ -286,14 +286,15 @@ RefundDue = max(0, 前次已沖銷 + 本次沖銷 − 預支總額)
 - **撥款類留空**：批次核准 payment_request / advance / travel / travel_payment 時不會建立 installments，後端回傳 `pendingPayment` 清單（檢查條件：無 installments 或仍有 PaidAt 為空），前端以 banner 提示使用者「前往補填撥款明細」。
 - **沖銷結案不主動觸發，但會讓既有登記生效**：批次核准不會**設定** `CloseAdvance`；但若財務先前已勾選登記（`PendingClose = true`），批次核准使該沖銷單轉 `approved` 時仍會完成結案（觸發點只看 `PendingClose && approved`）。未登記者，結案仍須於詳情頁或獨立結案端點操作。
 
-## 已簽核（流程中）（2026-10 新增，協理以上）
+## 已簽核（流程中）（2026-10 新增，協理以上；2026-11-13 加開財務管理部 / 會計室）
 
 簽核作業列表的「已簽核（流程中）」頁籤（位於「待審核」與「已核准」之間），讓**協理以上**看到「**我已核准、但整張單還在簽核流程中**」的單 —— 待審核只列輪到自己的、已核准只列整張單已核准的，原本中間這段沒有地方看。
 
 - **API**：`GET /approval-tasks?scope=reviewed`（範圍維度，比照 `scope=director`；狀態固定 `pending`，`status` 參數忽略）。
-- **可見權限**：呼叫者職稱 `JobTitle.Level ≤ 3`（同高階主管假判準；後端 `ApprovalTaskHandler.SeniorReviewerMaxLevel`、前端 `canSeeReviewedTab` ＝ `auth.isSeniorExecutive()`），其他人回 403；**Superadmin 不開放**（待審核頁籤本就列出全部 pending）。
+- **可見權限**：**財務管理部 / 會計室全員（`DepartmentCodes.DirectorPendingView`，前端 `DIRECTOR_SCOPE_DEPT_CODES`，不論職級，2026-11-13 加開；資料範圍仍只有本人核准過的單）**，或呼叫者職稱 `JobTitle.Level ≤ 3`（同高階主管假判準；後端 `ApprovalTaskHandler.SeniorReviewerMaxLevel`、前端 `canSeeReviewedTab` ＝ `auth.isSeniorExecutive()`），其他人回 403；**Superadmin 不開放**（待審核頁籤本就列出全部 pending）。
 - **資料範圍**：`ApprovalStatus='pending'` 且存在本人 `Action='approved'` 的 `ApprovalRecords`；申請別限業務管理選單的 7 種：預審 / 請款 / 預支 / 預支沖銷 / 出差請款 / 出差預支 / 出差預支沖銷（`ReviewedScopeAppTypes`，前端 `REVIEWED_SCOPE_APP_TYPES` 須同步），其餘類型（請假 / 銷假 / 加班 / 假日執行活動）回空，類型下拉亦只列這 7 種。
 - **唯讀**：從此頁籤點進簽核詳情（`tab=reviewed`）不顯示審核區塊；清單狀態 badge 顯示「簽核中」。詳情存取沿用 `RequestViewAccess`（曾審核者可看）。
+- **撥款子篩選（2026-11-13）**：財務體系部門（`canSeePaymentFilter`，與已核准頁籤同一判準）在此頁籤同樣有「全部 / 尚未撥款 / 部分撥款 / 全部撥款」按鈕組（`paymentStatus`，前端 `showPaymentFilter`；後端沿用既有 `PaymentStatusClause`，無變動）。**不提供「已結案」**（流程中的單不會是已結案）。流程中的單多半是尚未撥款；部分 / 全部撥款出現在追加預支重跑簽核、或已撥款後退回重送的單。套用撥款篩選時預審（無撥款概念）不列出。
 - **已知邊界**：退回後重送、或預支追加新批次時，前一輪的核准紀錄仍會讓單留在此清單；若又輪到自己，會同時出現在待審核。
 
 ## 總監室簽核（2026-07 新增「總監待簽核」，2026-08 擴為四態）
