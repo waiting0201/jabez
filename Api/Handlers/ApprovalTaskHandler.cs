@@ -801,12 +801,12 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
                     incrementStep: () => wo.CurrentStepOrder++,
                     setReviewed:   () => { wo.ReviewedAt = Clock.Now; wo.ReviewedById = reviewerId; wo.ReviewNote = reviewNote?.Trim(); });
 
-                // 財務步驟核准時：本次沖銷有超支才需要撥款明細，且與審核同交易原子寫入
+                // 財務步驟核准時：本次沖銷現金有超支才需要撥款明細（月結超支不計），且與審核同交易原子寫入
                 if (action == "approved" && woRefundDue > 0
                     && await IsFinanceStepAsync(wo.ApprovalItemId, reviewedStepOrder, reviewer))
                 {
                     if (installments is null || installments.Count == 0)
-                        throw AppException.BadRequest("本次沖銷金額超出預支金額，財務核准時必須填寫差額撥款明細。");
+                        throw AppException.BadRequest("本次沖銷的現金金額超出預支現金，財務核准時必須填寫差額撥款明細。");
                     InstallmentUpsertService.Apply(db, wo.Installments, installments, woRefundDue, reviewerId,
                         () => new WriteOffInstallment { WriteOffRecordId = wo.Id });
                 }
@@ -1655,8 +1655,8 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
         var cashWrittenOff  = WriteOffRefundCalculator.CashOf(totalWrittenOff, checkWrittenOff);
         ApplyActualAmounts(advance, totalWrittenOff, cashWrittenOff, checkWrittenOff);
 
-        // 檢查是否有應撥差額（沖銷累計 > 預支金額；含補撥同仁與月結超支付廠商，與差額分期合計同基準）
-        var diff = totalWrittenOff - advance.GrandTotal;
+        // 檢查是否有應撥差額（現金沖銷累計 > 現金預支；月結不計，與差額分期合計同基準）
+        var diff = cashWrittenOff - WriteOffRefundCalculator.CashOf(advance.GrandTotal, advance.CheckTotal);
         if (diff > 0)
         {
             advance.RefundAmount = diff;

@@ -2,7 +2,7 @@ import {Component, computed, input} from '@angular/core';
 import {DatePipe, DecimalPipe} from '@angular/common';
 import {
   SettlementEvent, SettlementLedger,
-  SETTLEMENT_KIND_CLASSES, SETTLEMENT_KIND_LABELS, checkDifferenceText, offsetText,
+  SETTLEMENT_KIND_CLASSES, SETTLEMENT_KIND_LABELS, checkDifferenceText,
 } from '../models/settlement-ledger.model';
 
 /**
@@ -60,9 +60,6 @@ import {
                 </div>
               }
               @if (checkNote(); as n) {
-                <div class="text-muted small mt-1">{{ n }}</div>
-              }
-              @if (offsetNote(); as n) {
                 <div class="text-muted small mt-1">{{ n }}</div>
               }
             </div>
@@ -141,12 +138,6 @@ export class AdvanceSettlementLedgerComponent {
 
   /** 月結差額說明（月結實支較預支少 / 多 N 元）；無差額為 null */
   checkNote = computed(() => checkDifferenceText(this.ledger()?.checkDifference, this.ledger()?.isClosed ?? false));
-
-  /** 現金與月結互抵的提醒（後端 cashDifference ≠ outstanding）；出差預支無此欄位，不顯示 */
-  offsetNote = computed(() => {
-    const l = this.ledger();
-    return l && l.cashDifference != null ? offsetText(l.cashDifference, l.outstanding) : null;
-  });
 
   kindLabel(e: SettlementEvent) { return SETTLEMENT_KIND_LABELS[e.kind] ?? e.kind; }
   kindClass(e: SettlementEvent) { return SETTLEMENT_KIND_CLASSES[e.kind] ?? 'bg-secondary'; }
