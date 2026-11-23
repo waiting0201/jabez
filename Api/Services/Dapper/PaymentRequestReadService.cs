@@ -871,7 +871,7 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
                                OR w2.ReviewedAt IS NULL
                                OR w2.ReviewedAt < wo.ReviewedAt
                                OR (w2.ReviewedAt = wo.ReviewedAt AND w2.Id < wo.Id))), 0) AS OtherWrittenOffTotal,
-                   -- 同範圍的月結（支票）合計：供拆出 RefundDue 中「補撥同仁」的部分（WriteOffRefundCalculator.CalculateToEmployee）
+                   -- 同範圍的月結（支票）合計：RefundDue 只算現金側（WriteOffRefundCalculator.Calculate）
                    arx.CheckTotal AS AdvanceCheckTotal,
                    ISNULL((SELECT SUM(w2.CheckTotal) FROM WriteOffRecords w2
                            WHERE w2.AdvanceRequestId = wo.AdvanceRequestId
@@ -1877,7 +1877,9 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
                 GetAdvanceRounds((int)row.AdvanceRequestId, (DateTime)row.AdvanceDate, (DateTime?)row.AdvanceNeededDate),
                 GetWriteOffHistory((int)row.AdvanceRequestId, (int)row.Id),
                 WriteOffRefundCalculator.Calculate(
-                    (decimal)row.AdvanceGrandTotal, (decimal)row.OtherWrittenOffTotal, (decimal)row.GrandTotal),
+                    (decimal)row.AdvanceGrandTotal, (decimal)row.AdvanceCheckTotal,
+                    (decimal)row.OtherWrittenOffTotal, (decimal)row.OtherWrittenOffCheckTotal,
+                    (decimal)row.GrandTotal, (decimal)row.CheckTotal),
                 instDicts.WriteOff.TryGetValue((int)row.Id, out var woInst) ? [.. woInst] : null,
                 installments.ComputeStatus(instDicts.WriteOff.GetValueOrDefault((int)row.Id, [])),
                 instDicts.Advance.TryGetValue((int)row.AdvanceRequestId, out var woAdvInst) ? [.. woAdvInst] : null,
@@ -1895,7 +1897,7 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
                 AdvanceItems: GetAdvanceItems((int)row.AdvanceRequestId),
                 AdvanceCheckTotal:         (decimal)row.AdvanceCheckTotal,
                 OtherWrittenOffCheckTotal: (decimal)row.OtherWrittenOffCheckTotal,
-                RefundDueToEmployee: WriteOffRefundCalculator.CalculateToEmployee(
+                RefundDueToEmployee: WriteOffRefundCalculator.Calculate(
                     (decimal)row.AdvanceGrandTotal, (decimal)row.AdvanceCheckTotal,
                     (decimal)row.OtherWrittenOffTotal, (decimal)row.OtherWrittenOffCheckTotal,
                     (decimal)row.GrandTotal, (decimal)row.CheckTotal)),

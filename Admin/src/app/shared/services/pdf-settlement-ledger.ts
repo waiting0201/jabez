@@ -1,6 +1,6 @@
 import { CIS, FONT_FAMILY, fmt } from './pdf-core.service';
 import type { SettlementLedger } from '../models/settlement-ledger.model';
-import { SETTLEMENT_KIND_LABELS, checkDifferenceText, offsetText } from '../models/settlement-ledger.model';
+import { SETTLEMENT_KIND_LABELS, checkDifferenceText } from '../models/settlement-ledger.model';
 
 /**
  * 畫「金額歷程」小標題 + 摘要（預支 / 實際金額 / 差額）+ 時間軸表格。
@@ -37,14 +37,6 @@ export function drawSettlementLedger(
     y += 1;
     doc.setTextColor(...CIS.textMuted);
     doc.text(checkNote, mx, y);
-    doc.setTextColor(...CIS.textPrimary);
-    y += 4;
-  }
-  const offsetNote = ledger.cashDifference != null ? offsetText(ledger.cashDifference, ledger.outstanding) : null;
-  if (offsetNote) {
-    y += 1;
-    doc.setTextColor(...CIS.textMuted);
-    doc.text(offsetNote, mx, y);
     doc.setTextColor(...CIS.textPrimary);
     y += 4;
   }

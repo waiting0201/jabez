@@ -1626,13 +1626,13 @@
                     #installmentsEditor
                     mode="review"
                     [required]="true"
-                    [title]="applicationType === 'write_off' ? '本次沖銷差額撥款明細' : '撥款明細'"
+                    [title]="applicationType === 'write_off' ? '本次現金沖銷差額撥款明細' : '撥款明細'"
                     [totalLabel]="applicationType === 'write_off' ? '應撥差額' : '申請總額'"
                     [totalAmount]="getInstallmentTotal(task)"
                     [installments]="getInstallments(task)"
                     [error]="installmentsError()"
                     [hint]="applicationType === 'write_off'
-                      ? '本次沖銷金額超出預支金額，財務核准時必須填寫差額撥款明細（含補撥同仁與月結超支應付廠商的款項）（加總須等於應撥差額）；核准後可回來修改未撥款的列或填入實際撥款日。'
+                      ? '本次沖銷的現金超出預支現金，財務核准時必須填寫差額撥款明細（只算現金、補撥同仁；月結超支不在此列）（加總須等於應撥差額）；核准後可回來修改未撥款的列或填入實際撥款日。'
                       : '提示：核准撥款類申請時撥款明細必填（加總須等於申請總額）；核准後可在「設定撥款明細」區塊回來修改未撥款的列或填入實際撥款日。'" />
                 } @else if (applicationType === 'travel_write_off' && canSetPaymentDate(task)) {
                   <!-- 出差沖銷仍維持單一預計撥款日 -->
@@ -1787,7 +1787,7 @@
                 <app-installments-editor
                   #installmentsEditor
                   mode="manage"
-                  [title]="applicationType === 'write_off' ? '設定沖銷差額撥款明細' : '設定撥款明細'"
+                  [title]="applicationType === 'write_off' ? '設定現金沖銷差額撥款明細' : '設定撥款明細'"
                   [totalLabel]="applicationType === 'write_off' ? '應撥差額' : '申請總額'"
                   [totalAmount]="getInstallmentTotal(task)"
                   [installments]="getInstallments(task)"

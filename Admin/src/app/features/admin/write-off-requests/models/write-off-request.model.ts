@@ -106,7 +106,7 @@ export interface WriteOffRequest extends WriteOffReturnedCash {
   writeOffHistory?: WriteOffRound[];
   /** 關聯預支單的全批次費用明細（分類對照 / 預支明細唯讀卡） */
   advanceItems?: AdvanceRequestItem[];
-  /** 本次沖銷造成的超支增額 = 財務應排的差額撥款（含補撥同仁 + 月結超支付廠商；後端算好帶回） */
+  /** 本次沖銷造成的超支增額 = 財務應排的差額撥款（現金超支增額、補撥同仁，月結不計；後端算好帶回） */
   refundDue?: number;
   /** refundDue 之中補撥給同仁的部分；refundDue − 本值 ＝ 月結超支、付給廠商 */
   refundDueToEmployee?: number;

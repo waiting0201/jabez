@@ -8,9 +8,8 @@ namespace Jabez.Api.Services;
 /// <summary>
 /// 預支 / 出差預支「金額歷程」讀取服務（Dapper，唯讀）。
 /// 全站「已沖銷 / 尚未結清 / 實際金額 / 差額」的單一真相：只計已核准沖銷，簽核中另列不進累計。
-/// 「尚未結清」走 <see cref="WriteOffRefundCalculator.Settle"/> 的保守互抵規則（現金差額與總額差額同方向取較小者）：
-/// 月結由公司直接支付廠商，月結差額另列 CheckDifference、不算同仁應繳回 / 公司應補撥，結案也不標「差額未處理」；
-/// 現金與月結互抵的部分（CashDifference ≠ Outstanding）同樣不計，只在結案列附註提醒確認欄位。
+/// 「尚未結清」＝ 現金側差額（2026-11-23 起現金與月結分開、不互抵）：
+/// 月結由公司直接支付廠商，月結差額另列 CheckDifference、不算同仁應繳回 / 公司應補撥，結案也不標「差額未處理」。
 /// 事件時序：預支批次 → 預支撥款 → 已核准沖銷 → 同仁繳回 → 補撥超支 → 結案（Closed 恆為最後一列）。
 /// </summary>
 public interface IAdvanceSettlementLedgerService
@@ -194,12 +193,12 @@ public sealed class AdvanceSettlementLedgerService(IDbConnection db) : IAdvanceS
         bool isClosed, DateTime? closedAt, string? closedByName, decimal? actualAmount, List<RawEvent> raw,
         decimal advanceCheck = 0m, decimal approvedCheck = 0m)
     {
-        // 尚未結清 ＝ 現金差額與總額差額同方向取較小者（WriteOffRefundCalculator.Settle）；
-        // 月結差額、現金 / 月結互抵的部分另列，不算同仁應繳回 / 公司應補撥
+        // 尚未結清 ＝ 現金側差額（現金預支 − 現金核銷 − 繳回 + 補撥；2026-11-23 起不與月結互抵）；
+        // 月結差額另列，是公司與廠商之間的帳，不算同仁應繳回 / 公司應補撥
         var checkDifference = advanceCheck - approvedCheck;
         var totalDifference = advanceTotal - approvedTotal - returnedTotal + overspendPaidTotal;
         var cashDifference  = totalDifference - checkDifference;
-        var outstanding     = WriteOffRefundCalculator.Settle(cashDifference, totalDifference);
+        var outstanding     = cashDifference;
 
         // 依日期排序（null 排前），同時間依事件種類；以原始順序作穩定排序鍵
         var ordered = raw
@@ -216,8 +215,6 @@ public sealed class AdvanceSettlementLedgerService(IDbConnection db) : IAdvanceS
             var notes = new List<string>(3);
             if (outstanding != 0m)
                 notes.Add($"差額未處理 {Math.Abs(outstanding):#,##0.##} 元");
-            if (cashDifference != outstanding)
-                notes.Add($"現金{(cashDifference > 0m ? "剩餘" : "超支")} {Math.Abs(cashDifference - outstanding):#,##0.##} 元與月結互抵，不列入應繳回 / 應補撥");
             if (checkDifference != 0m)
                 notes.Add($"月結實支較預支{(checkDifference > 0m ? "少" : "多")} {Math.Abs(checkDifference):#,##0.##} 元（公司直接支付廠商，無須繳回 / 補撥）");
             var note = notes.Count > 0 ? string.Join("；", notes) : null;
@@ -249,7 +246,7 @@ public sealed class AdvanceSettlementLedgerService(IDbConnection db) : IAdvanceS
 
     private static decimal RunningOutstanding(decimal adv, decimal advCheck, decimal wo, decimal woCheck, decimal ret, decimal paid)
     {
-        var total = adv - wo - ret + paid;
-        return WriteOffRefundCalculator.Settle(total - (advCheck - woCheck), total);
+        // 現金側差額（不與月結互抵，同 Build 的 outstanding）
+        return adv - wo - ret + paid - (advCheck - woCheck);
     }
 }

@@ -760,7 +760,7 @@ public sealed class WriteOffRequestHandler(
 
         var refundDue = await WriteOffRefundCalculator.CalculateAsync(db, wo);
         if (refundDue <= 0)
-            return new BadRequestObjectResult(ApiResponse.Fail("本次沖銷未超過預支金額，無需撥款。"));
+            return new BadRequestObjectResult(ApiResponse.Fail("本次沖銷的現金未超過預支現金，無需撥款。"));
 
         var body = await req.ReadFromJsonAsync<UpsertInstallmentsRequest>(JsonOpts);
         if (body is null)
@@ -880,8 +880,8 @@ public sealed class WriteOffRequestHandler(
     /// 套用「同仁繳回預支餘額」multipart 欄位（returnedAmount / returnedAt / returnedProofFile / removeReturnedProof）。
     /// 只在表單帶有 returnedAmount key 時才動作（Update 不帶＝不變更）；空字串或 0 視為「無繳回」並清空四欄。
     /// 繳回金額不計入 GrandTotal（RefundDue、專案水位不受影響），只用於摘要的「尚未結清金額」。
-    /// 上限 ＝ 同仁尚應繳回金額（<see cref="WriteOffRefundCalculator.Settle"/>：現金結餘與總額結餘取較小者，
-    /// 皆已扣本單核銷與他單已核准繳回；2026-11 起月結短支不算同仁應繳回）。
+    /// 上限 ＝ 現金側結餘（現金預支 − 現金核銷 − 他單已核准繳回；2026-11-23 起只看現金、不與月結互抵，
+    /// 月結短支 / 超支皆不影響同仁應繳回）。
     /// 回傳被換掉 / 移除的舊憑證 URL，由呼叫端在主交易存檔後刪 blob；無須清理則回 null。
     /// 驗證全部通過後才上傳新檔，避免驗證失敗留下孤兒 blob。
     /// </summary>
@@ -941,10 +941,10 @@ public sealed class WriteOffRequestHandler(
         var otherReturned = others.Sum(o => o.ReturnedAmount ?? 0m);
         var totalDiff = (adv?.GrandTotal ?? 0m) - others.Sum(o => o.GrandTotal) - wo.GrandTotal - otherReturned;
         var cashDiff  = totalDiff - ((adv?.CheckTotal ?? 0m) - others.Sum(o => o.CheckTotal) - wo.CheckTotal);
-        var max = Math.Max(0m, WriteOffRefundCalculator.Settle(cashDiff, totalDiff));
+        var max = Math.Max(0m, cashDiff);
         if (amount > max)
             throw AppException.BadRequest(
-                $"繳回金額不可超過尚未結清金額 {max:N0} 元（預支 − 已核准核銷 − 本次核銷 − 已核准繳回；月結由公司直接支付廠商，月結未用完的部分不需繳回）。");
+                $"繳回金額不可超過現金尚未結清金額 {max:N0} 元（現金預支 − 已核准現金核銷 − 本次現金核銷 − 已核准繳回；月結由公司直接支付廠商，不需繳回）。");
 
         wo.ReturnedAmount = amount;
         wo.ReturnedAt     = returnedAt;
