@@ -1,7 +1,10 @@
 import {Injectable, inject} from '@angular/core';
 import {HttpClient} from '@angular/common/http';
 import {Observable} from 'rxjs';
-import {CalendarDay, CalendarDayCreateDto, CalendarDayUpdateDto, CalendarImportResult} from '../models/calendar-day.model';
+import {
+  CalendarDay, CalendarDayCreateDto, CalendarDayUpdateDto, CalendarImportResult,
+  DoublePayDay, DoublePayDayCreateDto,
+} from '../models/calendar-day.model';
 import {environment} from '@/environments/environment';
 
 @Injectable({providedIn: 'root'})
@@ -32,5 +35,20 @@ export class CalendarDayService {
   /** 刪除單筆日曆資料 */
   delete(id: number): Observable<void> {
     return this.http.delete<void>(`${this.base}/${id}`);
+  }
+
+  /** 查詢指定年份的加倍工資日 */
+  getDoublePayDays(year: number): Observable<DoublePayDay[]> {
+    return this.http.get<DoublePayDay[]>(`${this.base}/double-pay`, {params: {year}});
+  }
+
+  /** 新增加倍工資日 */
+  createDoublePayDay(data: DoublePayDayCreateDto): Observable<DoublePayDay> {
+    return this.http.post<DoublePayDay>(`${this.base}/double-pay`, data);
+  }
+
+  /** 刪除加倍工資日 */
+  deleteDoublePayDay(id: number): Observable<void> {
+    return this.http.delete<void>(`${this.base}/double-pay/${id}`);
   }
 }

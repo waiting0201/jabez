@@ -1,10 +1,11 @@
 import {Component, OnInit, inject, signal, computed} from '@angular/core';
 import {FormsModule} from '@angular/forms';
 import {CalendarDayService} from '../../services/calendar-day.service';
-import {CalendarDay} from '../../models/calendar-day.model';
+import {CalendarDay, DoublePayDay} from '../../models/calendar-day.model';
 import {ToastrService} from 'ngx-toastr';
 import {DatePipe} from '@angular/common';
 import {AuthService} from '@core/auth/services/auth.service';
+import {MAX_REQUEST_DATE, MIN_REQUEST_DATE} from '@shared/utils/date-bounds';
 
 /** 星期對照表（台灣中文） */
 const WEEKDAY_LABELS = ['日', '一', '二', '三', '四', '五', '六'];
@@ -47,8 +48,27 @@ export class CalendarDayList implements OnInit {
   editingIsHoliday = signal<boolean>(false);
   editingDescription = signal<string>('');
 
+  /** 加倍工資日（選舉投票日等），與行事曆分開存放 */
+  doublePayDays = signal<DoublePayDay[]>([]);
+
+  /** 加倍工資日的日期集合（yyyy-MM-dd），供表格列加註 badge */
+  doublePayDates = computed(() => new Set(this.doublePayDays().map(d => d.date.slice(0, 10))));
+
+  /** 新增加倍工資日表單 */
+  newDoublePayDate = signal<string>('');
+  newDoublePayName = signal<string>('');
+  savingDoublePay = signal<boolean>(false);
+
+  readonly minDate = MIN_REQUEST_DATE;
+  readonly maxDate = MAX_REQUEST_DATE;
+
   ngOnInit(): void {
     this.loadData();
+  }
+
+  /** 該日是否為加倍工資日 */
+  isDoublePayDay(dateStr: string): boolean {
+    return this.doublePayDates().has(dateStr.slice(0, 10));
   }
 
   /** 切換年份時重新載入 */
@@ -83,12 +103,62 @@ export class CalendarDayList implements OnInit {
         this.loading.set(false);
       },
     });
+    this.loadDoublePayDays();
+  }
+
+  /** 載入該年加倍工資日 */
+  loadDoublePayDays(): void {
+    this.svc.getDoublePayDays(this.selectedYear()).subscribe({
+      next: (data) => this.doublePayDays.set(data),
+      error: () => this.toastr.error('載入加倍工資日失敗'),
+    });
+  }
+
+  /** 新增加倍工資日 */
+  addDoublePayDay(): void {
+    const date = this.newDoublePayDate();
+    const name = this.newDoublePayName().trim();
+    if (!date) { this.toastr.warning('請選擇日期'); return; }
+    if (!name) { this.toastr.warning('請填寫名稱'); return; }
+    if (this.savingDoublePay()) return;
+
+    this.savingDoublePay.set(true);
+    this.svc.createDoublePayDay({date, name}).subscribe({
+      next: () => {
+        this.toastr.success('已新增加倍工資日');
+        this.newDoublePayDate.set('');
+        this.newDoublePayName.set('');
+        this.savingDoublePay.set(false);
+        // 新增的日期可能不在目前選擇的年份，切到該年才看得到
+        const year = Number(date.slice(0, 4));
+        if (year !== this.selectedYear()) this.onYearChange(year);
+        else this.loadDoublePayDays();
+      },
+      error: (err) => {
+        this.toastr.error(err?.error?.message ?? '新增失敗');
+        this.savingDoublePay.set(false);
+      },
+    });
+  }
+
+  /** 刪除加倍工資日 */
+  deleteDoublePayDay(day: DoublePayDay): void {
+    const label = day.date.slice(0, 10);
+    if (!confirm(`確定要刪除加倍工資日 ${label}（${day.name}）嗎？\n刪除後，當天出勤者的加倍工資會從薪資中移除。`)) return;
+
+    this.svc.deleteDoublePayDay(day.id).subscribe({
+      next: () => {
+        this.doublePayDays.update(list => list.filter(d => d.id !== day.id));
+        this.toastr.success('刪除成功');
+      },
+      error: () => this.toastr.error('刪除失敗'),
+    });
   }
 
   /** 從政府 API 匯入當年行事曆 */
   importYear(): void {
     const year = this.selectedYear();
-    if (!confirm(`確定要匯入 ${year} 年行事曆資料嗎？\n若已有資料將會覆蓋。`)) return;
+    if (!confirm(`確定要匯入 ${year} 年行事曆資料嗎？\n若已有資料將會覆蓋（加倍工資日另外存放，不受影響）。`)) return;
 
     this.importing.set(true);
     this.svc.importYear(year).subscribe({

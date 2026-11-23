@@ -101,13 +101,13 @@ import {LEAVE_TYPE_LABELS, LeaveType, formatLeaveDuration} from '../../features/
               </tr>
             }
             @if (e.publicHolidayWorkDays > 0) {
-              <!-- 四週彈性工時才有的加項；切換日之前恆為 0，故整組隱藏而非顯示 0 -->
+              <!-- 國定假日出勤（四週彈性工時）＋加倍工資日（選舉投票日等）上班打卡；無出勤者為 0，故整組隱藏而非顯示 0 -->
               <tr>
-                <td class="ps-6">國定假日出勤天數</td>
+                <td class="ps-6">國定假日／加倍工資日出勤天數</td>
                 <td class="text-right pe-4">{{ e.publicHolidayWorkDays }} 天</td>
               </tr>
               <tr>
-                <td class="ps-6">國定假日加倍工資</td>
+                <td class="ps-6">國定假日／加倍工資日加倍工資</td>
                 <td class="text-right pe-4">{{ e.publicHolidayDoublePay | number:'1.0-0' }}</td>
               </tr>
             }

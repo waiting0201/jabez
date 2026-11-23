@@ -65,6 +65,7 @@
 | `ActivityDay` | 主管（部門協理）於活動 3 個月前預先排定的**活動日**。⚠ **疊加旗標、非第 5 種日別** —— 月曆格狀態仍四選一，活動日壓在其上；做成第 5 種會讓自動排班的「跳過活動日」與配額計算互相打架。**可排在國定假日上** |
 | `ShiftScheduleAdjustment` | **活動日覆蓋個人排班的異動紀錄 ＝ 鈴鐺通知來源**（2026-09-29）：`UserId`（CASCADE）/ `ActivityDayId`（SET NULL，活動日刪除後保留紀錄）/ `ActivityTitle` 快照 / `Date`（被改為上班日的日子）/ `OriginalDayType` / `RelocatedTo`（原例假／休假搬到哪天，null ＝ 待補排）/ `AcknowledgedAt`（null ＝ 未讀）。索引 `(UserId, AcknowledgedAt)` |
 | `DisasterDayOff` | **天然災害停班（颱風假，2026-10-23）**：`Date`(date) / `County`(縣市代碼) / `Segment`(full·am·pm) / `IsPaid` / `Source`(dgpa·manual) / `SourceText` / `Status`(active·cancelled) / 建立與取消者 Id + 姓名快照（**不設 FK**，免加入 UserHandler 刪除清洗清單）。filtered unique `(Date, County) WHERE Status='active'`；取消列保留。**刻意不寫進 CalendarDay** |
+| `DoublePayDay` | **加倍工資日（選舉投票日等，2026-11）**：`Date`(date，唯一) / `Name`(50) / `CreatedAt` / `CreatedById`（**不設 FK**）。**刻意不寫進 CalendarDay**（有名稱會被判成國定假日、蓋過個人排班；年度匯入會洗掉）。只影響薪資：當天有上班打卡者併入「國定假日出勤加倍工資」，見 [payroll-formula.md §13](business/payroll-formula.md) |
 | `DisasterDayOffFetchLog` | 人事行政總處公告每次抓取的紀錄：`SourceUpdatedAt`（去重鍵）/ `Success` / `Summary` / `ManualItemsJson`（待人工項） |
 | `ActivityDayAssignee` | 活動日的**預定人力**，唯一索引 `(ActivityDayId, UserId)`。被列入者若當日為國定假日 → 解鎖上下班打卡、不需加班申請單 |
 | `ShiftChangeRequest` | **改班申請**（四週彈性工時 §3.5.2）：開放期結束、班表定案後的異動途徑。單號 `SC-yyyyMMdd-NNN`（**送簽時取號**，草稿為 null）。⚠ **與銷假申請不同，必須有自己的 `ApplicationType`（`shift_change`）** —— 逐部門六條簽核路線要靠管理員建 6 個 `ApprovalItem`，借用別型就建不出來 |

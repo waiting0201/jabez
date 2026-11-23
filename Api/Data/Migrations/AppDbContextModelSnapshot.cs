@@ -1969,6 +1969,36 @@ namespace Jabez.Api.Data.Migrations
                     b.ToTable("DisasterDayOffFetchLogs");
                 });
 
+            modelBuilder.Entity("Jabez.Api.Models.Entities.DoublePayDay", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("CreatedById")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("Date")
+                        .HasColumnType("date");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Date")
+                        .IsUnique();
+
+                    b.ToTable("DoublePayDays");
+                });
+
             modelBuilder.Entity("Jabez.Api.Models.Entities.EducationRecord", b =>
                 {
                     b.Property<Guid>("Id")

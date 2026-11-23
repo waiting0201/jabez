@@ -256,13 +256,13 @@ public sealed class PayrollHandler(IPayrollReadService reader, AppDbContext db, 
             """;
             rowIdx++;
         }
-        // 國定假日出勤加倍工資（四週彈性工時 §6.3.1）。切換日前恆為 0，故整列跳過而非印 0。
+        // 國定假日出勤加倍工資（四週彈性工時 §6.3.1）＋加倍工資日（選舉投票日等）。無出勤者為 0，整列跳過而非印 0。
         // ⚠ 斑馬色靠 rowIdx 累加，新增列一定要 rowIdx++，否則其後每一列的底色全反過來。
         if (emp.PublicHolidayWorkDays > 0)
         {
             var phBg = rowIdx % 2 == 1 ? " style=\"background:#FDFAF5\"" : "";
             earningsRows += $"""
-            <tr{phBg}><td style="padding:8px 12px">國定假日出勤加倍工資（{emp.PublicHolidayWorkDays} 天）</td><td style="padding:8px 12px;text-align:right">{fmt(emp.PublicHolidayDoublePay)}</td></tr>
+            <tr{phBg}><td style="padding:8px 12px">國定假日／加倍工資日出勤加倍工資（{emp.PublicHolidayWorkDays} 天）</td><td style="padding:8px 12px;text-align:right">{fmt(emp.PublicHolidayDoublePay)}</td></tr>
             """;
             rowIdx++;
         }

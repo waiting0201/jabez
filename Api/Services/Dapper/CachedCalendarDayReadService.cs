@@ -20,6 +20,9 @@ public sealed class CachedCalendarDayReadService(ICalendarDayReadService inner) 
 
     public Task<IEnumerable<CalendarDayDto>> GetByYearAsync(int year) => inner.GetByYearAsync(year);
 
+    public Task<IEnumerable<DoublePayDayDto>> GetDoublePayDaysByYearAsync(int year) =>
+        inner.GetDoublePayDaysByYearAsync(year);
+
     public Task<int> CountHolidaysAsync(DateTime startDate, DateTime endDate) =>
         inner.CountHolidaysAsync(startDate, endDate);
 

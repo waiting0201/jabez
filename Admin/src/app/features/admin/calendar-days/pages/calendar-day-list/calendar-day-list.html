@@ -42,6 +42,80 @@
   <div class="row g-4">
     <div class="col-12 col-xl-10">
 
+      <!-- 加倍工資日（選舉投票日等）：與行事曆分開存放，年度匯入不會覆蓋 -->
+      <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600">
+          <svg class="sa-icon text-primary" style="stroke: currentColor">
+            <use href="/assets/icons/sprite.svg#dollar-sign"></use>
+          </svg>
+          {{ selectedYear() }} 年加倍工資日
+          <span class="badge bg-secondary ms-auto fw-400">共 {{ doublePayDays().length }} 筆</span>
+        </div>
+        <div class="card-body">
+          <div class="alert alert-info small mb-3">
+            <div>
+              適用於選舉投票日等「出勤須給加倍工資、但不是國定假日」的日子。<strong>當天仍照個人排班走</strong>：
+              上班日（含賣店／餐廳排班人員、活動日預定人力）照常打卡，有上班打卡者於次月薪資加發 1 日日薪
+              （列在「國定假日／加倍工資日」）；休假日加班照一般休假日計算；例假日仍不得出勤。
+              <br>請勿在下方行事曆把這天改成假日或填寫名稱，那會被當成國定假日、蓋過所有人的排班。
+            </div>
+          </div>
+
+          @if (doublePayDays().length > 0) {
+            <ul class="list-unstyled mb-3">
+              @for (d of doublePayDays(); track d.id) {
+                <li class="flex items-center gap-2 py-1 border-bottom">
+                  <span class="fw-500">{{ d.date | date:'yyyy/MM/dd' }}（{{ getWeekdayLabel(d.date) }}）</span>
+                  <span>{{ d.name }}</span>
+                  @if (canDelete()) {
+                    <button class="btn btn-sm btn-ghost-danger inline-flex items-center ms-auto"
+                            title="刪除"
+                            (click)="deleteDoublePayDay(d)">
+                      <svg class="sa-icon" style="stroke: currentColor">
+                        <use href="/assets/icons/sprite.svg#trash"></use>
+                      </svg>
+                    </button>
+                  }
+                </li>
+              }
+            </ul>
+          } @else {
+            <p class="text-muted small mb-3">{{ selectedYear() }} 年尚未設定加倍工資日。</p>
+          }
+
+          @if (canWrite()) {
+            <div class="flex flex-wrap items-end gap-2">
+              <div>
+                <label class="form-label small mb-1">日期</label>
+                <input type="date" class="form-control form-control-sm"
+                       [min]="minDate" [max]="maxDate"
+                       [ngModel]="newDoublePayDate()"
+                       (ngModelChange)="newDoublePayDate.set($event)">
+              </div>
+              <div class="w-full sm:w-auto sm:flex-1" style="max-width: 320px">
+                <label class="form-label small mb-1">名稱</label>
+                <input type="text" class="form-control form-control-sm" maxlength="50"
+                       placeholder="例：地方公職人員選舉投票日"
+                       [ngModel]="newDoublePayName()"
+                       (ngModelChange)="newDoublePayName.set($event)">
+              </div>
+              <button type="button" class="btn btn-primary btn-sm inline-flex items-center gap-1"
+                      [disabled]="savingDoublePay()"
+                      (click)="addDoublePayDay()">
+                @if (savingDoublePay()) {
+                  <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                } @else {
+                  <svg class="sa-icon" style="stroke: currentColor">
+                    <use href="/assets/icons/sprite.svg#plus"></use>
+                  </svg>
+                }
+                新增
+              </button>
+            </div>
+          }
+        </div>
+      </div>
+
       <div class="card border-0 shadow-sm">
         <!-- 卡片標頭 -->
         <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600">
@@ -126,8 +200,11 @@
                         <td>
                           @if (day.description) {
                             <span>{{ day.description }}</span>
-                          } @else {
+                          } @else if (!isDoublePayDay(day.date)) {
                             <span class="text-muted">—</span>
+                          }
+                          @if (isDoublePayDay(day.date)) {
+                            <span class="badge bg-warning text-dark ms-1">加倍工資日</span>
                           }
                         </td>
                         <td class="text-right">

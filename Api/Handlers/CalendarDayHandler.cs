@@ -1,3 +1,4 @@
+using System.IdentityModel.Tokens.Jwt;
 using System.Text.Json;
 using Jabez.Api.Common;
 using Jabez.Api.Data;
@@ -154,7 +155,78 @@ public sealed class CalendarDayHandler(AppDbContext db, ICalendarDayReadService 
         return new OkObjectResult(ApiResponse.Ok<object?>(null, "已刪除。"));
     }
 
-    /// <summary>政府 API 回傳的行事曆項目</summary>
+    // ── 加倍工資日（選舉投票日等）─────────────────────────────────────────
+    // 不改任何人的日別，只在薪資上對當天有上班打卡者加發 1 日日薪（PayrollReadService 併入國定假日出勤一行）。
+
+    /// <summary>查詢指定年份的加倍工資日</summary>
+    public async Task<IActionResult> GetDoublePayDaysAsync(HttpRequest req)
+    {
+        if (!int.TryParse(req.Query["year"], out var year) || year < 2000 || year > 2100)
+            return new BadRequestObjectResult(ApiResponse.Fail("請提供有效的年份參數（2000-2100）。"));
+
+        var days = await reader.GetDoublePayDaysByYearAsync(year);
+        return new OkObjectResult(ApiResponse.Ok(days));
+    }
+
+    /// <summary>新增加倍工資日</summary>
+    public async Task<IActionResult> CreateDoublePayDayAsync(HttpRequest req)
+    {
+        var body = await req.ReadFromJsonAsync<CreateDoublePayDayRequest>();
+        if (body is null || body.Date == default)
+            return new BadRequestObjectResult(ApiResponse.Fail("請選擇日期。"));
+
+        var name = body.Name?.Trim() ?? "";
+        if (name.Length == 0)
+            return new BadRequestObjectResult(ApiResponse.Fail("請填寫名稱。"));
+        if (name.Length > 50)
+            return new BadRequestObjectResult(ApiResponse.Fail("名稱最多 50 字。"));
+
+        RequestDateGuard.Ensure(body.Date, "日期");
+        var date = body.Date.Date;
+
+        if (await db.DoublePayDays.AnyAsync(d => d.Date == date))
+            return new BadRequestObjectResult(ApiResponse.Fail($"{date:yyyy-MM-dd} 已設為加倍工資日。"));
+
+        // 國定假日本來就有「國定假日出勤加倍工資」，同一天再設會讓兩套規則打架（國定假日蓋過個人排班）
+        var calendar = await db.CalendarDays.AsNoTracking().FirstOrDefaultAsync(c => c.Date == date);
+        if (calendar is not null && PublicHolidayRule.IsPublicHoliday(calendar.IsHoliday, calendar.Description))
+            return new BadRequestObjectResult(ApiResponse.Fail(
+                $"{date:yyyy-MM-dd} 已是國定假日（{calendar.Description}），出勤本來就會加倍計薪，不需再設加倍工資日。"));
+
+        var sub = req.HttpContext.User.FindFirst(JwtRegisteredClaimNames.Sub)?.Value;
+        var entity = new DoublePayDay
+        {
+            Date        = date,
+            Name        = name,
+            CreatedAt   = Clock.Now,
+            CreatedById = Guid.TryParse(sub, out var uid) ? uid : null,
+        };
+        db.DoublePayDays.Add(entity);
+        await db.SaveChangesAsync();
+
+        return new OkObjectResult(ApiResponse.Ok(
+            new DoublePayDayDto(entity.Id, entity.Date, entity.Name), "已新增加倍工資日。"));
+    }
+
+    /// <summary>刪除加倍工資日（薪資即時重算、無月結快照，刪除後該月加倍工資即消失）</summary>
+    public async Task<IActionResult> DeleteDoublePayDayAsync(string id)
+    {
+        if (!int.TryParse(id, out var intId))
+            return new BadRequestObjectResult(ApiResponse.Fail("Invalid ID format."));
+
+        var entity = await db.DoublePayDays.FindAsync(intId);
+        if (entity is null)
+            return new NotFoundObjectResult(ApiResponse.Fail("找不到該加倍工資日。"));
+
+        db.DoublePayDays.Remove(entity);
+        await db.SaveChangesAsync();
+
+        var message = entity.Date < Clock.Today
+            ? "已刪除。該日已過，次月薪資的加倍工資會跟著移除，若已發薪請另行處理。"
+            : "已刪除。";
+        return new OkObjectResult(ApiResponse.Ok<object?>(null, message));
+    }
+
     /// <summary>
     /// 外部行事曆的假日名稱 → 本公司用語。目前只有一條：「補假」→「彈性休假日」。
     ///
@@ -167,5 +239,6 @@ public sealed class CalendarDayHandler(AppDbContext db, ICalendarDayReadService 
             ? CalendarDescriptions.FlexibleHoliday
             : source ?? "";
 
+    /// <summary>政府 API 回傳的行事曆項目</summary>
     private record TaiwanCalendarEntry(string Date, string Week, bool IsHoliday, string? Description);
 }
