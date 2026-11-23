@@ -101,7 +101,9 @@ public sealed class PayrollReadService(IDbConnection db, IDisasterPayrollService
         //
         //     ⚠ 出勤即加發一日、**不按時數比例折算**（客戶明訂），故只算天數、不看時數。
         //
-        //     切換日（SystemSetting.FlexibleWorkStartDate）之前**一律不計** —— 這個薪資項是
+        //     另併入**加倍工資日**（DoublePayDays，選舉投票日等，2026-11）的上班打卡，見 SQL 內註解。
+        //
+        //     切換日（SystemSetting.FlexibleWorkStartDate）之前**一律不計**（僅限國定假日那兩段） —— 這個薪資項是
         //     新制才有的東西，回溯到舊月份會讓歷史薪資憑空變大。null ＝ 尚未切換 ＝ 全部不計。
         const string publicHolidayWorkSql = """
             WITH PublicHolidays AS (
@@ -132,6 +134,16 @@ public sealed class PayrollReadService(IDbConnection db, IDisasterPayrollService
                   -- 防灌工時（2026-10）：新單依實際加班打卡結算（SettledHours），沒打加班卡＝0 即不算出勤；
                   -- 舊單 SettledHours 為 NULL → 沿用申請時數，歷史月份薪資不變。
                   AND ISNULL(o.SettledHours, o.EstimatedHours) > 0
+                UNION
+                -- 加倍工資日（選舉投票日等，DoublePayDays）：當天照個人排班走，**只認上班打卡**。
+                -- ⚠ 刻意不收加班單：休假日加班者照一般休假日計酬、不加發日薪（休假日上下班卡鎖定，
+                --   只會有加班卡，ClockInTime 為空，故不會被這段算進來）。不套切換日條件（舊制同樣成立）。
+                SELECT a.UserId, CAST(a.RecordDate AS date)
+                FROM AttendanceRecords a
+                JOIN DoublePayDays p ON p.Date = CAST(a.RecordDate AS date)
+                WHERE a.ClockInTime IS NOT NULL
+                  AND p.Date >= @PrevMonthFirstDay
+                  AND p.Date <  @CurrMonthFirstDay
             )
             SELECT EmployeeId, COUNT(*) AS Days
             FROM Worked

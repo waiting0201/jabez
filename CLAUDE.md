@@ -235,6 +235,7 @@ Admin/src/app/
     │   │                       ⚠ 部門下拉的 `ngModelChange` 會清空已選人力（候選名單整組換掉），
     │   │                       但**必須擋掉「值沒真的變」的那次觸發** —— 編輯表單載入時 select 初始化也會 emit，
     │   │                       無條件清空會把回填的預定人力洗掉、且畫面上完全看不出來
+    │   ├── calendar-days/    # 行事曆管理（年度匯入＝整年 RemoveRange 重建）＋ **加倍工資日卡片**（2026-11，選舉投票日等）：獨立表 `DoublePayDay`、年度匯入不覆蓋，`GET/POST /calendar-days/double-pay`、`DELETE /calendar-days/double-pay/{id}`；**當天不改任何人日別**（照個人排班），只對有上班打卡者併入薪資「國定假日／加倍工資日」加發 1 日日薪（休假日加班不收、不可與國定假日同日）。⚠ 勿在行事曆把這種日子填名稱＝會被判成國定假日蓋過排班，見 [docs/business/payroll-formula.md §13](docs/business/payroll-formula.md)
     │   ├── disaster-days/    # **颱風假管理（2026-10-23）**：清單（時段 / 給薪可直接改，過去月份跳警示）＋手動新增（多選縣市）＋影響名單＋抓取紀錄與待人工判斷項；縣市常數 `shared/utils/taiwan-counties.ts`（與後端 `Constants.TaiwanCounties` 同步），見 [docs/business/disaster-day-off.md](docs/business/disaster-day-off.md)
     │   ├── shift-schedules/  # **個人排班排例／休（四週彈性工時功能 A，2026-09 新增）**：月曆大方格頁，權限 `shift-schedule:read/write`。
     │   │                       專案**第一個 FullCalendar 使用點**（`dayGridMonth`，套件早已安裝但從未用過）——
@@ -420,6 +421,7 @@ Api/
 │   │                                    每筆落 `ShiftScheduleAdjustment` 並以鈴鐺通知本人（`GET /shift-schedules/adjustments` + `/ack`）。
 │   │                                    原設計走不通：活動日格子在月曆與改班表單都唯讀、又擋存「不可排例假／休假」＝死結。
 │   │                                    回應 `adjusted[]`（本次覆蓋）＋ `affected[]`（覆蓋後仍不合規）；改期／移除人力**不還原**
+│   ├── CalendarDayHandler.cs          # 行事曆 CRUD / 年度匯入 ＋ **加倍工資日**（`DoublePayDay`，2026-11）CRUD；薪資取數在 `PayrollReadService.publicHolidayWorkSql` 的第三段 UNION（只認 `ClockInTime`、刻意不收加班單）
 │   ├── DisasterDayOffHandler.cs       # **颱風假管理（2026-10-23）**：`/disaster-days` CRUD / cancel / affected / fetch-logs / fetch（Superadmin）＋ `GET /me/disaster-day-off`；異動觸發 `DisasterLeaveRecalculator`（僅給薪退回假單時數），薪資扣薪走 `DisasterPayrollService` + 純函式 `Common/DisasterPayDeduction.cs`
 │   ├── InsuranceBracketHandler.cs    # 勞健保級距 CRUD
 │   ├── PayrollHandler.cs             # 人事薪資查詢（月薪計算）；GetMineAsync = GET /me/payroll 員工讀自己近 N 個月薪資（免 payroll:read，逐月呼叫帶 employeeId 的同一支計算，依 HireDate 擋掉到職前月份，months clamp 1~24）

@@ -415,6 +415,21 @@
 
 ---
 
+## 行事曆 / 加倍工資日
+
+| Method | Path | 權限 | 說明 |
+|---|---|---|---|
+| GET | `/calendar-days?year=` | `calendar-days:read` | 指定年份行事曆 |
+| POST | `/calendar-days/import?year=` | `calendar-days:write` | 從外部行事曆匯入（**整年 RemoveRange 後重建**；加倍工資日另表存放不受影響） |
+| POST / PUT / PATCH / DELETE | `/calendar-days[/{id}]` | `calendar-days:write` / `:delete` | 手動維護單筆 |
+| GET | `/calendar-days/double-pay?year=` | `calendar-days:read` | 加倍工資日（選舉投票日等）清單 `{id, date, name}` |
+| POST | `/calendar-days/double-pay` | `calendar-days:write` | 新增 `{date, name}`：日期 ±3 年（`RequestDateGuard`）、不可重複、**不可是國定假日** |
+| DELETE | `/calendar-days/double-pay/{id}` | `calendar-days:delete` | 刪除（已過的日子會提醒薪資跟著重算） |
+
+規則見 [business/payroll-formula.md §13](business/payroll-formula.md)。
+
+---
+
 ## 天然災害停班（颱風假）
 
 詳見 [business/disaster-day-off.md](business/disaster-day-off.md)。`fetch-logs` / `fetch` 為具體路徑，路由表須排在 `["disaster-days", var id]` 之前。

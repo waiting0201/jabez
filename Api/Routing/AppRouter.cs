@@ -356,6 +356,9 @@ public sealed class AppRouter(
 
             // ── Calendar Days（行事曆管理）─────────────────────────────────────────
             ("GET",    ["calendar-days"])                                  => await calendarDays.GetByYearAsync(req),
+            ("GET",    ["calendar-days", "double-pay"])                   => await calendarDays.GetDoublePayDaysAsync(req),
+            ("POST",   ["calendar-days", "double-pay"])                   => await calendarDays.CreateDoublePayDayAsync(req),
+            ("DELETE", ["calendar-days", "double-pay", var dpId])         => await calendarDays.DeleteDoublePayDayAsync(dpId),
             ("POST",   ["calendar-days", "import"])                       => await calendarDays.ImportYearAsync(req),
             ("POST",   ["calendar-days"])                                 => await calendarDays.CreateAsync(req),
             ("PUT",    ["calendar-days", var id])                         => await calendarDays.UpdateAsync(req, id),
@@ -745,6 +748,8 @@ public sealed class AppRouter(
             // Calendar Days
             ("GET",    ["calendar-days", ..])                      => PermissionCodes.CalendarDaysRead,
             ("POST",   ["calendar-days", "import"])                => PermissionCodes.CalendarDaysWrite,
+            ("POST",   ["calendar-days", "double-pay"])            => PermissionCodes.CalendarDaysWrite,
+            ("DELETE", ["calendar-days", "double-pay", _])         => PermissionCodes.CalendarDaysDelete,
             ("POST",   ["calendar-days"])                          => PermissionCodes.CalendarDaysWrite,
             ("PUT",    ["calendar-days", _])                       => PermissionCodes.CalendarDaysWrite,
             ("PATCH",  ["calendar-days", _])                       => PermissionCodes.CalendarDaysWrite,

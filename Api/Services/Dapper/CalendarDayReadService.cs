@@ -17,6 +17,8 @@ public interface ICalendarDayReadService
     /// （TravelRequestHandler 三處）與打卡休假日判定都吃這個預設值，彈性休假日對它們仍是假日。
     /// </param>
     Task<IReadOnlyList<DateTime>> GetHolidayDatesAsync(DateTime startDate, DateTime endDate, bool excludeFlexibleHoliday = false);
+    /// <summary>指定年份的加倍工資日（選舉投票日等），見 <see cref="Jabez.Api.Models.Entities.DoublePayDay"/>。</summary>
+    Task<IEnumerable<DoublePayDayDto>> GetDoublePayDaysByYearAsync(int year);
 }
 
 public sealed class CalendarDayReadService(IDbConnection db) : ICalendarDayReadService
@@ -31,6 +33,18 @@ public sealed class CalendarDayReadService(IDbConnection db) : ICalendarDayReadS
             """;
 
         return await db.QueryAsync<CalendarDayDto>(sql, new { Year = year });
+    }
+
+    public async Task<IEnumerable<DoublePayDayDto>> GetDoublePayDaysByYearAsync(int year)
+    {
+        const string sql = """
+            SELECT Id, Date, Name
+            FROM DoublePayDays
+            WHERE Date >= DATEFROMPARTS(@Year, 1, 1) AND Date < DATEFROMPARTS(@Year + 1, 1, 1)
+            ORDER BY Date
+            """;
+
+        return await db.QueryAsync<DoublePayDayDto>(sql, new { Year = year });
     }
 
     /// <summary>計算日期範圍內的放假天數</summary>

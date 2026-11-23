@@ -65,6 +65,9 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<DisasterDayOff>             DisasterDayOffs            { get; set; }
     public DbSet<DisasterDayOffFetchLog>     DisasterDayOffFetchLogs    { get; set; }
 
+    // 加倍工資日（選舉投票日等）：獨立於 CalendarDay，不改日別、只影響薪資
+    public DbSet<DoublePayDay>               DoublePayDays              { get; set; }
+
     // 四週彈性工時：個人排班 + 主管活動日
     public DbSet<ShiftScheduleDay>           ShiftScheduleDays          { get; set; }
     public DbSet<ShiftScheduleMonth>         ShiftScheduleMonths        { get; set; }
