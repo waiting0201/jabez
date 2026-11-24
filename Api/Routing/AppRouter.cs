@@ -191,6 +191,7 @@ public sealed class AppRouter(
             // 人事資料卡：必須在 ["users", var id] catch-all 之前
             ("GET",    ["users", var id, "profile"])  => await employeeProfile.GetByUserIdAsync(req, id),
             ("PUT",    ["users", var id, "profile"])  => await employeeProfile.UpsertAsync(req, id),
+            ("GET",    ["users", var id, "annual-leave"]) => await users.GetAnnualLeaveAsync(req, id),
             ("GET",    ["users", var id])             => await users.GetByIdAsync(req, id),
             ("PUT",    ["users", var id])             => await users.UpdateAsync(req, id),
             ("PATCH",  ["users", var id])             => await users.UpdateAsync(req, id),
@@ -540,6 +541,8 @@ public sealed class AppRouter(
             ("GET",    ["me", "attendances"])                             => await attendances.GetMineAsync(req),
             // 自己的補休餘額：與 /leave-requests/compensatory-hours 同一支（對象恆為 JWT sub），但只需登入、免 leave-requests:read
             ("GET",    ["me", "compensatory-hours"])                      => await leaveRequests.GetCompensatoryHoursAsync(req),
+            // 自己的特休（本年度天數 / 已使用）：與 /leave-requests/annual-quota 同一支（對象恆為 JWT sub），只需登入
+            ("GET",    ["me", "annual-leave"])                            => await leaveRequests.GetAnnualQuotaAsync(req),
 
             // ── LINE 綁定 ─────────────────────────────────────────────────────
             ("GET",    ["line", "bind-url"])         => await line.GetBindUrlAsync(req),

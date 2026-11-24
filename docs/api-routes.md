@@ -29,6 +29,7 @@
 | GET | `/users/{id}` | 取得單一使用者。**欄位級權限**：同 `GET /users`，無 `users:salary-read` 者薪資欄回 `null` |
 | PUT/PATCH | `/users/{id}` | 更新使用者。**欄位級權限**：無 `users:salary-read` 者的薪資欄寫入一律忽略（既有值不變，不回 403），回應 DTO 亦抹除 |
 | DELETE | `/users/{id}` | 刪除使用者 |
+| GET | `/users/{id}/annual-leave` | 該員特休（本年度天數 / 已使用，2026-11-24，員工管理「入職日」旁顯示）：回傳同 `/leave-requests/annual-quota`，權限 `users:read` |
 | POST | `/users/{id}/send-credentials` | 寄送帳號通知信並設置 `MustChangePassword = true`（預設密碼為生日 yyyyMMdd） |
 
 ## 角色與權限
@@ -114,7 +115,7 @@
 | GET/PUT/PATCH/DELETE | `/leave-requests/{id}` | 請假 CRUD |
 | PATCH | `/leave-requests/{id}/submit` | 送出請假申請（draft → pending） |
 | GET | `/leave-requests/compensatory-hours` | 查詢可補休時數（期初匯入 + 系統加班 − 已補休；期初 116/6/30 到期歸零） |
-| GET | `/leave-requests/annual-quota` | 查詢年假額度（依 HireDate 計算年資） |
+| GET | `/leave-requests/annual-quota` | 查詢年假額度（依 HireDate 計算年資；回 `year` / `totalDays` / `usedDays` / `availableDays`，已使用每年 1/1 重新計算，計算走 `AnnualLeaveService`） |
 | GET | `/leave-requests/ceremonial-quota` | 查詢歲時祭儀假額度（僅原住民，每年 3 天，跨年歸零） |
 | GET | `/leave-requests/menstrual-quota` | 查詢生理假配額（限女性，回 `isFemale` + 每月 1 天 / 全年 12 天） |
 | GET | `/leave-requests/marriage-quota` | 查詢婚假配額（上限 14 天，不限年度） |
@@ -315,7 +316,7 @@
 | GET | `/reports/overtime` | 加班紀錄報表（已核准的加班申請 + 實際打卡時數，篩選參數：`employeeId / projectId / dateFrom / dateTo`；`projectId` 以 `OvertimeRequestProjects` 的 `EXISTS` 子查詢篩選。每列回 `projects[]` 含各案時數，維持「一張加班單一列」；另回 `compensationType` / `overtimePayAmount`，供 HR 直接分辨哪些加班已轉現金。**欄位級權限**：`overtimePayAmount` 另需 `reports-overtime:amount`，缺該碼者回 `null`，頁面照進、時數與補償方式照看。`?export=true` 時 `pageSize` 上限放寬至 5000（一般為 100），供 Excel 匯出一次取回整段區間） |
 | GET | `/reports/work-hours?dateFrom=&dateTo=&departmentId=&projectId=` | **工時總表**（2026-10）：`reports-work-hours:read`。員工 × 專案彙總，回 `[{ departmentName, employeeId, employeeName, projectId, projectCode, projectName, hours }]`，`projectId = null` 為「未分配」；每天固定 8 小時 × 佔比%，不看實際打卡時間、不扣請假、加班不併入；期間缺省本月、跨度上限 400 天；部門 scope 套在員工部門；帶 `projectId` 時不列未分配；排序＝專案代號自然序、未分配最後、部門、員工姓名。見 [project-work-hours.md](business/project-work-hours.md) |
 | GET | `/reports/work-hours/daily?dateFrom=&dateTo=&departmentId=&projectId=` | `reports-work-hours:read`。逐日明細（供 Excel 第二張工作表），回 `[{ date, departmentName, employeeId, employeeName, projectId, projectCode, projectName, percentage, hours, isAutoClockOut }]`（`percentage` 未分配為 `null`），依 日期 → 員工 → SortOrder 排序 |
-| GET | `/reports/compensatory?dateFrom=&dateTo=` | 加班補休時數總表（2026-10）：一位員工一列、不分頁；期間取得的 ×1.34 / ×1.67 / ×2.67 級距時數與合計、期間已休、截至今日待補休、金額。權限**沿用** `reports-overtime:read`，`amount` 另需 `reports-overtime:amount`（缺者回 `null`）；部門 scope 同加班紀錄；期間缺省為本月、跨度上限 400 天 |
+| GET | `/reports/compensatory?dateFrom=&dateTo=` | 加班補休時數總表（2026-10）：一位員工一列、不分頁；期間取得的 ×1.34 / ×1.67 / ×2.67 級距時數與合計、期間已休、截至今日待補休、金額，以及**迄日所屬年度的特休天數 / 已使用**（`annualYear` / `annualTotalDays` / `annualUsedDays`，2026-11-24）。權限**沿用** `reports-overtime:read`，`amount` 另需 `reports-overtime:amount`（缺者回 `null`）；部門 scope 同加班紀錄；期間缺省為本月、跨度上限 400 天 |
 | GET | `/reports/payment` | 款項統計報表（依類別查詢 6 種付款相關申請）。**必填** `category`（白名單：`all` / `payment` / `advance` / `writeoff` / `travel-payment` / `travel` / `travel-writeoff`，未帶或不合法 → 400）。`all` = 全部，6 種類別主查詢 `UNION ALL` 後依 `CreatedAt DESC` 分頁；明細依各列 `SourceCategory` 分組撈回對應子表。篩選參數：`dateFrom / dateTo / paymentStatus`（**2026-09 由二態擴成四態**：空＝全部／`unpaid` 完全沒撥／`partial` 部分撥款／`paid` 全部撥款。⚠ `unpaid` 的語意已改變 —— 原本是「非全額撥款」含部分撥款）；`{主表}.CreatedAt` 為 DATETIME，`dateTo` 用 `< DATEADD(day, 1, @DateTo)` 半開區間涵蓋當日 23:59:59。沖銷類無 installments，`paymentStatus` 被忽略（`all` 時此忽略行為一致）。權限：`reports-payment:read`，**不**需要各別 `xxx-requests:read`。 |
 | GET | `/reports/payment/due` | **待撥款清單（2026-09 新增）**：依**預計撥款日**查出各期，**一期一列**（同一張單有多期就拆多列），供財務排款。參數：`category`（同上白名單；`travel-writeoff` 無 installments 表，一律回空清單）／`dueFrom` / `dueTo`（比對 `CAST(i.ExpectedDate AS DATE)`）／`installmentStatus`（`unpaid` 預設 / `paid` / `all`，白名單正規化，非法值退回 `unpaid`）／`page` / `pageSize`。**只含 `ApprovalStatus = 'approved'`** —— 撥款明細端點僅開放 approved，列出 pending 的單會讓財務點進去卻填不了實際撥款日。回傳的 `applicationType` 是 **snake_case**（`payment_request` / `advance` / `travel` / `travel_payment` / `write_off`），供前端直接組簽核作業網址 `/admin/approval-tasks/{type}/{id}/review`，**與本報表其他端點的 kebab 命名不同**。部門可視範圍同其餘兩支。權限：`reports-payment:read`。 |
 | GET | `/reports/payment/export` | 款項統計匯出（不分頁、**一列一明細**：主表 LEFT JOIN 對應子表（InvoiceItems / AdvanceRequestItems / WriteOffItems / TravelPaymentRequestItems / TravelRequestItems / TravelWriteOffItems），無明細仍輸出 1 列）；參數同上（含 `all`，6 種 export 查詢 `UNION ALL`）；前端依 `category` 對應右側 4 欄表頭（請款/沖銷/出差類別 → 發票號碼/品名/發票日期/金額；預支 → 類別/品名/數量/金額；`all` → 通用 發票號碼/類別、品名、發票日期/數量、金額，明細第 3 欄 per-row 取值）。所有「不適用欄位」皆以 `CAST(NULL AS …)` 明確轉型（裸 `NULL` 會被 SQL Server 視為 int，Dapper 映射 `string?`/`DateTime?` 會拋型別轉換例外 → 500）。 |
@@ -365,6 +366,7 @@
 | GET | `/me/profile` | 員工查看**自己**的人事資料卡（回傳與 `/users/{id}/profile` 同型別 `EmployeeProfileDetailDto`，含 9 張子表 + 健保眷屬）。**登入即可，不需 `users:read`**，且**刻意不套薪資欄位級權限**（自己的薪資調整歷史照常回傳） |
 | GET | `/me/payroll?months=12` | 員工查看**自己**近 N 個月的薪資明細（`months` 預設 12、clamp 1~24；回 `MyPayrollHistoryDto`＝`{months:[{year, month, isCurrentMonth, payroll}]}`，`payroll` 與 `/payroll` 同型別 `EmployeePayrollDto`）。**登入即可，不需 `payroll:read`**，端點不接受 employeeId 參數故無法查別人。逐月呼叫 `CalculateMonthlyPayrollAsync(y, m, userId)`，**薪資為即時重算、無月結快照**（底薪 / 加給取自 `Users` 表當下的值），到職日之前的月份不列入。供「個人資訊」→「過往薪資」Tab 用 |
 | GET | `/me/attendances?dateFrom=&dateTo=&page=&pageSize=` | 員工查看**自己**的出缺勤紀錄（2026-11，頭像下拉「個人出缺勤」）。回傳與 `GET /attendances` 同型別 `PagedResult<AttendanceRecordDto>`、同一份合併（打卡 ∪ 請假 ∪ 缺勤 ∪ 颱風假，走 `AttendanceLeaveMerger`）。**權限 `attendances:read`**（`me` 路由中唯一有權限碼者：能打卡才有出缺勤可看），不需 `reports-attendance:read`；對象取 JWT `sub`、**忽略 `employeeId` 參數**，不套部門 scope。未帶日期預設近一個月，區間上限 400 天，`pageSize` 上限 100、無匯出模式。**抹除管理端欄位**：`remark`（HR 備註）恆為 null，`overtimeExcess` 的 `supervisor` / `reason` / `handledByName` 恆為 null（認定結果與時數照回）。兩支出缺勤清單（本端點與 `GET /attendances`）的每列皆含 **`overtimeHours` / `isOvertimeHoursSettled`**（2026-11「加班時數」欄：已結算加班單取 `SettledHours`，否則為打卡起訖時數，起訖缺一為 null）與 **`overtimeRequestStatus`**（2026-11-24：當日加班單狀態 approved / pending / null，綁定或同人同日；非 approved 時前端提示「不計時數」） |
+| GET | `/me/annual-leave` | 員工查看**自己**的特休（2026-11-24，「個人資訊」特休卡）：與 `/leave-requests/annual-quota` 同一支、回傳同型別，**只需登入** |
 | GET | `/me/compensatory-hours` | 員工查看**自己**目前的補休時數（2026-10，「個人資訊」補休卡）：與 `/leave-requests/compensatory-hours` 同一支、回傳同型別，**只需登入、免 `leave-requests:read`** |
 | GET | `/me/files/{container}/{fileName}` | 員工自助讀取**自己的** PII 檔案代理。白名單容器：`id-cards` / `education-proofs` / `passbooks` / `indigenous-proofs` / `low-income-proofs` / `disabled-proofs` / `avatars` / `signatures`；非白名單回 404。安全機制：`fileName` 必須以自身 `userId` 開頭（後接 `.` 或 `_`），否則 403，避免員工竄改 fileName 讀他人檔案。**登入即可，不需 `users:read`**（管理端 `/files/<container>` 仍需 `users:read`） |
 

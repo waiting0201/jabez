@@ -4,6 +4,7 @@ import {Observable} from 'rxjs';
 import {User, UserLookup, UserStatus} from '../models/user.model';
 import {PagedResult} from '../../../../shared/models/paged-result.model';
 import {environment} from '@/environments/environment';
+import {AnnualQuota} from '../../leave-requests/models/leave-request.model';
 
 export interface UserFileOptions {
   signatureFile?: File | null;
@@ -47,6 +48,11 @@ export class UserService {
 
   getById(id: string): Observable<User> {
     return this.http.get<User>(`${environment.apiUrl}/users/${id}`);
+  }
+
+  /** 特休（本年度天數 / 已使用），權限同 getById（users:read） */
+  getAnnualLeave(id: string): Observable<AnnualQuota> {
+    return this.http.get<AnnualQuota>(`${environment.apiUrl}/users/${id}/annual-leave`);
   }
 
   create(data: Record<string, any>, files?: UserFileOptions): Observable<User> {

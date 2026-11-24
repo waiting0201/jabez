@@ -8,7 +8,7 @@ import { EmployeeProfileDetail, SalaryAdjustmentRecord } from '../../../admin/us
 import { MyPayrollMonth } from '../../models/my-payroll.model';
 import { PayrollDetailCard } from '@shared/components/payroll-detail-card';
 import { AuthImageSrcDirective } from '@shared/directives/auth-image-src.directive';
-import { CompensatoryHours } from '../../../admin/leave-requests/models/leave-request.model';
+import { AnnualQuota, CompensatoryHours } from '../../../admin/leave-requests/models/leave-request.model';
 
 @Component({
   selector: 'app-my-profile',
@@ -39,6 +39,8 @@ export class MyProfile implements OnInit {
   payrollMonths = signal<MyPayrollMonth[]>([]);
   /** 補休時數（載入失敗維持 null，卡片不顯示，不影響其他資料） */
   compensatory = signal<CompensatoryHours | null>(null);
+  /** 特休（本年度天數 / 已使用；載入失敗維持 null，卡片不顯示） */
+  annualLeave = signal<AnnualQuota | null>(null);
 
   /** 目前展開明細的月份 key（yyyy-MM），null＝全部收合 */
   expandedKey = signal<string | null>(null);
@@ -49,6 +51,7 @@ export class MyProfile implements OnInit {
   ngOnInit(): void {
     this._loadUser();
     this._loadCompensatory();
+    this._loadAnnualLeave();
   }
 
   switchTab(tab: 'basic' | 'hr' | 'dependents' | 'payroll'): void {
@@ -163,6 +166,13 @@ export class MyProfile implements OnInit {
     this.myProfileService.getMyCompensatoryHours().subscribe({
       next: c => this.compensatory.set(c),
       error: () => this.compensatory.set(null),
+    });
+  }
+
+  private _loadAnnualLeave(): void {
+    this.myProfileService.getMyAnnualLeave().subscribe({
+      next: q => this.annualLeave.set(q),
+      error: () => this.annualLeave.set(null),
     });
   }
 

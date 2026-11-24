@@ -16,7 +16,10 @@ public sealed record CompensatoryReportRowDto(
     decimal  PeriodEarnedHours,  // 期間取得合計（申請時數；國定假日前 8 小時不列級距，故可能大於三級距加總）
     decimal  PeriodUsedHours,    // 期間已休（送簽中 + 已核准的補休假）
     decimal  AvailableHours,     // 截至今日待補休
-    decimal? Amount);            // 期間取得換算金額（Σ 級距時數 × 倍率 × 現行時薪）；無 reports-overtime:amount 者為 null
+    decimal? Amount,             // 期間取得換算金額（Σ 級距時數 × 倍率 × 現行時薪）；無 reports-overtime:amount 者為 null
+    int      AnnualYear,         // 特休所屬年度＝查詢迄日所屬曆年（已使用每年 1/1 重新計算）
+    int      AnnualTotalDays,    // 特休：該年度天數（依到職年資，見 AnnualLeaveService）
+    decimal  AnnualUsedDays);    // 特休：該年度已使用（送簽中 + 已核准）
 
 /// <summary>ReadService 原料：員工 + 全期間補休帳（算餘額用）+ 期間已休。</summary>
 public sealed record CompensatoryEmployeeRaw(

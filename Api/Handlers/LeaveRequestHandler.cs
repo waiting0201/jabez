@@ -750,48 +750,25 @@ public sealed class LeaveRequestHandler(
         }));
     }
 
-    /// <summary>查詢當前使用者的年假額度（根據 HireDate 計算年資）</summary>
+    /// <summary>
+    /// 查詢當前使用者的年假額度（根據 HireDate 計算年資；已使用天數每年 1/1 重新計算）。
+    /// GET /leave-requests/annual-quota 與 GET /me/annual-leave 共用，計算收斂於 <see cref="AnnualLeaveService"/>。
+    /// </summary>
     public async Task<IActionResult> GetAnnualQuotaAsync(HttpRequest req)
     {
         var userId = await GetUserIdAsync(req);
-        var user = await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == userId);
-
-        if (user?.HireDate is null)
-            return new OkObjectResult(ApiResponse.Ok(new
-            {
-                totalDays = 0,
-                usedDays = 0m,
-                availableDays = 0m,
-                seniorityYears = 0,
-                seniorityMonths = 0,
-                message = "未設定到職日",
-            }));
-
-        var now = Clock.Now;
-        // 育嬰留停期間不計入工作年資 → 特休額度隨之暫停累積
-        var parentalExcludedDays = await GetParentalLeaveDaysAsync(userId, now);
-        var (years, months) = SeniorityHelper.Calculate(user.HireDate.Value, now, parentalExcludedDays);
-        int totalDays = SeniorityHelper.CalculateAnnualLeaveDays(years, months);
-
-        // 查詢今年已使用的年假天數（pending + approved）
-        var startOfYear = new DateTime(now.Year, 1, 1);
-        var endOfYear = new DateTime(now.Year, 12, 31, 23, 59, 59);
-        var usedHours = await db.LeaveRequests
-            .Where(l => l.EmployeeId == userId
-                     && l.LeaveType == "annual"
-                     && (l.ApprovalStatus == "approved" || l.ApprovalStatus == "pending")
-                     && l.StartDate >= startOfYear && l.StartDate <= endOfYear)
-            .SumAsync(l => l.Hours);
-        var usedDays = usedHours / 8m;
+        var b = await AnnualLeaveService.GetAsync(db, userId);
 
         return new OkObjectResult(ApiResponse.Ok(new
         {
-            totalDays,
-            usedDays = Math.Round(usedDays, 1),
-            availableDays = Math.Round(Math.Max(0, totalDays - usedDays), 1),
-            seniorityYears = years,
-            seniorityMonths = months,
-            parentalLeaveExcludedDays = parentalExcludedDays,   // 已扣除的育嬰留停天數（0 = 未曾留停）
+            year = b.Year,
+            totalDays = b.TotalDays,
+            usedDays = b.UsedDays,
+            availableDays = b.AvailableDays,
+            seniorityYears = b.SeniorityYears,
+            seniorityMonths = b.SeniorityMonths,
+            parentalLeaveExcludedDays = b.ParentalLeaveExcludedDays,   // 已扣除的育嬰留停天數（0 = 未曾留停）
+            message = b.HasHireDate ? null : "未設定到職日",
         }));
     }
 
@@ -1576,26 +1553,8 @@ public sealed class LeaveRequestHandler(
     /// 只計已核准者；進行中的留停只算到 asOf 為止，尚未發生的天數不提前扣年資。
     /// 已結束者直接用 Hours ÷ 8（銷假後 Hours 已遞減，天數自動反映）。
     /// </summary>
-    private async Task<int> GetParentalLeaveDaysAsync(Guid userId, DateTime asOf)
-    {
-        var rows = await db.LeaveRequests.AsNoTracking()
-            .Where(l => l.EmployeeId == userId
-                     && ParentalLeaveTypes.Contains(l.LeaveType)
-                     && l.ApprovalStatus == "approved"
-                     && l.StartDate <= asOf)
-            .Select(l => new { l.StartDate, l.EndDate, l.Hours })
-            .ToListAsync();
-
-        var cutoff = asOf.Date;
-        decimal total = 0m;
-        foreach (var r in rows)
-        {
-            total += r.EndDate.Date <= cutoff
-                ? r.Hours / 8m                                  // 已結束
-                : (cutoff - r.StartDate.Date).Days + 1;         // 進行中，只算已過去的日曆天
-        }
-        return (int)Math.Round(total, MidpointRounding.AwayFromZero);
-    }
+    private Task<int> GetParentalLeaveDaysAsync(Guid userId, DateTime asOf)
+        => AnnualLeaveService.GetParentalExcludedDaysAsync(db, userId, asOf);
 
     /// <summary>
     /// 檢查育嬰留停申請資格，回傳錯誤訊息或 null。

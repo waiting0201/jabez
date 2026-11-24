@@ -23,6 +23,10 @@ namespace Jabez.Api.Handlers;
 ///
 /// 待補休：四週彈性工時切換後以逐筆 lot 為準（<see cref="CompensatoryLotService.GetBalanceAsync"/>，同請假表單），
 /// 切換日為 null 時走聚合版 <see cref="CompensatoryBalance.Compute"/>。
+///
+/// 特休（2026-11-24）：以**查詢迄日所屬曆年**為年度，已使用＝該年送簽中 + 已核准年假；天數依截至
+/// min(迄日年底, 今日) 的到職年資。計算走 <see cref="AnnualLeaveService"/>（與個人資訊頁 / 員工管理同一支）。
+/// 只有特休、沒有補休活動的員工也會列出。
 /// </summary>
 public sealed class CompensatoryReportHandler(
     ICompensatoryReportReadService reader,
@@ -54,6 +58,12 @@ public sealed class CompensatoryReportHandler(
         bool canSeeAmount = CanSeeAmount(req.HttpContext.User);
         var now = Clock.Now;
 
+        // 特休：年度＝迄日所屬曆年；過去年度的年資算到該年 12/31，本年度（含未來）算到今日
+        int annualYear = dateTo.Year;
+        var annualAsOf = annualYear < now.Year ? new DateTime(annualYear, 12, 31) : now;
+        var annual = await AnnualLeaveService.GetForUsersAsync(
+            db, [.. employees.Select(e => e.EmployeeId)], annualYear, annualAsOf);
+
         var rows = new List<CompensatoryReportRowDto>();
         foreach (var e in employees)
         {
@@ -78,7 +88,11 @@ public sealed class CompensatoryReportHandler(
             var available = lotMode
                 ? (await CompensatoryLotService.GetBalanceAsync(db, e.EmployeeId)).AvailableHours
                 : CompensatoryBalance.Compute(e.OpeningHours, e.EarnedHours, e.UsedHours, now).AvailableHours;
-            if (earned == 0m && e.PeriodUsedHours == 0m && available == 0m) continue;
+            var a = annual.GetValueOrDefault(e.EmployeeId);
+            int annualTotal = a?.TotalDays ?? 0;
+            decimal annualUsed = a?.UsedDays ?? 0m;
+            if (earned == 0m && e.PeriodUsedHours == 0m && available == 0m
+                && annualTotal == 0 && annualUsed == 0m) continue;
 
             // 金額只在總額捨入一次（比照 OvertimePayCalculator.Calculate）；底薪未設定者無從換算
             decimal? amount = canSeeAmount && e.BaseSalary is > 0m
@@ -87,7 +101,8 @@ public sealed class CompensatoryReportHandler(
 
             rows.Add(new CompensatoryReportRowDto(
                 e.EmployeeId, e.EmployeeName, e.DepartmentId, e.DepartmentName,
-                t134, t167, t267, earned, e.PeriodUsedHours, available, amount));
+                t134, t167, t267, earned, e.PeriodUsedHours, available, amount,
+                annualYear, annualTotal, annualUsed));
         }
 
         return new OkObjectResult(ApiResponse.Ok(rows));

@@ -5,7 +5,7 @@ import { environment } from '@/environments/environment';
 import { User } from '../../admin/users/models/user.model';
 import { EmployeeProfileDetail } from '../../admin/users/models/employee-profile.model';
 import { MyPayrollHistory } from '../models/my-payroll.model';
-import { CompensatoryHours } from '../../admin/leave-requests/models/leave-request.model';
+import { AnnualQuota, CompensatoryHours } from '../../admin/leave-requests/models/leave-request.model';
 
 @Injectable({ providedIn: 'root' })
 export class MyProfileService {
@@ -29,6 +29,11 @@ export class MyProfileService {
   /** 取得自己目前的補休時數（與請假表單同一公式；只需登入，免 leave-requests:read） */
   getMyCompensatoryHours(): Observable<CompensatoryHours> {
     return this.http.get<CompensatoryHours>(`${environment.apiUrl}/me/compensatory-hours`);
+  }
+
+  /** 取得自己的特休（本年度天數 / 已使用；與請假表單同一公式，只需登入） */
+  getMyAnnualLeave(): Observable<AnnualQuota> {
+    return this.http.get<AnnualQuota>(`${environment.apiUrl}/me/annual-leave`);
   }
 
   /** 下載 PII 檔案（需 Bearer token），回傳 Blob 供前端建立 Object URL */
