@@ -1077,6 +1077,7 @@ master        # 正式環境（push → victorious-field SWA + jabez-api）
   - 金額 input：`min=1`，`max=剩餘額度`（總額 − 其他列已填）
   - 已撥款列：4 欄位（預計撥款日 / 實際撥款日 / 金額 / 備註）全 readonly + 灰底；刪除按鈕隱藏
   - 後端 `InstallmentValidator.Validate` 提供等同驗證（序號連續 / SUM == 總額 / 已撥款列保護）
+- **預支分期款別（現金 / 月結，2026-11-24）**：只有 `AdvanceRequestInstallment` 有 `PaymentMethod`（`cash` / `check` / NULL＝未分類，舊資料不回填由財務補標），經小介面 `IInstallmentPaymentMethod` 由 `InstallmentUpsertService` 寫入、其他 4 種忽略；編輯器 / 唯讀表傳 `[checkTotal]` 才顯示款別欄與「現金 / 月結 已排・已撥」對照列，**只提示不擋存**、不受已撥款鎖定，見 [docs/business/approval-flow.md §預支分期的款別](docs/business/approval-flow.md)
 - **追加預支的影響**：預支追加核准後 `GrandTotal` 變大，`SUM(installments)` 須等於**新**總額 —— 已撥款列鎖定，財務**補一期**新增金額；`FullyPaid` 會因此變回 `PartiallyPaid`（見 [docs/business/approval-flow.md](docs/business/approval-flow.md#追加預支重跑簽核2026-07-新增)）
 
 歷史：原採兩階段過渡策略，Phase 1 父表保留 `EstimatedPaymentDate` / `PaidAt` / `PaidByUserId` 作 cache；2026-05 Phase 2 完成，DROP 4 張父表的 3 個 cache 欄位 + FK + Index，由 [BackfillInstallmentsFromParentCache](Api/Data/Migrations/) 與 [RemovePaymentDateCacheFromParents](Api/Data/Migrations/) 兩個 migration 串接執行。

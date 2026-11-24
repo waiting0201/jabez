@@ -60,7 +60,16 @@ export interface InstallmentDto {
   paidByUserId?: string;
   paidByName?: string;
   paidBySignatureUrl?: string;
+  /** 款別（僅預支單分期有值）：cash 現金 / check 月結；null ＝ 未分類（舊資料） */
+  paymentMethod?: InstallmentPaymentMethod | null;
 }
+
+/** 分期撥款款別（預支單專用，2026-11-24）*/
+export type InstallmentPaymentMethod = 'cash' | 'check';
+export const INSTALLMENT_PAYMENT_METHOD_LABELS: Record<InstallmentPaymentMethod, string> = {
+  cash:  '現金',
+  check: '月結',
+};
 
 /** 分期撥款輸入（upsert request）— Id 缺省表示新增列 */
 export interface InstallmentInput {
@@ -70,6 +79,8 @@ export interface InstallmentInput {
   paidAt?: string;
   amount: number;
   note?: string;
+  /** 款別；後端只對預支單分期寫入，其他類型忽略 */
+  paymentMethod?: InstallmentPaymentMethod | null;
 }
 
 export interface UpsertInstallmentsRequest {
@@ -313,6 +324,8 @@ export interface AdvanceTaskDetail {
   activityName: string;
   activityPeriod: string;
   grandTotal: number;
+  /** 月結（支票）合計；現金 ＝ grandTotal − checkTotal（撥款明細款別對照用）*/
+  checkTotal: number;
   /** 預計退款日（沖銷退還差額） */
   estimatedRefundDate?: string;
   /** 差額退款完成時間 */

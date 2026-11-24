@@ -1,7 +1,8 @@
 import {Component, computed, effect, inject, input, output, signal} from '@angular/core';
 import {DecimalPipe} from '@angular/common';
 import {FormArray, FormBuilder, FormGroup, ReactiveFormsModule, Validators} from '@angular/forms';
-import {InstallmentDto, InstallmentInput} from '../../features/admin/approval-tasks/models/approval-task.model';
+import {InstallmentDto, InstallmentInput, InstallmentPaymentMethod} from '../../features/admin/approval-tasks/models/approval-task.model';
+import {defaultPaymentMethod, summarizeByPaymentMethod} from '../utils/installment-payment-method';
 
 /**
  * 共用「可編輯」撥款明細表（唯讀版為 installments-table）。
@@ -15,6 +16,9 @@ import {InstallmentDto, InstallmentInput} from '../../features/admin/approval-ta
  * 一頁可放多個實例（例如沖銷簽核頁同時維護「本單差額撥款」與「關聯預支單撥款」）。
  * 規則（與後端 InstallmentValidator 對齊）：序號 1-based 連續、SUM == 應撥總額、
  * 已撥款列不可刪、只有實際撥款日可更正或清空（2026-11-10 起可清空）。
+ *
+ * 款別（2026-11-24，僅預支單）：傳入 `checkTotal` 即顯示「款別」欄（現金 / 月結 / 未分類）與現金・月結對照列。
+ * 款別**不受已撥款鎖定**（舊資料一律未分類、須能補標），且**只提示不擋存**（見 installment-payment-method.ts）。
  */
 @Component({
   selector: 'app-installments-editor',
@@ -35,11 +39,35 @@ import {InstallmentDto, InstallmentInput} from '../../features/admin/approval-ta
                 [disabled]="!canAddRow()" (click)="addRow()">+ 新增一期</button>
       </div>
 
+      @if (pmSummary(); as pm) {
+        <div class="small mb-3 flex flex-wrap gap-x-4 gap-y-1">
+          <span>
+            <span class="text-muted">現金</span>
+            已排 <span class="fw-500" [class.text-danger]="pm.cashPlanned !== pm.cashTotal">{{ pm.cashPlanned | number:'1.0-2' }}</span>
+            / {{ pm.cashTotal | number:'1.0-2' }} 元
+            <span class="text-muted">（已撥 {{ pm.cashPaid | number:'1.0-2' }}）</span>
+          </span>
+          <span>
+            <span class="text-muted">月結</span>
+            已排 <span class="fw-500" [class.text-danger]="pm.checkPlanned !== pm.checkTotal">{{ pm.checkPlanned | number:'1.0-2' }}</span>
+            / {{ pm.checkTotal | number:'1.0-2' }} 元
+            <span class="text-muted">（已撥 {{ pm.checkPaid | number:'1.0-2' }}）</span>
+          </span>
+          @if (pm.unclassified > 0) {
+            <span class="text-[--yellow]">未分類 {{ pm.unclassified | number:'1.0-2' }} 元</span>
+          }
+          @if (pm.mismatch) {
+            <span class="text-[--yellow] w-full">⚠ 各期款別合計與預支單的現金 / 月結不一致（僅提示，仍可儲存）</span>
+          }
+        </div>
+      }
+
       <div class="border rounded overflow-x-auto bg-white">
-        <table class="table table-sm mb-0 small" [style.min-width]="mode() === 'manage' ? '760px' : '640px'">
+        <table class="table table-sm mb-0 small" [style.min-width]="(mode() === 'manage' ? 760 : 640) + (showPaymentMethod() ? 120 : 0) + 'px'">
           <thead class="bg-[--bg-base]">
             <tr>
               <th class="text-center" style="width: 60px">期數</th>
+              @if (showPaymentMethod()) { <th style="width: 120px">款別</th> }
               <th style="width: 160px">預計撥款日</th>
               @if (mode() === 'manage') { <th style="width: 160px">實際撥款日</th> }
               <th style="width: 140px">金額</th>
@@ -56,6 +84,17 @@ import {InstallmentDto, InstallmentInput} from '../../features/admin/approval-ta
                     <div class="text-success" style="font-size:10px">已撥</div>
                   }
                 </td>
+                @if (showPaymentMethod()) {
+                  <td>
+                    <!-- 款別不隨已撥款鎖定：舊資料須能補標 -->
+                    <select class="form-select form-select-sm" formControlName="paymentMethod" style="min-width: 6.5rem"
+                            [class.text-muted]="!row.get('paymentMethod')?.value">
+                      <option value="">未分類</option>
+                      <option value="cash">現金</option>
+                      <option value="check">月結</option>
+                    </select>
+                  </td>
+                }
                 <td>
                   <input type="date" class="form-control form-control-sm" formControlName="expectedDate"
                          [attr.readonly]="isLocked(row) ? true : null"
@@ -105,7 +144,7 @@ import {InstallmentDto, InstallmentInput} from '../../features/admin/approval-ta
           </tbody>
           <tfoot class="bg-[--bg-base]">
             <tr>
-              <td class="text-center fw-500" [attr.colspan]="mode() === 'manage' ? 3 : 2">加總</td>
+              <td class="text-center fw-500" [attr.colspan]="(mode() === 'manage' ? 3 : 2) + (showPaymentMethod() ? 1 : 0)">加總</td>
               <td class="text-right fw-500"
                   [class.text-danger]="!sumValid()"
                   [class.text-success]="sumValid()">
@@ -163,6 +202,8 @@ export class InstallmentsEditorComponent {
   saving      = input(false);
   message     = input('');
   error       = input('');
+  /** 預支單的月結（支票）合計；傳入（含 0）即啟用款別欄，null ＝ 非預支單不顯示 */
+  checkTotal  = input<number | null>(null);
 
   save = output<InstallmentInput[]>();
 
@@ -191,6 +232,8 @@ export class InstallmentsEditorComponent {
       paidAt:        row.get('paidAt')?.value || undefined,
       amount:        Number(row.get('amount')?.value) || 0,
       note:          row.get('note')?.value || undefined,
+      // 非預支單不送款別（後端亦忽略）
+      ...(this.showPaymentMethod() ? {paymentMethod: (row.get('paymentMethod')?.value || null) as InstallmentPaymentMethod | null} : {}),
     }));
   }
 
@@ -212,6 +255,27 @@ export class InstallmentsEditorComponent {
   sumValid = computed(() => Math.abs(this.sum() - this.totalAmount()) <= 0.01);
 
   canAddRow = computed(() => this.sum() < this.totalAmount() - 0.01);
+
+  showPaymentMethod = computed(() => this.checkTotal() != null);
+
+  /** 現金 / 月結對照（只提示不擋存）；非預支單為 null */
+  pmSummary = computed(() => {
+    this.revision();
+    const check = this.checkTotal();
+    if (check == null) return null;
+    return summarizeByPaymentMethod(
+      this.form.controls.map(c => ({
+        amount:        Number(c.get('amount')?.value) || 0,
+        paymentMethod: c.get('paymentMethod')?.value as InstallmentPaymentMethod | '',
+        paid:          !!c.get('paidAt')?.value,
+      })),
+      this.totalAmount(), check);
+  });
+
+  private newRowPaymentMethod(): InstallmentPaymentMethod | '' {
+    const check = this.checkTotal();
+    return check == null ? '' : defaultPaymentMethod(this.totalAmount(), check);
+  }
 
   isLocked(row: FormGroup): boolean {
     const id = row.get('id')?.value as number | null;
@@ -258,6 +322,7 @@ export class InstallmentsEditorComponent {
       paidAt:        '',
       amount:        this.totalAmount() - this.sum(),
       note:          '',
+      paymentMethod: this.newRowPaymentMethod(),
     }));
     this.revision.update(v => v + 1);
   }
@@ -291,6 +356,7 @@ export class InstallmentsEditorComponent {
           paidAt:        ins.paidAt?.toString().slice(0, 10) ?? '',
           amount:        ins.amount,
           note:          ins.note ?? '',
+          paymentMethod: ins.paymentMethod ?? '',
         }), {emitEvent: false});
       }
     } else {
@@ -300,13 +366,14 @@ export class InstallmentsEditorComponent {
         paidAt:        '',
         amount:        total,
         note:          '',
+        paymentMethod: this.newRowPaymentMethod(),
       }), {emitEvent: false});
     }
 
     this.revision.update(v => v + 1);
   }
 
-  private buildRow(v: {id?: number; installmentNo: number; expectedDate: string; paidAt: string; amount: number; note: string}) {
+  private buildRow(v: {id?: number; installmentNo: number; expectedDate: string; paidAt: string; amount: number; note: string; paymentMethod: InstallmentPaymentMethod | ''}) {
     return this.fb.group({
       id:            [v.id ?? null],
       installmentNo: [v.installmentNo],
@@ -314,6 +381,7 @@ export class InstallmentsEditorComponent {
       paidAt:        [v.paidAt],
       amount:        [v.amount, [Validators.required, Validators.min(1)]],
       note:          [v.note],
+      paymentMethod: [v.paymentMethod],
     });
   }
 }

@@ -221,7 +221,8 @@ public sealed record AdvanceTaskDetailDto(
     DateTime? AdvanceNeededDate = null,
     IEnumerable<AdvanceLinkedPreReviewDto>? PreReviews = null,
     decimal?  ActualAmount = null,
-    AdvanceSettlementLedgerDto? SettlementLedger = null)
+    AdvanceSettlementLedgerDto? SettlementLedger = null,
+    decimal   CheckTotal = 0m)   // 月結（支票）合計；現金 ＝ GrandTotal − CheckTotal（撥款明細款別對照用）
 {
     public AdvanceRequestItemDto[] Items { get; init; } = Items ?? Array.Empty<AdvanceRequestItemDto>();
 }

@@ -46,6 +46,11 @@ public sealed class InstallmentReadService(IDbConnection db) : IInstallmentReadS
             _ => throw new ArgumentOutOfRangeException(nameof(table))
         };
 
+        // 款別只有預支單分期有此欄（2026-11-24），其他表回 NULL
+        var paymentMethodCol = table == InstallmentParentTable.AdvanceRequest
+            ? "i.PaymentMethod"
+            : "CAST(NULL AS nvarchar(10))";
+
         var sql = $"""
             SELECT  i.Id,
                     i.{fkCol}              AS ParentId,
@@ -56,7 +61,8 @@ public sealed class InstallmentReadService(IDbConnection db) : IInstallmentReadS
                     i.Note,
                     i.PaidByUserId,
                     u.Name                 AS PaidByName,
-                    u.SignatureUrl         AS PaidBySignatureUrl
+                    u.SignatureUrl         AS PaidBySignatureUrl,
+                    {paymentMethodCol}     AS PaymentMethod
             FROM {tableName} i
             LEFT JOIN Users u ON u.Id = i.PaidByUserId
             WHERE i.{fkCol} IN @Ids
@@ -81,7 +87,8 @@ public sealed class InstallmentReadService(IDbConnection db) : IInstallmentReadS
                 (string?)row.Note,
                 (Guid?)row.PaidByUserId,
                 (string?)row.PaidByName,
-                (string?)row.PaidBySignatureUrl));
+                (string?)row.PaidBySignatureUrl,
+                (string?)row.PaymentMethod));
         }
 
         return result;

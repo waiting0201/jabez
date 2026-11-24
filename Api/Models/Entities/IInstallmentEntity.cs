@@ -17,3 +17,13 @@ public interface IInstallmentEntity
     DateTime  CreatedAt     { get; set; }
     DateTime  UpdatedAt     { get; set; }
 }
+
+/// <summary>
+/// 分期撥款「款別」（現金 / 月結）—— 目前只有預支單的分期實作（2026-11-24）。
+/// 預支明細分現金與月結（支票），財務常把兩者拆成不同期撥付；其他 4 種分期沒有月結概念故不實作。
+/// <see cref="Services.InstallmentUpsertService"/> 以 <c>is</c> 判斷，未實作者忽略輸入值。
+/// </summary>
+public interface IInstallmentPaymentMethod
+{
+    string? PaymentMethod { get; set; }
+}

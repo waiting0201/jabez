@@ -156,7 +156,7 @@
 | POST | `/advance-requests/{id}/supplements` | **新增追加預支批次並直接送簽**（無草稿階段）。僅 `approved && !IsClosed && 無進行中追加`；multipart 帶 `advanceDate` / `reason` / `items` / `files`；明細寫入 `RoundNo = CurrentRoundNo + 1`，併入父單總額後重跑同一份 advance 簽核流程 |
 | PATCH | `/advance-requests/{id}/supplements/{roundNo}` | 編輯被退回的追加批次（僅 `returned` 且 `roundNo == CurrentRoundNo`）；只替換該批次明細，不送簽 |
 | DELETE | `/advance-requests/{id}/supplements/{roundNo}` | 放棄追加批次（僅 `returned` 且 `roundNo == CurrentRoundNo`）；刪該批次明細/Blob/簽核紀錄，父單還原為 `approved` |
-| PATCH | `/advance-requests/{id}/installments` | upsert 分期撥款（同 PaymentRequest 行為）；追加核准後 SUM 須等於**新**總額 |
+| PATCH | `/advance-requests/{id}/installments` | upsert 分期撥款（同 PaymentRequest 行為）；追加核准後 SUM 須等於**新**總額；每筆可帶 **`paymentMethod`**（`cash` / `check` / null，2026-11-24，大小寫不拘、其他值 400），不受已撥款鎖定、不參與加總驗證 |
 | PATCH | `/travel-requests/{id}/installments` | upsert 分期撥款（同 PaymentRequest 行為） |
 
 ## 預支沖銷申請

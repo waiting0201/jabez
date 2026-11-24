@@ -838,7 +838,7 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
 
         var advanceSql = $"""
             SELECT adv.Id, adv.RequestNo, proj.Code AS ProjectCode, proj.Name AS ProjectName,
-                   adv.ActivityName, adv.ActivityPeriod, adv.GrandTotal, adv.AdvanceDate, adv.AdvanceNeededDate,
+                   adv.ActivityName, adv.ActivityPeriod, adv.GrandTotal, adv.CheckTotal, adv.AdvanceDate, adv.AdvanceNeededDate,
                    adv.ApprovalStatus, adv.ApprovalItemId, adv.CurrentStepOrder, adv.CurrentRoundNo,
                    adv.EstimatedRefundDate, adv.RefundedAt,
                    adv.IsClosed, adv.ClosedAt, adv.RefundAmount, adv.RefundedAmount,
@@ -1808,7 +1808,8 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
                 (int)row.CurrentRoundNo,
                 (bool)row.IsClosed,
                 (DateTime?)row.ClosedAt,
-                (DateTime?)row.AdvanceNeededDate),
+                (DateTime?)row.AdvanceNeededDate,
+                CheckTotal: (decimal)row.CheckTotal),
             null, null,
             GetRecords("advance", (int)row.Id),
             GetDesignatedReviewers("advance", (int)row.Id),

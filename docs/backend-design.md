@@ -697,7 +697,7 @@ await strategy.ExecuteAsync(async () =>
 
 當同一段寫入邏輯被多個入口共用、且需與呼叫端的其他寫入**同交易**時，把「validate + diff + 套用變更」抽成 static helper，**內部只 `db.Add/Remove` 與改 tracked entity，不呼叫 `SaveChangesAsync`**，交易邊界交由呼叫端決定。
 
-範例：[InstallmentUpsertService.Apply](../Api/Services/InstallmentUpsertService.cs)（分期撥款）— 5 個獨立 `PATCH /{type}-requests/{id}/installments` endpoint 與 `ApprovalTaskHandler` 的「財務核准當下原子寫入撥款明細」共用同一份持久化邏輯。5 種子表透過 [IInstallmentEntity](../Api/Models/Entities/IInstallmentEntity.cs) 介面 + `Func<TEntity>` create factory 泛型化（FK 由 factory 設定，其餘欄位由 helper 填）。
+範例：[InstallmentUpsertService.Apply](../Api/Services/InstallmentUpsertService.cs)（分期撥款）— 5 個獨立 `PATCH /{type}-requests/{id}/installments` endpoint 與 `ApprovalTaskHandler` 的「財務核准當下原子寫入撥款明細」共用同一份持久化邏輯。5 種子表透過 [IInstallmentEntity](../Api/Models/Entities/IInstallmentEntity.cs) 介面 + `Func<TEntity>` create factory 泛型化（FK 由 factory 設定，其餘欄位由 helper 填）。**只有部分子表才有的欄位走額外的小介面**（例：預支分期款別 `IInstallmentPaymentMethod`，2026-11-24），helper 以 `if (ent is IXxx x)` 寫入、未實作者忽略輸入；讀取端 `InstallmentReadService` 對沒有該欄的表 `SELECT CAST(NULL AS …)`，讓 `InstallmentDto` 維持單一形狀。不要把這類欄位加進 `IInstallmentEntity`（會逼其他 4 張表跟著加無意義的欄位）。
 
 **5 種分期撥款父表**（[InstallmentParentTable](../Api/Services/Dapper/InstallmentReadService.cs)）：`PaymentRequest` / `AdvanceRequest` / `TravelRequest` / `TravelPaymentRequest` / **`WriteOffRecord`**。
 

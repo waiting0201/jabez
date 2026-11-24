@@ -62,6 +62,9 @@ public static class InstallmentUpsertService
                 ent.ExpectedDate  = input.ExpectedDate.Date;
                 ent.Amount        = input.Amount;
                 ent.Note          = input.Note;
+                // 款別不受已撥款鎖定：舊資料一律未分類，財務須能對已撥款列補標
+                if (ent is IInstallmentPaymentMethod pm)
+                    pm.PaymentMethod = InstallmentPaymentMethods.Normalize(input.PaymentMethod, input.InstallmentNo);
                 if (input.PaidAt.HasValue)
                 {
                     if (wasPaidNull)
@@ -93,6 +96,8 @@ public static class InstallmentUpsertService
                 ent.ExpectedDate  = input.ExpectedDate.Date;
                 ent.Amount        = input.Amount;
                 ent.Note          = input.Note;
+                if (ent is IInstallmentPaymentMethod pm)
+                    pm.PaymentMethod = InstallmentPaymentMethods.Normalize(input.PaymentMethod, input.InstallmentNo);
                 ent.CreatedAt     = nowUtc;
                 ent.UpdatedAt     = nowUtc;
                 if (input.PaidAt.HasValue)
