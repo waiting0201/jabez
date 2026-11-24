@@ -15,7 +15,7 @@ public sealed class ProjectReadService(IDbConnection db) : IProjectReadService
                        FROM ProjectPaymentSchedules s
                        WHERE s.ProjectId = p.Id), 0) AS ReceivedAmount,
                p.ContractAmount, p.BusinessAmount, p.RemainingAmount,
-               p.GoogleDriveUrl, p.CreatedAt
+               p.GoogleDriveUrl, p.CreatedAt, p.AccountingCloseDate
         FROM Projects p
         LEFT JOIN Departments d ON p.DepartmentId = d.Id
         """;
@@ -62,12 +62,18 @@ public sealed class ProjectReadService(IDbConnection db) : IProjectReadService
     /// 輕量 lookup：只投影 Id / Code / Name / Status / DepartmentId / DepartmentName。
     /// 本端點任何登入者都可呼叫（?all=true 還不過濾部門），故**不可**帶任何金額 / 雲端連結欄位。
     /// </summary>
-    public async Task<IEnumerable<ProjectLookupDto>> GetActiveAsync(ProjectAccessScope scope)
+    public async Task<IEnumerable<ProjectLookupDto>> GetActiveAsync(ProjectAccessScope scope, bool excludeAccountingClosed = false)
     {
         var (scopeClause, param) = BuildScopeFilter(scope);
         var where = string.IsNullOrEmpty(scopeClause)
             ? " WHERE p.Status = 'active'"
             : " WHERE p.Status = 'active' AND " + scopeClause;
+        if (excludeAccountingClosed)
+        {
+            // 關帳日當天仍可選，隔天起排除（與 ProjectAccountingClose.IsClosed 同一判準）
+            where += " AND " + ProjectAccountingClose.OpenSqlClause;
+            param.Add("AccountingToday", Clock.Now.Date);
+        }
         var sql = """
             SELECT p.Id, p.Code, p.Name, p.Status, p.DepartmentId, d.Name AS DepartmentName
             FROM Projects p
@@ -157,5 +163,6 @@ public sealed class ProjectReadService(IDbConnection db) : IProjectReadService
         (decimal?)row.RemainingAmount,
         (string?)row.GoogleDriveUrl,
         (DateTime)row.CreatedAt,
-        schedules ?? []);
+        schedules ?? [],
+        (DateTime?)row.AccountingCloseDate);
 }

@@ -163,6 +163,9 @@ public sealed class TravelRequestHandler(
             SortOrder = i.SortOrder > 0 ? i.SortOrder : idx,
         }).ToList();
 
+        // 關帳日隔天起不可再用此專案建帳（Common/ProjectAccountingClose）
+        await ProjectAccountingClose.EnsureOpenAsync(db, body.ProjectId);
+
         var today = Clock.Now;
 
         var travelRequest = new TravelRequest
@@ -358,6 +361,7 @@ public sealed class TravelRequestHandler(
         if (body.AdvanceNeededDate.HasValue) item.AdvanceNeededDate = body.AdvanceNeededDate;
         if (body.Purpose is not null)      item.Purpose     = body.Purpose;
         if (body.ProjectId.HasValue)       item.ProjectId   = body.ProjectId == 0 ? null : body.ProjectId;
+        if (body.ProjectId is > 0) await ProjectAccountingClose.EnsureOpenAsync(db, body.ProjectId);
 
         // 明細項目整組替換（提供 Items 時才更新）
         if (body.Items is { Length: > 0 })
@@ -603,6 +607,9 @@ public sealed class TravelRequestHandler(
 
         if (item.ApprovalStatus != "draft" && item.ApprovalStatus != "returned")
             throw AppException.BadRequest("Only draft or returned travel requests can be submitted.");
+
+        // 關帳日隔天起不可再送出此專案的帳務申請（已送簽中的單照常簽核）
+        await ProjectAccountingClose.EnsureOpenAsync(db, item.ProjectId);
 
         // 退場寬限期只為補申請切換前的活動；切換日當天起的假日出勤一律改提〈加班申請〉
         if (isHolidayTravel)

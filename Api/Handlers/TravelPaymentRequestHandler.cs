@@ -105,6 +105,7 @@ public sealed class TravelPaymentRequestHandler(
         var startDateStr = form["startDate"].ToString();
         var endDateStr   = form["endDate"].ToString();
         int? projectId   = int.TryParse(form["projectId"], out var pid) ? pid : null;
+        if (projectId is > 0) await ProjectAccountingClose.EnsureOpenAsync(db, projectId);
 
         if (string.IsNullOrWhiteSpace(destination))
             return new BadRequestObjectResult(ApiResponse.Fail("Destination is required."));
@@ -254,6 +255,7 @@ public sealed class TravelPaymentRequestHandler(
                 item.ProjectId = pid == 0 ? null : pid;
             else
                 item.ProjectId = null;
+            await ProjectAccountingClose.EnsureOpenAsync(db, item.ProjectId);
         }
 
         // 指定審核者整組替換
@@ -427,6 +429,9 @@ public sealed class TravelPaymentRequestHandler(
 
         if (item.ApprovalStatus != "draft" && item.ApprovalStatus != "returned")
             throw AppException.BadRequest("Only draft or returned travel payment requests can be submitted.");
+
+        // 關帳日隔天起不可再送出此專案的帳務申請（已送簽中的單照常簽核）
+        await ProjectAccountingClose.EnsureOpenAsync(db, item.ProjectId);
 
         // 送簽時才取號：單號日期＝送簽日，草稿不佔號。
         // 退回（returned）重送時已有單號，不可重新配號，否則已流通的單號會被改掉。

@@ -24,6 +24,9 @@ public class ProjectConfiguration : IEntityTypeConfiguration<Project>
         builder.Property(p => p.StartDate)
                .IsRequired();
 
+        builder.Property(p => p.AccountingCloseDate)
+               .HasColumnType("date");
+
         builder.Property(p => p.Status)
                .IsRequired()
                .HasMaxLength(20)

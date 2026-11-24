@@ -50,7 +50,8 @@ public sealed class ProjectHandler(AppDbContext db, IProjectReadService reader, 
         var scope = all
             ? new ProjectAccessScope(true, Array.Empty<int>())
             : await access.ResolveAsync(req.HttpContext.User);
-        var active = await reader.GetActiveAsync(scope);
+        // 不帶 all（帳務類申請表單）排除已過關帳日的專案；?all=true（加班 / 下班打卡工時佔比 / 工時總表）不受關帳影響
+        var active = await reader.GetActiveAsync(scope, excludeAccountingClosed: !all);
         return new OkObjectResult(ApiResponse.Ok(active));
     }
 
@@ -103,6 +104,7 @@ public sealed class ProjectHandler(AppDbContext db, IProjectReadService reader, 
             BusinessAmount  = body.BusinessAmount,
             RemainingAmount = body.RemainingAmount,
             GoogleDriveUrl  = body.GoogleDriveUrl,
+            AccountingCloseDate = body.AccountingCloseDate?.Date,
             CreatedAt       = Clock.Now,
         };
 
@@ -167,6 +169,9 @@ public sealed class ProjectHandler(AppDbContext db, IProjectReadService reader, 
             project.RemainingAmount = body.RemainingAmount;
         }
         if (body.GoogleDriveUrl is not null)  project.GoogleDriveUrl = body.GoogleDriveUrl;
+        // 關帳日：可改可清（延續案跨年切帳後改日期，帳務功能即恢復可選）
+        if (body.ClearAccountingCloseDate)            project.AccountingCloseDate = null;
+        else if (body.AccountingCloseDate.HasValue)   project.AccountingCloseDate = body.AccountingCloseDate.Value.Date;
 
         // 請款期別明細：全量 Replace（刪除舊資料後依 payload 重建）
         if (body.PaymentSchedules is not null)

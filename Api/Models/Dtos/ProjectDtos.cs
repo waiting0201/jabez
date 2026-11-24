@@ -15,7 +15,8 @@ public sealed record ProjectDto(
     decimal? RemainingAmount,       // 剩餘金額（系統導入時的契約剩餘預算，非必填）
     string?  GoogleDriveUrl,
     DateTime CreatedAt,
-    IReadOnlyList<ProjectPaymentScheduleDto> PaymentSchedules);
+    IReadOnlyList<ProjectPaymentScheduleDto> PaymentSchedules,
+    DateTime? AccountingCloseDate = null);  // 關帳日：隔天起帳務類申請不可選（見 Common/ProjectAccountingClose）
 
 /// <summary>
 /// GET /projects/active 的輕量回應（下拉用）。刻意不含 ContractAmount / BusinessAmount / ReceivedAmount /
@@ -62,7 +63,8 @@ public sealed record CreateProjectRequest(
     decimal? BusinessAmount   = null,
     decimal? RemainingAmount  = null,
     string?  GoogleDriveUrl   = null,
-    IReadOnlyList<ProjectPaymentScheduleRequest>? PaymentSchedules = null);
+    IReadOnlyList<ProjectPaymentScheduleRequest>? PaymentSchedules = null,
+    DateTime? AccountingCloseDate = null);
 
 public sealed record UpdateProjectRequest(
     string?   Code,
@@ -75,4 +77,6 @@ public sealed record UpdateProjectRequest(
     decimal?  BusinessAmount,
     decimal?  RemainingAmount,
     string?   GoogleDriveUrl,
-    IReadOnlyList<ProjectPaymentScheduleRequest>? PaymentSchedules);
+    IReadOnlyList<ProjectPaymentScheduleRequest>? PaymentSchedules,
+    DateTime? AccountingCloseDate      = null,   // null＝不變更
+    bool      ClearAccountingCloseDate = false); // true＝清空關帳日（帳務功能恢復可選）

@@ -146,6 +146,16 @@
                   <div class="text-danger small mt-1">剩餘金額不可為負數。</div>
                 }
               </div>
+              <div class="col-12 col-md-6">
+                <label class="form-label fw-500 flex items-center gap-2">
+                  關帳日
+                  @if (closedNow()) { <span class="badge bg-secondary">已關帳</span> }
+                </label>
+                <input type="date" class="form-control" formControlName="accountingCloseDate">
+                <div class="text-muted small mt-1">
+                  選填。關帳日隔天起，請款 / 預審 / 預支 / 預支沖銷 / 出差 / 出差請款 / 出差沖銷皆無法看到及選擇此專案；加班與下班打卡工時仍可選。延續案切帳後可改日期或清空，帳務功能即恢復。
+                </div>
+              </div>
             </div>
 
             <div class="mb-0">

@@ -54,13 +54,16 @@ public sealed class WriteOffRequestHandler(
         var userId = await GetUserIdAsync(req);
         var user = await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == userId);
         bool isSuperAdmin = user?.IsSuperAdmin == true;
+        var today = Clock.Now.Date;
 
         var heads = await db.AdvanceRequests
             .AsNoTracking()
             .Include(a => a.Project)
             .Where(a => a.ApprovalStatus == "approved"
                      && !a.IsClosed
-                     && (isSuperAdmin || a.SubmittedById == userId))
+                     && (isSuperAdmin || a.SubmittedById == userId)
+                     // 專案已過關帳日（關帳日當天仍可）→ 不列入可沖銷清單（Common/ProjectAccountingClose）
+                     && (a.Project == null || a.Project.AccountingCloseDate == null || a.Project.AccountingCloseDate >= today))
             .OrderByDescending(a => a.CreatedAt)
             .Select(a => new
             {
@@ -232,6 +235,7 @@ public sealed class WriteOffRequestHandler(
             ?? throw AppException.NotFound("AdvanceRequest");
 
         EnsureAdvanceWriteOffable(ar);
+        await ProjectAccountingClose.EnsureOpenAsync(db, ar.ProjectId);   // 專案取自母預支單
 
         // 解析沖銷明細（可為 0 列：純匯回預支餘額時不填明細，於下方繳回驗證後檢查「至少擇一」）
         if (string.IsNullOrWhiteSpace(itemsJson))
@@ -873,6 +877,8 @@ public sealed class WriteOffRequestHandler(
         var ar = await db.AdvanceRequests.AsNoTracking().FirstOrDefaultAsync(x => x.Id == advanceRequestId)
                  ?? throw AppException.NotFound("AdvanceRequest");
         EnsureAdvanceWriteOffable(ar);
+        // 母預支單的專案已過關帳日 → 不可再修改 / 送出沖銷（Common/ProjectAccountingClose）
+        await ProjectAccountingClose.EnsureOpenAsync(db, ar.ProjectId);
     }
 
     /// <summary>從 JWT Bearer Token 取出 sub claim 作為使用者 GUID</summary>

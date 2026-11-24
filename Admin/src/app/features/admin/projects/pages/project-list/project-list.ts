@@ -5,7 +5,7 @@ import {DatePipe, DecimalPipe} from '@angular/common';
 import {toSignal, toObservable} from '@angular/core/rxjs-interop';
 import {switchMap} from 'rxjs/operators';
 import {ProjectService} from '../../services/project.service';
-import {Project, PROJECT_STATUS_LABELS, PROJECT_STATUS_CLASSES} from '../../models/project.model';
+import {isAccountingClosed, Project, PROJECT_STATUS_LABELS, PROJECT_STATUS_CLASSES} from '../../models/project.model';
 import {PagedResult} from '../../../../../shared/models/paged-result.model';
 import {DepartmentService} from '../../../departments/services/department.service';
 import {AuthService} from '../../../../../core/auth/services/auth.service';
@@ -54,6 +54,7 @@ export class ProjectList {
 
   readonly statusLabel = PROJECT_STATUS_LABELS;
   readonly statusClass = PROJECT_STATUS_CLASSES;
+  readonly isAccountingClosed = isAccountingClosed;
 
   doSearch() {
     this.searchTerm.set(this.searchInput);
