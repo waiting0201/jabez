@@ -94,6 +94,13 @@ export interface AttendanceRecordRow {
   /** overtimeHours 是否為加班單的結算時數（tooltip 用） */
   isOvertimeHoursSettled: boolean;
   /**
+   * 當日加班單狀態（後端 overtimeRequestStatus）：approved / pending（簽核中・退回修改中）/ null（沒有加班單）。
+   * 加班時數只認已核准的加班單，主管補填的加班起訖不會自動成為加班
+   */
+  overtimeRequestStatus: string | null;
+  /** 有加班起訖但不計時數的提示文字（無則空字串），畫面 badge 與 Excel 備註共用 */
+  overtimeUncountedLabel: string;
+  /**
    * 加班超時（加班打卡時數 > 申請時數）的認定資訊；未超時為 null。
    * decision 為 null＝待人事處理（紅字）；recognized / rejected＝已處理（綠字）。數字一律讀後端、前端不重算
    */
@@ -367,6 +374,8 @@ export class AttendanceReport implements OnInit {
             overtimeExcess: this.mapOvertimeExcess(r),
             overtimeHours: r.overtimeHours != null ? String(Number(r.overtimeHours)) : '',
             isOvertimeHoursSettled: !!r.isOvertimeHoursSettled,
+            overtimeRequestStatus: r.overtimeRequestStatus ?? null,
+            overtimeUncountedLabel: this.overtimeUncountedLabel(r),
             overtimeStartTime: r.overtimeStartTime ? new Date(r.overtimeStartTime).toLocaleTimeString('zh-TW', {hour: '2-digit', minute: '2-digit'}) : '',
             overtimeEndTime: r.overtimeEndTime ? new Date(r.overtimeEndTime).toLocaleTimeString('zh-TW', {hour: '2-digit', minute: '2-digit'}) : '',
             clockInLatitude: r.clockInLatitude ?? null,
@@ -534,6 +543,27 @@ export class AttendanceReport implements OnInit {
       tooltip,
     };
   }
+
+  /**
+   * 有加班起訖、但當日沒有已核准加班單 → 這段加班不計入加班費 / 補休（加班補休時數總表同樣不列）。
+   * 常見情境是主管在出缺勤補填加班時間，卻沒有人提加班申請。畫面 badge 與 Excel 備註共用
+   */
+  overtimeUncountedLabel(r: any): string {
+    if (!r.overtimeStartTime && !r.overtimeEndTime) return '';
+    if (r.overtimeRequestStatus === 'approved') return '';
+    return r.overtimeRequestStatus === 'pending' ? '加班單簽核中，尚未計入' : '無加班單，不計時數';
+  }
+
+  /** 編輯 Modal：填了加班起訖、但當日沒有已核准加班單時提示 */
+  readonly editOvertimeUncounted = computed(() => {
+    const rec = this.editingRecord();
+    const f = this.editForm();
+    if (!rec || (!f.overtimeStart && !f.overtimeEnd)) return '';
+    if (rec.overtimeRequestStatus === 'approved') return '';
+    return rec.overtimeRequestStatus === 'pending'
+      ? '此日的加班單尚在簽核中，核准前這段加班不計時數。'
+      : '此日沒有加班申請單，補填的加班時間不會計入加班費 / 補休（加班補休時數總表也不會列入）。請同仁提出加班申請。';
+  });
 
   /** 加班超時的文字（badge 與 Excel 備註共用） */
   overtimeExcessLabel(ex: OvertimeExcess): string {
@@ -750,6 +780,7 @@ export class AttendanceReport implements OnInit {
                 ? `${this.overtimeExcessLabel(ex)}（確認主管：${ex.supervisor}；原因：${ex.reason}）`
                 : `${this.overtimeExcessLabel(ex)}（待認定）`];
             })(),
+            this.overtimeUncountedLabel(r),
             r.isLate ? '遲到' : '',
             r.lateReason ? `遲到原因：${r.lateReason}` : '',
             r.isEarlyLeave ? '早退' : '',

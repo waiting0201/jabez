@@ -1800,6 +1800,8 @@ fetch(`/assets/fonts/NotoSansTC-Regular.subset.ttf?v=${FONT_SUBSET_VERSION}`)
 
 > **「加班時數」欄（2026-11）**：接在加班結束之後，統表與個人模式皆有（統表因此為 10 欄、`min-w-[1120px]`），Excel 同步多一欄。
 > 數字讀後端 `overtimeHours`、前端不重算；tooltip 依 `isOvertimeHoursSettled` 說明是「加班單結算時數」或「打卡起訖時數」。
+> 有加班起訖但 `overtimeRequestStatus !== 'approved'` 時，該格下方掛 badge（null 紅「無加班單，不計時數」／pending 黃「加班單簽核中，尚未計入」），
+> 編輯 Modal 填了加班起訖時同條件顯示 `alert-warning`（只提示不擋存）；文字由 `overtimeUncountedLabel()` 產生，畫面與 Excel 備註共用。
 
 > **個人出缺勤（2026-11）共用同一個元件**：路由 `account/my-attendance` 以 `data: {selfMode: true}` 進入 `AttendanceReport`，
 > 資料改走 `GET /me/attendances`，並以 `@if (!selfMode)` 收掉員工下拉 / 姓名欄 / 操作欄 / 匯出（8 欄、`min-w-[940px]`，空列 colspan 讀 `columnCount`）。
