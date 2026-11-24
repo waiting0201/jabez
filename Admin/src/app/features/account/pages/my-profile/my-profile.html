@@ -106,6 +106,40 @@
             </div>
           }
 
+          <!-- 特休卡：天數依到職年資、已使用（含送簽中）每年 1/1 重新計算（後端 AnnualLeaveService，與請假表單同一公式） -->
+          @if (annualLeave(); as q) {
+            <div class="card border-0 shadow-sm mb-4">
+              <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600">
+                <svg class="sa-icon" style="stroke: currentColor"><use href="/assets/icons/sprite.svg#calendar"></use></svg>
+                特休假
+                @if (q.year) { <span class="text-xs text-muted fw-normal">{{ q.year }} 年度</span> }
+              </div>
+              <div class="card-body">
+                @if (q.message) {
+                  <div class="text-muted small">{{ q.message }}，無法計算特休天數。</div>
+                } @else {
+                  <div class="row g-3">
+                    <div class="col-12 col-md-4">
+                      <div class="form-label fw-500 text-muted small">尚可使用</div>
+                      <div class="fs-4 fw-600 text-primary">{{ q.availableDays | number:'1.0-1' }} <span class="fs-6 fw-normal text-muted">天</span></div>
+                    </div>
+                    <div class="col-6 col-md-4">
+                      <div class="form-label fw-500 text-muted small">本年度天數</div>
+                      <div>{{ q.totalDays }} 天</div>
+                    </div>
+                    <div class="col-6 col-md-4">
+                      <div class="form-label fw-500 text-muted small">已使用（含送簽中）</div>
+                      <div>{{ q.usedDays | number:'1.0-1' }} 天</div>
+                    </div>
+                  </div>
+                  <div class="text-xs text-muted mt-3">
+                    特休天數依到職年資計算（目前年資 {{ q.seniorityYears }} 年 {{ q.seniorityMonths }} 個月@if (q.parentalLeaveExcludedDays) {，已扣除育嬰留停 {{ q.parentalLeaveExcludedDays }} 天}），已使用天數每年 1/1 重新計算。
+                  </div>
+                }
+              </div>
+            </div>
+          }
+
           <!-- 員工資訊卡 -->
           <div class="card border-0 shadow-sm mb-4">
             <div class="card-header bg-transparent border-bottom flex items-center gap-2 fw-600">

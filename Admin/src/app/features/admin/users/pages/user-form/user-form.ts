@@ -12,6 +12,7 @@ import {HttpClient} from '@angular/common/http';
 import {ToastrService} from 'ngx-toastr';
 import {AuthService} from '../../../../../core/auth/services/auth.service';
 import {UserService} from '../../services/user.service';
+import {AnnualQuota} from '../../../leave-requests/models/leave-request.model';
 import {EmployeeProfileService} from '../../services/employee-profile.service';
 import {HrProfilePdfService} from '../../services/hr-profile-pdf.service';
 import {ImageCompressionService} from '../../../../../shared/services/image-compression.service';
@@ -81,6 +82,8 @@ export class UserForm implements OnInit {
   isEdit       = false;
   userId       = '';
   errorMsg          = signal('');
+  /** 特休（本年度天數 / 已使用），顯示於「入職日」標籤旁；僅編輯模式載入，失敗維持 null 不顯示 */
+  annualLeave       = signal<AnnualQuota | null>(null);
   laborInsurance    = signal<number | null>(null);
   healthInsurance   = signal<number | null>(null);
 
@@ -274,6 +277,10 @@ export class UserForm implements OnInit {
     this.userId = this.route.snapshot.paramMap.get('id') ?? '';
     if (this.userId) {
       this.isEdit = true;
+      this.userService.getAnnualLeave(this.userId).subscribe({
+        next: q => this.annualLeave.set(q),
+        error: () => this.annualLeave.set(null),
+      });
       this.userService.getById(this.userId).subscribe(user => {
         if (!user) return;
         this._currentUser = user;

@@ -103,6 +103,30 @@ public sealed class UserHandler(AppDbContext db, IUserReadService reader, IEmail
         return new OkObjectResult(ApiResponse.Ok(user));
     }
 
+    // GET /api/users/{id}/annual-leave → 員工管理「入職日」旁的特休（本年度天數 / 已使用），權限同 GET /users/{id}（users:read）
+    // 計算與個人資訊頁、請假表單、補休時數總表同一支 AnnualLeaveService
+    public async Task<IActionResult> GetAnnualLeaveAsync(HttpRequest req, string id)
+    {
+        if (!Guid.TryParse(id, out var guid))
+            return new BadRequestObjectResult(ApiResponse.Fail("Invalid user ID format."));
+
+        if (!await db.Users.AnyAsync(u => u.Id == guid && !u.IsSuperAdmin))
+            return new NotFoundObjectResult(ApiResponse.Fail("User not found.", $"No user with id '{id}'."));
+
+        var b = await AnnualLeaveService.GetAsync(db, guid);
+        return new OkObjectResult(ApiResponse.Ok(new
+        {
+            year = b.Year,
+            totalDays = b.TotalDays,
+            usedDays = b.UsedDays,
+            availableDays = b.AvailableDays,
+            seniorityYears = b.SeniorityYears,
+            seniorityMonths = b.SeniorityMonths,
+            parentalLeaveExcludedDays = b.ParentalLeaveExcludedDays,
+            message = b.HasHireDate ? null : "未設定到職日",
+        }));
+    }
+
     private const string SignatureContainer        = "signatures";
     private const string AvatarContainer           = "avatars";
     private const string IndigenousProofContainer  = "indigenous-proofs";

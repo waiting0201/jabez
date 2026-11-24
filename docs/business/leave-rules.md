@@ -78,6 +78,19 @@
 > 計算收斂於 [Api/Common/SeniorityHelper.cs](../../Api/Common/SeniorityHelper.cs)，`GetAnnualQuotaAsync` 與 `ValidateLeaveQuotaAsync` 兩處必須帶入相同的扣除天數，否則查得到的額度與實際能送的會不一致。
 > API 端點：`GET /leave-requests/annual-quota`（回應含 `parentalLeaveExcludedDays`，前端在年假提示區塊顯示「年資已扣除育嬰留停 N 天」）。
 
+### 特休顯示（2026-11-24）
+
+「本年度天數 / 已使用」的計算收斂於 [Api/Services/AnnualLeaveService.cs](../../Api/Services/AnnualLeaveService.cs)：**天數依到職年資**（上表）、**已使用＝該曆年（以假單起始日判定）送簽中 + 已核准的年假時數 ÷ 8，每年 1/1 重新計算**。四個顯示點共用：
+
+| 顯示點 | 端點 | 權限 |
+|---|---|---|
+| 請假表單年假提示 | `GET /leave-requests/annual-quota` | `leave-requests:read` |
+| 個人資訊頁「特休假」卡（員工基本資料頁籤，補休卡下方） | `GET /me/annual-leave`（同一支、對象恆為本人） | 登入即可 |
+| 員工管理「入職日」標籤旁（僅編輯模式） | `GET /users/{id}/annual-leave` | `users:read` |
+| 加班補休時數總表「特休天數 / 已使用 / 剩餘」三欄 | `GET /reports/compensatory`（`annualYear` / `annualTotalDays` / `annualUsedDays`） | 同報表 |
+
+報表以**查詢迄日所屬曆年**為特休年度（過去年度的年資算到該年 12/31，本年度算到今日），只有特休、沒有補休活動的員工也會列出。送出擋件（`ValidateLeaveQuotaAsync`）的育嬰留停扣除天數亦走同一支 `GetParentalExcludedDaysAsync`。
+
 ## 喪假親屬關係與天數
 
 | 天數 | 親屬關係 |
@@ -135,6 +148,7 @@
     （個人排班 → 國定假日 → 舊制行事曆；切換日前國定假日收斂回休假日），以 `SplitCompensatoryTiers(hours, dayType, isActivityAssignee)` 切分 ——
     與加班費共用同一份級距表但**不截斷至計酬上限**（補休本來就沒有上限）：上班日第 3 小時起一律 ×1.67、休假日 / 例假日第 9 小時起一律 ×2.67；
     **國定假日未排活動日者前 8 小時屬國定假日出勤加倍工資、不列入級距**（第 9 小時起套上班日級距），故該類加班的「期間合計」會大於三級距加總。
+  - **特休三欄**（2026-11-24）：特休天數 / 已使用（含送簽中）/ 剩餘，年度＝迄日所屬曆年，見 [§特休顯示](#特休顯示2026-11-24)。
   - **待補休**：四週彈性工時切換後以逐筆 lot 為準（`CompensatoryLotService.GetBalanceAsync`，同請假表單），切換日為 null 時走聚合版 `CompensatoryBalance.Compute`。
 
 ### 逐筆 lot 制（四週彈性工時，2026-09 實作）

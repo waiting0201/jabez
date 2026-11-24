@@ -318,7 +318,13 @@ export interface WorkingDaysResult {
   workingDays: number;        // 實際請假天數
 }
 
+/**
+ * 特休（年假）額度：天數依到職年資、已使用（含送簽中）每年 1/1 重新計算。
+ * 來源 GET /leave-requests/annual-quota、/me/annual-leave、/users/{id}/annual-leave（後端 AnnualLeaveService 單一真相）
+ */
 export interface AnnualQuota {
+  /** 已使用天數所屬曆年 */
+  year?: number;
   totalDays: number;
   usedDays: number;
   availableDays: number;

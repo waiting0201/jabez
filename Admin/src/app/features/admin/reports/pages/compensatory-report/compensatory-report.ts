@@ -26,6 +26,12 @@ export interface CompensatoryReportRow {
   availableHours: number;
   /** 期間取得換算金額；無 reports-overtime:amount 者後端回 null */
   amount: number | null;
+  /** 特休所屬年度＝查詢迄日所屬曆年 */
+  annualYear: number;
+  /** 特休：該年度天數（依到職年資） */
+  annualTotalDays: number;
+  /** 特休：該年度已使用（送簽中 + 已核准） */
+  annualUsedDays: number;
 }
 
 @Component({
@@ -74,8 +80,12 @@ export class CompensatoryReport implements OnInit {
     return this.employees().filter(r => !emp || r.employeeId === emp);
   });
 
+  /** 特休欄的年度（後端以迄日所屬曆年計，全部列相同）；無資料時退回迄日年份 */
+  annualYear = computed(() => this.rows()[0]?.annualYear ?? (Number(this.dateTo().slice(0, 4)) || new Date().getFullYear()));
+
   totals = computed(() => {
-    const t = {tier134Hours: 0, tier167Hours: 0, tier267Hours: 0, periodEarnedHours: 0, periodUsedHours: 0, availableHours: 0, amount: 0};
+    const t = {tier134Hours: 0, tier167Hours: 0, tier267Hours: 0, periodEarnedHours: 0, periodUsedHours: 0, availableHours: 0, amount: 0,
+      annualTotalDays: 0, annualUsedDays: 0};
     for (const r of this.filteredRows()) {
       t.tier134Hours += r.tier134Hours;
       t.tier167Hours += r.tier167Hours;
@@ -84,6 +94,8 @@ export class CompensatoryReport implements OnInit {
       t.periodUsedHours += r.periodUsedHours;
       t.availableHours += r.availableHours;
       t.amount += r.amount ?? 0;
+      t.annualTotalDays += r.annualTotalDays;
+      t.annualUsedDays += r.annualUsedDays;
     }
     return t;
   });
@@ -131,6 +143,9 @@ export class CompensatoryReport implements OnInit {
           availableHours: Number(r.availableHours ?? 0),
           // ★ 受 reports-overtime:amount 管制；exportExcel() 是另一份獨立欄位表，動到本欄時兩處一起改
           amount: r.amount ?? null,
+          annualYear: Number(r.annualYear ?? 0),
+          annualTotalDays: Number(r.annualTotalDays ?? 0),
+          annualUsedDays: Number(r.annualUsedDays ?? 0),
         })));
         // 重新查詢後原選項可能已不存在
         if (this.selectedDepartmentId() && !this.departments().some(d => d.id === this.selectedDepartmentId())) {
@@ -160,6 +175,9 @@ export class CompensatoryReport implements OnInit {
       '待補休(截至今日)': r.availableHours,
       // 條件式 spread：無權者整欄不存在（填空字串會建出一整欄空白，被讀成 0）
       ...(this.canSeeAmount ? {'金額': r.amount ?? ''} : {}),
+      [`${r.annualYear}特休天數`]: r.annualTotalDays,
+      [`${r.annualYear}特休已使用`]: r.annualUsedDays,
+      [`${r.annualYear}特休剩餘`]: Math.max(0, r.annualTotalDays - r.annualUsedDays),
     }));
     const ws = XLSX.utils.json_to_sheet(wsData);
     const wb = XLSX.utils.book_new();

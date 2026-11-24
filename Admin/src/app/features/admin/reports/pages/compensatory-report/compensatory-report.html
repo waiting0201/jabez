@@ -43,13 +43,13 @@
           <button class="btn btn-primary" (click)="search()">篩選</button>
         </div>
         <div class="text-xs text-muted mt-2">
-          級距與期間合計只計期間內已核准、補償方式為「補休」的加班（國定假日前 8 小時屬加倍工資、不列入級距）；「待補休」為截至今日的剩餘時數（含期初，已扣除送簽中與已核准的補休假）。
+          級距與期間合計只計期間內已核准、補償方式為「補休」的加班（國定假日前 8 小時屬加倍工資、不列入級距）；「待補休」為截至今日的剩餘時數（含期初，已扣除送簽中與已核准的補休假）。特休以迄日所屬年度計：天數依到職年資，已使用含送簽中、每年 1/1 重新計算。
         </div>
       </div>
 
       <!-- Table -->
       <div class="table-responsive">
-        <table class="table table-hover table-sticky-first mb-0 min-w-[960px]">
+        <table class="table table-hover table-sticky-first mb-0 min-w-[1200px]">
           <thead class="table-light">
             <tr>
               <th>員工姓名</th>
@@ -61,6 +61,9 @@
               <th class="text-end">期間已休</th>
               <th class="text-end">待補休</th>
               @if (canSeeAmount) { <th class="text-end">金額</th> }
+              <th class="text-end">特休天數<div class="text-xs text-muted fw-normal">{{ annualYear() }} 年</div></th>
+              <th class="text-end">特休已使用<div class="text-xs text-muted fw-normal">含送簽中</div></th>
+              <th class="text-end">特休剩餘</th>
             </tr>
           </thead>
           <tbody>
@@ -83,10 +86,13 @@
                     }
                   </td>
                 }
+                <td class="text-end">{{ row.annualTotalDays }}</td>
+                <td class="text-end">{{ row.annualUsedDays | number:'1.0-1' }}</td>
+                <td class="text-end fw-500 text-primary">{{ (row.annualTotalDays - row.annualUsedDays) > 0 ? (row.annualTotalDays - row.annualUsedDays | number:'1.0-1') : 0 }}</td>
               </tr>
             } @empty {
               <tr>
-                <td [attr.colspan]="canSeeAmount ? 9 : 8" class="text-center text-muted py-4">
+                <td [attr.colspan]="canSeeAmount ? 12 : 11" class="text-center text-muted py-4">
                   @if (loading()) { 載入中... } @else { 尚無資料 }
                 </td>
               </tr>
@@ -104,6 +110,9 @@
                 <td class="text-end">{{ totals().periodUsedHours | number:'1.0-1' }}</td>
                 <td class="text-end">{{ totals().availableHours | number:'1.0-1' }}</td>
                 @if (canSeeAmount) { <td class="text-end">{{ totals().amount | number:'1.0-0' }}</td> }
+                <td class="text-end">{{ totals().annualTotalDays }}</td>
+                <td class="text-end">{{ totals().annualUsedDays | number:'1.0-1' }}</td>
+                <td></td>
               </tr>
             </tfoot>
           }
