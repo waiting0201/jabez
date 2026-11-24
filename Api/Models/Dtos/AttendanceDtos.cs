@@ -82,7 +82,13 @@ public sealed record AttendanceRecordDto(
     /// </summary>
     decimal?  OvertimeHours = null,
     /// <summary><see cref="OvertimeHours"/> 是否為加班單的結算時數（false＝僅為打卡起訖時數）</summary>
-    bool      IsOvertimeHoursSettled = false);
+    bool      IsOvertimeHoursSettled = false,
+    /// <summary>
+    /// 當日加班單狀態（2026-11）：approved＝有已核准加班單（綁定或同人同日）；pending＝只有簽核中 / 退回修改中的單；null＝沒有加班單。
+    /// 加班時數只認已核准的加班單 —— 有加班起訖但不是 approved 時，出缺勤清單提示「不計時數」（主管補填的加班起訖不會自動成為加班）。
+    /// 虛擬列（請假 / 缺勤 / 颱風假）恆為 null
+    /// </summary>
+    string?   OvertimeRequestStatus = null);
 
 /// <summary>
 /// 加班超時認定（2026-11）：新制已核准加班單的加班打卡時數超過申請時數時帶回。

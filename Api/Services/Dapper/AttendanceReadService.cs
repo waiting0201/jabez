@@ -30,11 +30,22 @@ public sealed class AttendanceReadService(IDbConnection db) : IAttendanceReadSer
                otr.ApprovalStatus AS OtStatus, otr.EstimatedHours AS OtEstimatedHours, otr.SettledHours AS OtSettledHours,
                otr.ExtraRecognition AS OtRecognition, otr.RecognizedHours AS OtRecognizedHours,
                otr.RecognitionSupervisor AS OtRecognitionSupervisor, otr.RecognitionReason AS OtRecognitionReason,
-               otr.RecognitionHandledByName AS OtRecognitionHandledByName, otr.RecognitionHandledAt AS OtRecognitionHandledAt
+               otr.RecognitionHandledByName AS OtRecognitionHandledByName, otr.RecognitionHandledAt AS OtRecognitionHandledAt,
+               dayOt.ApprovalStatus AS DayOtStatus
         FROM AttendanceRecords a
         INNER JOIN Users u ON a.UserId = u.Id
         LEFT JOIN Users adj ON a.LastAdjustedById = adj.Id
         LEFT JOIN OvertimeRequests otr ON a.OvertimeRequestId = otr.Id
+        -- 當日加班單狀態（2026-11，「有加班打卡但無已核准加班單＝不計時數」提示用）：
+        -- 未綁定時比照 OvertimeSettlementService.FindForRecordAsync 以同人同日找；已核准優先
+        OUTER APPLY (
+            SELECT TOP 1 o.ApprovalStatus
+            FROM OvertimeRequests o
+            WHERE o.EmployeeId = a.UserId
+              AND o.OvertimeDate >= a.RecordDate AND o.OvertimeDate < DATEADD(day, 1, a.RecordDate)
+              AND o.ApprovalStatus IN ('approved', 'pending', 'returned')
+            ORDER BY CASE o.ApprovalStatus WHEN 'approved' THEN 0 ELSE 1 END
+        ) dayOt
         """;
 
     /// <summary>
@@ -291,7 +302,8 @@ public sealed class AttendanceReadService(IDbConnection db) : IAttendanceReadSer
             OvertimeHours:          MapOvertimeHours((DateTime?)row.OvertimeStartTime, (DateTime?)row.OvertimeEndTime,
                                                      (string?)row.OtStatus, (decimal?)row.OtSettledHours).Hours,
             IsOvertimeHoursSettled: MapOvertimeHours((DateTime?)row.OvertimeStartTime, (DateTime?)row.OvertimeEndTime,
-                                                     (string?)row.OtStatus, (decimal?)row.OtSettledHours).Settled);
+                                                     (string?)row.OtStatus, (decimal?)row.OtSettledHours).Settled,
+            OvertimeRequestStatus:  MapOvertimeRequestStatus((string?)row.OtStatus, (string?)row.DayOtStatus));
             // RowKind / ExpectedStart / ExpectedEnd 由 AttendanceLeaveMerger 事後以 with { } 補上
 
     /// <summary>
@@ -306,6 +318,18 @@ public sealed class AttendanceReadService(IDbConnection db) : IAttendanceReadSer
         if (otStatus == "approved" && otSettledHours is { } settled)
             return (settled, true);
         return (OvertimeSettlement.PunchedHours(start, end), false);
+    }
+
+    /// <summary>
+    /// 當日加班單狀態（2026-11）：綁定的加班單已核准、或同人同日有已核准單 → approved；
+    /// 只有簽核中 / 退回修改中的單 → pending；都沒有 → null。
+    /// 加班時數（加班費 / 補休 / 補休總表）只認已核准的加班單，故有加班起訖而非 approved 時前端提示「不計時數」。
+    /// </summary>
+    private static string? MapOvertimeRequestStatus(string? linkedStatus, string? dayStatus)
+    {
+        if (linkedStatus == "approved" || dayStatus == "approved") return "approved";
+        if (linkedStatus is "pending" or "returned" || dayStatus is "pending" or "returned") return "pending";
+        return null;
     }
 
     /// <summary>

@@ -228,6 +228,13 @@
                       ? '加班單結算時數（依加班打卡結算，不超過核准時數）'
                       : '加班打卡起訖的時數（無已結算的加班單）'">
                   @if (row.overtimeHours) { {{ row.overtimeHours }} 小時 }
+                  @if (row.overtimeUncountedLabel) {
+                    <div>
+                      <span class="badge"
+                            [class]="row.overtimeRequestStatus === 'pending' ? 'bg-warning-subtle text-warning-emphasis' : 'bg-danger-subtle text-danger'"
+                            title="加班時數只認已核准的加班申請單；補填的加班時間不會計入加班費 / 補休">{{ row.overtimeUncountedLabel }}</span>
+                    </div>
+                  }
                 </td>
                 @if (!selfMode) {
                   <td class="text-right" style="white-space: nowrap">
@@ -334,6 +341,10 @@
                      (ngModelChange)="editForm.set({...editForm(), overtimeEnd: $event})">
             </div>
           </div>
+
+          @if (editOvertimeUncounted(); as msg) {
+            <div class="alert alert-warning mt-3 mb-0 small"><div>{{ msg }}</div></div>
+          }
 
           <div class="mt-4">
             <label class="form-label">
