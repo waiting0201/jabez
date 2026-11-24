@@ -86,7 +86,10 @@ public sealed record AdvanceRequestDto(
     DateTime?                 OverspendLastPaidAt    = null,
     IEnumerable<AdvanceLinkedPreReviewDto>? PreReviews = null,
     decimal?                  ActualAmount           = null,  // 結案寫回的實際金額（未結案 null）
-    AdvanceSettlementLedgerDto? SettlementLedger     = null); // 金額歷程（僅單筆詳情帶入，列表為 null）
+    AdvanceSettlementLedgerDto? SettlementLedger     = null,  // 金額歷程（僅單筆詳情帶入，列表為 null）
+    // 撥款明細的應撥總額 ＝ 現金預支 ＋ 月結應撥（有已核准沖銷即改用沖銷月結實際金額，見 Common/AdvancePayable；僅單筆詳情帶入）
+    decimal?                  PayableTotal           = null,
+    decimal?                  PayableCheckTotal      = null);
 
 /// <summary>預支單關聯的預審單摘要（RoundNo = 第幾次預支加選的；1 = 原始預支）。</summary>
 public sealed record AdvanceLinkedPreReviewDto(
@@ -222,7 +225,9 @@ public sealed record AdvanceTaskDetailDto(
     IEnumerable<AdvanceLinkedPreReviewDto>? PreReviews = null,
     decimal?  ActualAmount = null,
     AdvanceSettlementLedgerDto? SettlementLedger = null,
-    decimal   CheckTotal = 0m)   // 月結（支票）合計；現金 ＝ GrandTotal − CheckTotal（撥款明細款別對照用）
+    decimal   CheckTotal = 0m,   // 月結（支票）合計；現金 ＝ GrandTotal − CheckTotal（撥款明細款別對照用）
+    decimal?  PayableTotal = null,       // 撥款明細的應撥總額（見 Common/AdvancePayable）
+    decimal?  PayableCheckTotal = null)  // 其中的月結應撥（撥款明細款別對照用）
 {
     public AdvanceRequestItemDto[] Items { get; init; } = Items ?? Array.Empty<AdvanceRequestItemDto>();
 }

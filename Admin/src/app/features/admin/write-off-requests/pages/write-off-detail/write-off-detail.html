@@ -130,8 +130,9 @@
     <app-installments-table
       [installmentsInput]="r.advanceInstallments"
       [paymentStatus]="r.advancePaymentStatus"
-      [totalAmount]="r.advanceGrandTotal"
-      [checkTotal]="r.advanceCheckTotal ?? 0" />
+      [totalAmount]="r.advancePayableTotal ?? r.advanceGrandTotal"
+      [budgetTotal]="r.advanceGrandTotal"
+      [checkTotal]="r.advancePayableCheckTotal ?? r.advanceCheckTotal ?? 0" />
 
     <!-- 預支費用明細（唯讀對照）+ 前次沖銷紀錄 -->
     @if (r.advanceItems && r.advanceItems.length > 0) {

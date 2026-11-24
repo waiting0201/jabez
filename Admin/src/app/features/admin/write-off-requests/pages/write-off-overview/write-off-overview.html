@@ -238,8 +238,9 @@
     <app-installments-table
       [installmentsInput]="a.installments"
       [paymentStatus]="a.paymentStatus"
-      [totalAmount]="a.grandTotal"
-      [checkTotal]="a.checkTotal" />
+      [totalAmount]="a.payableTotal ?? a.grandTotal"
+      [budgetTotal]="a.grandTotal"
+      [checkTotal]="a.payableCheckTotal ?? a.checkTotal" />
 
     <!-- 各沖銷單完整資訊 -->
     @for (w of writeOffs(); track w.id) {

@@ -134,6 +134,10 @@ export interface AdvanceRequest {
   actualAmount?: number | null;
   /** 金額歷程（後端單一真相） */
   settlementLedger?: SettlementLedger | null;
+  /** 撥款明細的應撥總額 ＝ 現金預支 ＋ 月結應撥（有已核准沖銷即改用沖銷月結實際金額；後端 AdvancePayable 單一真相，僅單筆詳情帶入）*/
+  payableTotal?: number | null;
+  /** 上述應撥總額中的月結部分 */
+  payableCheckTotal?: number | null;
   /** 預計退款日（沖銷退還差額） */
   estimatedRefundDate?: string;
   /** 差額退款完成時間 */

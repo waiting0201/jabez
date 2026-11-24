@@ -56,7 +56,10 @@ public sealed record WriteOffRequestDto(
     // ── 月結（支票）分項（2026-11）：RefundDue 只算現金側（2026-11-23），月結另列 ──
     decimal                   AdvanceCheckTotal = 0,           // 關聯預支單的月結預支
     decimal                   AdvanceWrittenOffCheckTotal = 0, // 本單之前已核准沖銷的月結合計（範圍同 AdvanceWrittenOffTotal）
-    decimal                   RefundDueToEmployee = 0);        // 2026-11-23 起恆等於 RefundDue（RefundDue 只算現金超支、全數補撥同仁）；保留欄位供前端相容
+    decimal                   RefundDueToEmployee = 0,        // 2026-11-23 起恆等於 RefundDue（RefundDue 只算現金超支、全數補撥同仁）；保留欄位供前端相容
+    // ── 關聯預支單撥款明細的應撥總額（2026-11-24，見 Common/AdvancePayable）──
+    decimal?                  AdvancePayableTotal = null,
+    decimal?                  AdvancePayableCheckTotal = null);
 
 /// <summary>同一張預支單底下的各次沖銷（供沖銷資訊卡列出第 N 次沖銷金額）</summary>
 public sealed record WriteOffRoundDto(
@@ -167,7 +170,10 @@ public sealed record WriteOffTaskDetailDto(
     // ── 月結（支票）分項（2026-11）：RefundDue 只算現金側（2026-11-23），月結另列 ──
     decimal             AdvanceCheckTotal = 0,        // 關聯預支單的月結預支
     decimal             OtherWrittenOffCheckTotal = 0, // 本單之前已核准沖銷的月結合計（範圍同 OtherWrittenOffTotal）
-    decimal             RefundDueToEmployee = 0);     // 2026-11-23 起恆等於 RefundDue（RefundDue 只算現金超支、全數補撥同仁）；保留欄位供前端相容
+    decimal             RefundDueToEmployee = 0,     // 2026-11-23 起恆等於 RefundDue（RefundDue 只算現金超支、全數補撥同仁）；保留欄位供前端相容
+    // ── 關聯預支單撥款明細的應撥總額（2026-11-24，見 Common/AdvancePayable）──
+    decimal?            AdvancePayableTotal = null,
+    decimal?            AdvancePayableCheckTotal = null);
 
 // ── 支票已支付註記 ────────────────────────────────────────────────────────────
 

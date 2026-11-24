@@ -36,6 +36,9 @@ import {summarizeByPaymentMethod} from '../utils/installment-payment-method';
             <div class="text-muted small fw-400">
               撥款總額：<span class="fw-500 text-success">{{ paidSum() | number:'1.0-2' }}</span> /
               <span class="fw-500">{{ totalAmount | number:'1.0-2' }}</span> 元
+              @if (budgetTotal != null && budgetTotal !== totalAmount) {
+                <span class="ml-1">（預支 {{ budgetTotal | number:'1.0-2' }} 元，月結依已核准沖銷的實際金額）</span>
+              }
             </div>
           }
         </div>
@@ -115,6 +118,8 @@ export class InstallmentsTable {
   @Input() totalAmount?: number;
   /** 預支單的月結（支票）合計；有傳（含 0）才顯示款別欄與現金 / 月結對照，其他類型不傳 */
   @Input() checkTotal?: number | null;
+  /** 預支單的預支總額；與 totalAmount（應撥總額，後端 AdvancePayable）不同時加註說明，其他類型不傳 */
+  @Input() budgetTotal?: number | null;
 
   protected readonly paymentMethodLabels = INSTALLMENT_PAYMENT_METHOD_LABELS;
 

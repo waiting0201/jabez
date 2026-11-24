@@ -746,8 +746,11 @@ public sealed class ApprovalTaskHandler(AppDbContext db, IPaymentRequestReadServ
                 {
                     if (installments is null || installments.Count == 0)
                         throw AppException.BadRequest("財務核准撥款類申請時，必須填寫撥款明細。");
-                    InstallmentUpsertService.Apply(db, adv.Installments, installments, adv.GrandTotal, reviewerId,
-                        () => new AdvanceRequestInstallment { AdvanceRequestId = adv.Id });
+                    // 應撥總額：追加批次核准時可能已有核准的沖銷，月結改用沖銷實際金額（見 AdvancePayable）
+                    var advPayable = await AdvancePayable.TotalAsync(db, adv.Id, adv.GrandTotal, adv.CheckTotal);
+                    InstallmentUpsertService.Apply(db, adv.Installments, installments, advPayable, reviewerId,
+                        () => new AdvanceRequestInstallment { AdvanceRequestId = adv.Id },
+                        totalLabel: "應撥總額");
                 }
 
                 // 追加批次被拒絕：刪除該批次並把父單還原成送出追加之前的已核准狀態
