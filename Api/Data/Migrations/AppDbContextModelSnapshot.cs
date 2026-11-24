@@ -251,6 +251,10 @@ namespace Jabez.Api.Data.Migrations
                     b.Property<Guid?>("PaidByUserId")
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<string>("PaymentMethod")
+                        .HasMaxLength(10)
+                        .HasColumnType("nvarchar(10)");
+
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("datetime2");
 

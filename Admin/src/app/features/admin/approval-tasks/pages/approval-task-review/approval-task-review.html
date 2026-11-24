@@ -1630,6 +1630,7 @@
                     [totalLabel]="applicationType === 'write_off' ? '應撥差額' : '申請總額'"
                     [totalAmount]="getInstallmentTotal(task)"
                     [installments]="getInstallments(task)"
+                    [checkTotal]="task.advanceDetail ? task.advanceDetail.checkTotal : null"
                     [error]="installmentsError()"
                     [hint]="applicationType === 'write_off'
                       ? '本次沖銷的現金超出預支現金，財務核准時必須填寫差額撥款明細（只算現金、補撥同仁；月結超支不在此列）（加總須等於應撥差額）；核准後可回來修改未撥款的列或填入實際撥款日。'
@@ -1652,6 +1653,7 @@
                     totalLabel="預支總額"
                     [totalAmount]="task.writeOffDetail.advanceGrandTotal"
                     [installments]="task.writeOffDetail.advanceInstallments"
+                    [checkTotal]="task.writeOffDetail.advanceCheckTotal ?? 0"
                     [statusLabel]="task.writeOffDetail.advancePaymentStatus ? getStatusBadgeLabel(task.writeOffDetail.advancePaymentStatus) : null"
                     [statusClass]="task.writeOffDetail.advancePaymentStatus ? getStatusBadgeClass(task.writeOffDetail.advancePaymentStatus) : ''"
                     [message]="advInstallmentsMsg()"
@@ -1791,6 +1793,7 @@
                   [totalLabel]="applicationType === 'write_off' ? '應撥差額' : '申請總額'"
                   [totalAmount]="getInstallmentTotal(task)"
                   [installments]="getInstallments(task)"
+                  [checkTotal]="task.advanceDetail ? task.advanceDetail.checkTotal : null"
                   [statusLabel]="getPaymentStatus(task) ? getStatusBadgeLabel(getPaymentStatus(task)!) : null"
                   [statusClass]="getPaymentStatus(task) ? getStatusBadgeClass(getPaymentStatus(task)!) : ''"
                   [message]="installmentsMsg()"
@@ -1808,6 +1811,7 @@
                   totalLabel="預支總額"
                   [totalAmount]="task.writeOffDetail.advanceGrandTotal"
                   [installments]="task.writeOffDetail.advanceInstallments"
+                    [checkTotal]="task.writeOffDetail.advanceCheckTotal ?? 0"
                   [statusLabel]="task.writeOffDetail.advancePaymentStatus ? getStatusBadgeLabel(task.writeOffDetail.advancePaymentStatus) : null"
                   [statusClass]="task.writeOffDetail.advancePaymentStatus ? getStatusBadgeClass(task.writeOffDetail.advancePaymentStatus) : ''"
                   [message]="advInstallmentsMsg()"

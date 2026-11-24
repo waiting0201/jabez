@@ -1234,7 +1234,14 @@ private recomputeTotalHours() {
 | `review` | 待審核（pending）財務簽核當下 | 無「實際撥款日」欄、無儲存鈕；由外層審核表單於送出時一併帶出（`viewChild` → `editor.value()` / `editor.valid()`） |
 | `manage` | 已核准（approved）後回來管理 | 多「實際撥款日」欄與「儲存撥款明細」按鈕，`(save)` 輸出 `InstallmentInput[]` 由父層 dispatch 到對應 service |
 
-主要 input：`totalAmount`（應撥總額）/ `installments` / `title` / `totalLabel` / `hint` / `required` / `statusLabel` / `statusClass` / `message` / `error`。
+主要 input：`totalAmount`（應撥總額）/ `installments` / `title` / `totalLabel` / `hint` / `required` / `statusLabel` / `statusClass` / `message` / `error` / **`checkTotal`**。
+
+**款別欄（2026-11-24，僅預支單）**：傳入 `checkTotal`（預支單月結合計，含 0）即啟用；`null`（預設）＝其他類型不顯示、`value()` 也不送 `paymentMethod`。
+- 「期數」右側多一欄下拉（未分類 / 現金 / 月結），`style="min-width: 6.5rem"`（表格 auto layout 會把欄寬壓窄，只設 `<th>` 寬度「未分類」仍會截字）；**不隨已撥款列鎖定**（舊資料須能補標）。
+- 表格上方對照列：現金 / 月結各自「已排 / 合計（已撥）」＋未分類金額，不一致時黃字「僅提示，仍可儲存」——**不影響「儲存撥款明細」按鈕狀態**。
+- 新增一期的預設款別：只有現金或只有月結的預支單直接帶入，兩者皆有則留白。
+- 對照計算共用 [`shared/utils/installment-payment-method.ts`](../Admin/src/app/shared/utils/installment-payment-method.ts)（`summarizeByPaymentMethod` / `defaultPaymentMethod`），唯讀表 `<app-installments-table [checkTotal]>` 亦同（多「款別」欄＋對照列）。
+- 呼叫端：簽核頁本單編輯器傳 `task.advanceDetail ? task.advanceDetail.checkTotal : null`（只對 advance 啟用）、沖銷簽核頁關聯預支編輯器傳 `advanceCheckTotal ?? 0`。
 
 > **預支沖銷的 `totalAmount` 不是整單金額**，而是 `refundDue`＝本次沖銷造成的超支增額（後端 `WriteOffRefundCalculator` 算好帶回；2026-11-23 起只算現金超支、全數補撥同仁，月結不計）。`refundDue = 0` 時整個撥款區塊不顯示。
 

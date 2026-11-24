@@ -16,6 +16,9 @@ public class AdvanceRequestInstallmentConfiguration : IEntityTypeConfiguration<A
         builder.Property(i => i.Note)
                .HasMaxLength(500);
 
+        builder.Property(i => i.PaymentMethod)
+               .HasMaxLength(10);
+
         builder.HasIndex(i => new { i.AdvanceRequestId, i.InstallmentNo })
                .IsUnique();
 

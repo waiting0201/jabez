@@ -105,6 +105,8 @@ export class AdvanceForm implements OnInit {
   installments: InstallmentDto[] | null = null;
   paymentStatus: PaymentInstallmentStatus | null = null;
   loadedGrandTotal = 0;
+  /** 撥款明細款別對照用（月結合計）*/
+  loadedCheckTotal = 0;
 
   /** 指定審核者相關 */
   hasDesignatedStep = false;
@@ -295,6 +297,7 @@ export class AdvanceForm implements OnInit {
         this.installments    = r.installments ?? null;
         this.paymentStatus   = r.paymentStatus ?? null;
         this.loadedGrandTotal = r.grandTotal ?? 0;
+        this.loadedCheckTotal = r.checkTotal ?? 0;
         // 回填指定審核者：唯讀模式與編輯模式皆由 pickerInitial 傳給 picker
         if (r.designatedReviewers?.length) {
           this.pickerInitial = r.designatedReviewers;

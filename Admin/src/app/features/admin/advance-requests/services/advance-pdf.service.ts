@@ -1,6 +1,6 @@
 import { Injectable, inject, signal } from '@angular/core';
 import { AdvanceRequest, roundLabel } from '../models/advance-request.model';
-import { ApprovalRecord, ApprovalFlow, writeOffRoundStatus } from '../../approval-tasks/models/approval-task.model';
+import { ApprovalRecord, ApprovalFlow, writeOffRoundStatus, INSTALLMENT_PAYMENT_METHOD_LABELS } from '../../approval-tasks/models/approval-task.model';
 import { drawSettlementLedger } from '../../../../shared/services/pdf-settlement-ledger';
 import { drawWriteOffTable } from '../../../../shared/services/pdf-write-off-table';
 import { PdfCoreService, SignBlock, CIS, FONT_FAMILY, fmtDT, fmt, buildDynamicSignBlocks, designatedStepOrdersOf } from '../../../../shared/services/pdf-core.service';
@@ -212,14 +212,16 @@ export class AdvancePdfService {
           headStyles: {font: F, fillColor: [...CIS.forest], textColor: 255, fontSize: 9.5, fontStyle: 'bold', halign: 'center', cellPadding: {top: 4, bottom: 4, left: 4, right: 4}},
           columnStyles: {
             0: {cellWidth: cw * 0.08, halign: 'center'},
-            1: {cellWidth: cw * 0.18, halign: 'center'},
-            2: {cellWidth: cw * 0.18, halign: 'center'},
-            3: {cellWidth: cw * 0.18, halign: 'right'},
-            4: {cellWidth: cw * 0.38},
+            1: {cellWidth: cw * 0.10, halign: 'center'},
+            2: {cellWidth: cw * 0.16, halign: 'center'},
+            3: {cellWidth: cw * 0.16, halign: 'center'},
+            4: {cellWidth: cw * 0.16, halign: 'right'},
+            5: {cellWidth: cw * 0.34},
           },
-          head: [[{content: '撥款明細', colSpan: 5, styles: {halign: 'center'}}], ['期數', '預計撥款日', '實際撥款日', '金　額', '備　註']],
+          head: [[{content: '撥款明細', colSpan: 6, styles: {halign: 'center'}}], ['期數', '款別', '預計撥款日', '實際撥款日', '金　額', '備　註']],
           body: r.installments.map(ins => [
             String(ins.installmentNo),
+            ins.paymentMethod ? INSTALLMENT_PAYMENT_METHOD_LABELS[ins.paymentMethod] : '未分類',
             ins.expectedDate ? fmtDT(ins.expectedDate).split(' ')[0] : '—',
             ins.paidAt ? fmtDT(ins.paidAt).split(' ')[0] : '尚未撥款',
             ins.amount.toLocaleString('zh-TW'),

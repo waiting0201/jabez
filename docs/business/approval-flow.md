@@ -94,7 +94,7 @@ draft → pending → approved / returned / rejected
   在此之前，「這段期間有哪些單要撥錢」只存在於排程推播（`PaymentReminderService`），畫面上查不到。
   ⚠ 該清單**只列 approved** —— 正是因為上面這條「僅 approved 可呼叫」的限制，列出 pending 的單
   只會讓財務點進去卻填不了。
-- **DTO**：`UpsertInstallmentsRequest { installments[] }`（2026-10 移除 `approvalStatus`：撥款端點不得改單據狀態），每筆 `{ id?, installmentNo, expectedDate, paidAt?, amount, note? }`
+- **DTO**：`UpsertInstallmentsRequest { installments[] }`（2026-10 移除 `approvalStatus`：撥款端點不得改單據狀態），每筆 `{ id?, installmentNo, expectedDate, paidAt?, amount, note?, paymentMethod? }`（`paymentMethod` 僅預支單寫入、其他類型忽略，見下方「預支分期的款別」）
 - **持久化核心共用**：`InstallmentUpsertService.Apply`（validate + diff，**不 SaveChanges**，交易邊界交呼叫端）— 獨立 endpoint 與 review 原子寫入共用同一份邏輯；5 種子表實作 `IInstallmentEntity` 介面以泛型化
 - **驗證**（`InstallmentValidator.Validate`）：
   - 序號 1-based 連續無斷號
@@ -114,6 +114,20 @@ draft → pending → approved / returned / rejected
   - 簽核作業 → 已核准 Tab 的篩選按鈕對應：`全部` / `尚未撥款` (`unpaid`) / `部分撥款` (`partial`) / `全部撥款` (`paid`) / `已結案` (`closed`)
   - 出差沖銷（travel_write_off）退款仍以父表 `RefundedAt` 兩態判斷；遇 `paymentStatus=partial` 或 `closed` 時整批 `1=0` 短路。**預支沖銷（write_off）自 2026-07 起改走分期**，列表 filter 尚未接上分期三態（另案）
 - **PDF 出納簽名章**：取 `installments[]` 中最後一期已撥款者的 `PaidBySignatureUrl` + `PaidAt`
+
+#### 預支分期的款別（現金 / 月結，2026-11-24 新增）
+
+預支明細分現金（申請人經手）與月結（支票，公司直接付廠商），財務實務上把兩者拆成不同期撥付，但原本分期沒有欄位區分，
+只能靠「金額剛好等於現金合計 / 月結合計」或備註文字判斷（2026-11 本機資料：79 期中 19 期兩者皆對不上），
+沖銷簽核頁的「關聯預支單撥款明細」因此看不出哪一期是月結。
+
+- **欄位**：`AdvanceRequestInstallment.PaymentMethod`（`cash` / `check` / NULL＝未分類）。**只有預支單**，其他 4 種分期沒有月結概念、不加。
+- **編輯處**：預支簽核頁（財務核准當下 review / 核准後 manage）與預支沖銷簽核頁的「關聯預支單撥款明細」，每期一個下拉（未分類 / 現金 / 月結）；新增一期時，單一款別的預支單自動帶入該款別。
+- **唯讀處**：預支詳情 / 預支表單唯讀 / 沖銷詳情（關聯預支單）/ 沖銷彙總頁的撥款明細表多「款別」欄；預支 PDF 撥款明細多「款別」欄。
+- **對照列**：表頭下方顯示「現金 已排 X / 現金合計（已撥 Y）」「月結 已排 X / 月結合計（已撥 Y）」與未分類金額；現金合計 ＝ `GrandTotal − CheckTotal`。
+- **只提示、不擋存**：後端驗證仍只看「各期合計 ＝ 預支總額（現金＋月結）」，款別合計不符只顯示黃字。原因：已撥款列金額鎖定、且有「月結改匯同仁代墊」等例外，強制相等會讓財務存不了。日後若財務標記完整可再評估改為擋存。
+- **不受已撥款鎖定**：已撥款列的款別仍可修改（舊資料一律未分類，必須能補標），改款別不觸發已撥款通知。
+- **舊資料**：不自動回填（金額推測不可靠），一律未分類，由財務補標。
 
 ### 沖銷狀態四態、簽核頁預支明細與前次沖銷（2026-10 新增）
 
