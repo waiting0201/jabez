@@ -95,6 +95,8 @@ public sealed class PreReviewRequestHandler(
 
         if (!await db.Projects.AnyAsync(p => p.Id == projectId))
             throw AppException.NotFound("Project");
+        // 關帳日隔天起不可再用此專案建帳（Common/ProjectAccountingClose）
+        await ProjectAccountingClose.EnsureOpenAsync(db, projectId);
 
         // 協力廠商 / 設計師 皆須指定有效（且 IsActive）廠商
         if (!vendorId.HasValue)
@@ -242,6 +244,7 @@ public sealed class PreReviewRequestHandler(
         {
             if (!await db.Projects.AnyAsync(p => p.Id == projectId))
                 throw AppException.NotFound("Project");
+            await ProjectAccountingClose.EnsureOpenAsync(db, projectId);
             pr.ProjectId = projectId.Value;
         }
 
@@ -452,6 +455,9 @@ public sealed class PreReviewRequestHandler(
 
         if (pr.ApprovalStatus != "draft" && pr.ApprovalStatus != "returned")
             throw AppException.BadRequest("Only draft or returned pre-review requests can be submitted.");
+
+        // 關帳日隔天起不可再送出此專案的帳務申請（已送簽中的單照常簽核）
+        await ProjectAccountingClose.EnsureOpenAsync(db, pr.ProjectId);
 
         // 送簽時才取號：單號日期＝送簽日，草稿不佔號。
         // 退回（returned）重送時已有單號，不可重新配號，否則已流通的單號會被改掉。

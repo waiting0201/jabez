@@ -100,7 +100,8 @@
 | Method | Path | 說明 |
 |--------|------|------|
 | GET/POST | `/projects` | 專案列表 / 新增。GET 帶 `page` / `pageSize` 回 `PagedResult`（另支援 `search` / `year` / `status` / **`departmentId`**（2026-10 新增，int，`p.DepartmentId = @DepartmentId`，與部門可見範圍並存＝取交集；非數字忽略）），不帶回平面陣列。**排序（2026-10）**：專案代號自然排序 —— 英文前綴升冪 → 前綴後第一段連續數字（數值）升冪 → Code（`C005`＝5、`J11203-T`＝11203、`P2024-001`＝2024）；`/projects/active` 同 |
-| GET | `/projects/active` | 未結案專案下拉（輕量端點，免 `projects:read`；回 **`ProjectLookupDto`** `{id, code, name, status, departmentId, departmentName}`，不含合約 / 業務 / 已收 / 剩餘金額與雲端硬碟連結）；預設依部門可見範圍過濾，帶 `?all=true` 不過濾（加班申請跨部門支援用） |
+| PUT/PATCH | `/projects/{id}` 關帳日 | body `accountingCloseDate`（yyyy-MM-dd，null＝不變更）＋ `clearAccountingCloseDate: true`（清空，帳務功能恢復）；建立時亦可帶 `accountingCloseDate`；`ProjectDto` 回 `accountingCloseDate` |
+| GET | `/projects/active` | 未結案專案下拉（輕量端點，免 `projects:read`；回 **`ProjectLookupDto`** `{id, code, name, status, departmentId, departmentName}`，不含合約 / 業務 / 已收 / 剩餘金額與雲端硬碟連結）；預設依部門可見範圍過濾，帶 `?all=true` 不過濾（加班申請跨部門支援用）。**關帳日（2026-11-25）**：不帶 `all`（帳務類申請表單）時排除已過關帳日的專案（關帳日當天仍列出）；`?all=true`（加班 / 下班打卡工時佔比 / 工時總表）不受影響 |
 | GET/PUT/PATCH/DELETE | `/projects/{id}` | 專案 CRUD |
 
 ## 請款 / 請假 / 出差 / 加班 / 預支申請

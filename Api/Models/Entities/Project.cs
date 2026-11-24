@@ -13,6 +13,11 @@ public class Project
     public decimal?  BusinessAmount  { get; set; }   // 業務執行金額
     public decimal?  RemainingAmount { get; set; }   // 剩餘金額（系統導入時的契約剩餘預算）
     public string?   GoogleDriveUrl  { get; set; }
+    /// <summary>
+    /// 關帳日（2026-11-25，可改、可清空）：**隔天起**帳務類申請（請款 / 預審 / 預支含追加 / 預支沖銷 / 出差 / 出差請款 / 出差沖銷）
+    /// 看不到也不能選此專案；加班與下班打卡工時佔比不受影響。判定單一真相 Common/ProjectAccountingClose。
+    /// </summary>
+    public DateTime? AccountingCloseDate { get; set; }
     public DateTime  CreatedAt       { get; set; }
 
     // Navigation

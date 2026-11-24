@@ -51,13 +51,16 @@ public sealed class TravelWriteOffRequestHandler(
         var userId = await GetUserIdAsync(req);
         var user = await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == userId);
         bool isSuperAdmin = user?.IsSuperAdmin == true;
+        var today = Clock.Now.Date;
 
         var list = await db.TravelRequests
             .AsNoTracking()
             .Include(t => t.Project)
             .Where(t => t.ApprovalStatus == "approved"
                      && !t.IsClosed
-                     && (isSuperAdmin || t.EmployeeId == userId))
+                     && (isSuperAdmin || t.EmployeeId == userId)
+                     // 專案已過關帳日（關帳日當天仍可）→ 不列入可沖銷清單（Common/ProjectAccountingClose）
+                     && (t.Project == null || t.Project.AccountingCloseDate == null || t.Project.AccountingCloseDate >= today))
             .OrderByDescending(t => t.CreatedAt)
             .Select(t => new
             {
@@ -142,6 +145,7 @@ public sealed class TravelWriteOffRequestHandler(
 
         if (tr.ApprovalStatus != "approved")
             throw AppException.BadRequest("Only approved travel requests can have write-offs.");
+        await ProjectAccountingClose.EnsureOpenAsync(db, tr.ProjectId);   // 專案取自母出差單
 
         if (tr.IsClosed)
             throw AppException.BadRequest("此出差申請已結案，無法再沖銷。");
@@ -238,6 +242,7 @@ public sealed class TravelWriteOffRequestHandler(
 
         if (wo.ApprovalStatus != "draft" && wo.ApprovalStatus != "returned")
             throw AppException.BadRequest("Only draft or returned travel write-off requests can be edited.");
+        await ProjectAccountingClose.EnsureTravelOpenAsync(db, wo.TravelRequestId);
 
         var form      = await req.ReadFormAsync();
         var note      = form["note"].ToString();
@@ -419,6 +424,7 @@ public sealed class TravelWriteOffRequestHandler(
 
         if (wo.ApprovalStatus != "draft" && wo.ApprovalStatus != "returned")
             throw AppException.BadRequest("Only draft or returned travel write-off requests can be submitted.");
+        await ProjectAccountingClose.EnsureTravelOpenAsync(db, wo.TravelRequestId);
 
         // 送簽時才取號：單號日期＝送簽日，草稿不佔號。
         // 退回（returned）重送時已有單號，不可重新配號，否則已流通的單號會被改掉。

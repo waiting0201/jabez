@@ -7,7 +7,7 @@ namespace Jabez.Api.Services.Dapper;
 public interface IProjectReadService
 {
     Task<IEnumerable<ProjectDto>>    GetAllAsync(ProjectAccessScope scope);
-    Task<IEnumerable<ProjectLookupDto>> GetActiveAsync(ProjectAccessScope scope);
+    Task<IEnumerable<ProjectLookupDto>> GetActiveAsync(ProjectAccessScope scope, bool excludeAccountingClosed = false);
     Task<PagedResult<ProjectDto>>    GetPagedAsync(ProjectAccessScope scope, int page, int pageSize, string? search = null, int? year = null, string? status = null, int? departmentId = null);
     Task<IEnumerable<int>>           GetYearsAsync();
     Task<ProjectDto?>                GetByIdAsync(int id, ProjectAccessScope scope);

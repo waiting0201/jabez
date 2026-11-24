@@ -4737,6 +4737,9 @@ namespace Jabez.Api.Data.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
+                    b.Property<DateTime?>("AccountingCloseDate")
+                        .HasColumnType("date");
+
                     b.Property<decimal?>("BusinessAmount")
                         .HasColumnType("decimal(18,2)");
 

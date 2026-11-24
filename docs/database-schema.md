@@ -28,7 +28,7 @@
 | `ApprovalRecord` | 簽核動作記錄（含 OnBehalfOfUserId 代理標記、IsEscalated 升級標記、`RoundNo` 簽核批次：僅 advance 追加預支會 > 1，其餘申請類型恆為 1） |
 | `ApprovalReturnLog` | 退回 / 拒絕歷程（2026-11）：每次退回修改 / 拒絕一列，只增不改、**重送時不清**（ApprovalRecords 會被清）；審核者姓名 / 部門 / 職稱快照、`ReviewedById` 無 FK；多型 (ApplicationType, ApplicationId)，刪申請單時一併清除 |
 | `EscalationOverride` | 升級審核指派（記錄被指派的升級/代理審核者，審核完成後清除） |
-| `Project` | 專案主檔（含 **DepartmentId 必填**、ContractAmount 契約金額、BusinessAmount 業務執行金額、RemainingAmount 剩餘金額（系統導入時剩餘預算，選填）；實收金額為衍生值，由 `SUM(ProjectPaymentSchedules.DepositAmount)` 即時計算） |
+| `Project` | 專案主檔（含 **DepartmentId 必填**、ContractAmount 契約金額、BusinessAmount 業務執行金額、RemainingAmount 剩餘金額（系統導入時剩餘預算，選填）；**`AccountingCloseDate` date NULL 關帳日**（2026-11-25，migration `AddProjectAccountingCloseDate`，隔天起帳務類申請不可選此專案，見 application-forms.md §專案關帳日）；實收金額為衍生值，由 `SUM(ProjectPaymentSchedules.DepositAmount)` 即時計算） |
 | `ProjectPaymentSchedule` | 專案請款期別明細（一期一筆：請款/發票/入帳日期與金額、扣款備註；扣款金額 = 發票 − 入帳，前端計算不存 DB） |
 | `PaymentRequest` | 請款申請（含 `RequestNo` 單號 `PR-yyyyMMdd-NNN`，**nullable + filtered unique index**（草稿為 NULL，送簽時取號）、`VendorId` nullable FK：當 Type=`vendor` 時必填且必須是 IsActive=true 的廠商；其他類型強制為 null；**`PayeeName` nvarchar(100) NULL**（2026-11-05，migration `AddPaymentRequestPayeeName`）：Type=`other` 時申請人自填的受款人名稱（必填），其他類型強制為 null；撥款資料統一由 `PaymentRequestInstallment[]` 表達，父表無 cache 欄位）；**`SubmittedAt` datetime2 NULL 送簽日期＝申請日期**（2026-09 新增，草稿為 NULL、送簽當下與單號同時寫入、退回重送不改；`CreatedAt` 維持原義＝建立草稿時間） |
 | `InvoiceItem` | 請款明細（發票項目） |

@@ -189,6 +189,8 @@ public sealed class AdvanceRequestHandler(
 
         if (!await db.Projects.AnyAsync(p => p.Id == projectId))
             throw AppException.NotFound("Project");
+        // 關帳日隔天起不可再用此專案建帳（Common/ProjectAccountingClose）
+        await ProjectAccountingClose.EnsureOpenAsync(db, projectId);
 
         // 關聯預審單（選填）：先驗再上傳 blob，避免驗證失敗留下孤兒檔
         var preReviewIds = AdvancePreReviewLinker.ParseIds(form) ?? [];
@@ -313,6 +315,7 @@ public sealed class AdvanceRequestHandler(
         {
             if (!await db.Projects.AnyAsync(p => p.Id == projectId))
                 throw AppException.NotFound("Project");
+            await ProjectAccountingClose.EnsureOpenAsync(db, projectId);
             ar.ProjectId = projectId;
         }
         if (!string.IsNullOrEmpty(activityName))
@@ -510,6 +513,9 @@ public sealed class AdvanceRequestHandler(
 
         if (ar.ApprovalStatus != "draft" && ar.ApprovalStatus != "returned")
             throw AppException.BadRequest("Only draft or returned advance requests can be submitted.");
+
+        // 關帳日隔天起不可再送出此專案的帳務申請（已送簽中的單照常簽核）
+        await ProjectAccountingClose.EnsureOpenAsync(db, ar.ProjectId);
 
         return await SubmitCoreAsync(ar, userId, isSupplementRound: false);
     }
@@ -719,6 +725,7 @@ public sealed class AdvanceRequestHandler(
             throw AppException.BadRequest("只有已核准的預支申請可以新增追加預支。");
         if (ar.IsClosed)
             throw AppException.BadRequest("此預支申請已結案，無法新增追加預支。");
+        await ProjectAccountingClose.EnsureOpenAsync(db, ar.ProjectId);
 
         var form = await req.ReadFormAsync();
         var advanceDateStr = form["advanceDate"].ToString();

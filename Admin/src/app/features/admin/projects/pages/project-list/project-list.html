@@ -73,6 +73,9 @@
                 <td>{{ project.name }}</td>
                 <td>
                   <span [class]="'badge ' + statusClass[project.status]">{{ statusLabel[project.status] }}</span>
+                  @if (project.status !== 'closed' && isAccountingClosed(project.accountingCloseDate)) {
+                    <span class="badge bg-secondary ms-1" [title]="'關帳日 ' + project.accountingCloseDate!.substring(0, 10) + '，帳務申請已不可選'">已關帳</span>
+                  }
                 </td>
                 <td>
                   @if (project.departmentName) {

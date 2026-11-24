@@ -4,7 +4,7 @@ import {DecimalPipe} from '@angular/common';
 import {FormArray, FormBuilder, FormGroup, ReactiveFormsModule, Validators} from '@angular/forms';
 import {HttpErrorResponse} from '@angular/common/http';
 import {ProjectService} from '../../services/project.service';
-import {ProjectPaymentSchedule, ProjectStatus} from '../../models/project.model';
+import {isAccountingClosed, ProjectPaymentSchedule, ProjectStatus} from '../../models/project.model';
 import {DepartmentService} from '../../../departments/services/department.service';
 import {Department} from '../../../departments/models/department.model';
 import {AuthService} from '../../../../../core/auth/services/auth.service';
@@ -50,8 +50,14 @@ export class ProjectForm implements OnInit {
     businessAmount:  [null as number | null, [Validators.required, Validators.min(0)]],
     remainingAmount: [null as number | null, [Validators.min(0)]],
     googleDriveUrl:  ['', Validators.required],
+    accountingCloseDate: [''],
     schedules:       this.fb.array<FormGroup>([]),
   });
+
+  /** 目前填的關帳日是否已過（標籤旁「已關帳」badge） */
+  closedNow(): boolean {
+    return isAccountingClosed(this.form.get('accountingCloseDate')?.value);
+  }
 
   get schedulesArray(): FormArray<FormGroup> {
     return this.form.get('schedules') as FormArray<FormGroup>;
@@ -109,6 +115,7 @@ export class ProjectForm implements OnInit {
             businessAmount:  p.businessAmount ?? null,
             remainingAmount: p.remainingAmount ?? null,
             googleDriveUrl:  p.googleDriveUrl ?? '',
+            accountingCloseDate: p.accountingCloseDate ? p.accountingCloseDate.substring(0, 10) : '',
           });
 
           this.schedulesArray.clear();
@@ -223,6 +230,9 @@ export class ProjectForm implements OnInit {
       remainingAmount:  v.remainingAmount ?? undefined,
       googleDriveUrl:   v.googleDriveUrl || undefined,
       paymentSchedules: schedules,
+      // 關帳日：有值即設定；編輯時清空欄位＝送 clear 旗標（後端 null 代表「不變更」）
+      accountingCloseDate:      v.accountingCloseDate || undefined,
+      ...(this.isEdit && !v.accountingCloseDate ? {clearAccountingCloseDate: true} : {}),
     };
     const obs = this.isEdit
       ? this.projectService.update(this.projectId, payload)
