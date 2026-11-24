@@ -136,6 +136,9 @@ public sealed class AdvanceRequestReadService(IDbConnection db, IInstallmentRead
             """;
         var overspend = await db.QuerySingleAsync<dynamic>(overspendSql, new { Id = id });
 
+        // 撥款明細的應撥總額（月結有已核准沖銷即改用實際金額）
+        var approvedWo = (await AdvancePayable.LoadApprovedWriteOffsAsync(db, [id])).GetValueOrDefault(id);
+
         return dto with
         {
             OverspendPaidTotal  = (decimal)overspend.PaidTotal,
@@ -147,6 +150,8 @@ public sealed class AdvanceRequestReadService(IDbConnection db, IInstallmentRead
             Rounds = BuildRounds(dto.AdvanceDate, dto.AdvanceNeededDate, supRows, dto.Items),
             PreReviews = await GetLinkedPreReviewsAsync(id),
             SettlementLedger = await ledger.GetForAdvanceAsync(id),
+            PayableTotal      = AdvancePayable.TotalOf(dto.GrandTotal, dto.CheckTotal, approvedWo),
+            PayableCheckTotal = AdvancePayable.CheckOf(dto.CheckTotal, approvedWo),
         };
     }
 

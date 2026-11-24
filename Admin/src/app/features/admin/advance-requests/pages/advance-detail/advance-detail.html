@@ -283,8 +283,9 @@
     <app-installments-table
       [installmentsInput]="r.installments"
       [paymentStatus]="r.paymentStatus"
-      [totalAmount]="r.grandTotal"
-      [checkTotal]="r.checkTotal" />
+      [totalAmount]="r.payableTotal ?? r.grandTotal"
+      [budgetTotal]="r.grandTotal"
+      [checkTotal]="r.payableCheckTotal ?? r.checkTotal" />
 
     <!-- 簽核流程時間軸 -->
     @if (approvalTask(); as task) {

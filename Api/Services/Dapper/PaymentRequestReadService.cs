@@ -184,7 +184,15 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
         if (task?.AdvanceDetail is { } ad)
         {
             var l = await ledger.GetForAdvanceAsync(ad.AdvanceRequestId);
-            task = task with { AdvanceDetail = ad with { ActualAmount = l?.ActualAmount, SettlementLedger = l } };
+            // 撥款明細的應撥總額（月結有已核准沖銷即改用實際金額，見 AdvancePayable）
+            var approvedWo = (await AdvancePayable.LoadApprovedWriteOffsAsync(db, [ad.AdvanceRequestId])).GetValueOrDefault(ad.AdvanceRequestId);
+            task = task with { AdvanceDetail = ad with
+            {
+                ActualAmount      = l?.ActualAmount,
+                SettlementLedger  = l,
+                PayableTotal      = AdvancePayable.TotalOf(ad.GrandTotal, ad.CheckTotal, approvedWo),
+                PayableCheckTotal = AdvancePayable.CheckOf(ad.CheckTotal, approvedWo),
+            } };
         }
         else if (task?.TravelDetail is { IsHolidayTravel: false } td)
         {
@@ -193,7 +201,13 @@ public sealed class PaymentRequestReadService(IDbConnection db, IInstallmentRead
         }
         else if (task?.WriteOffDetail is { } wd)
         {
-            task = task with { WriteOffDetail = wd with { SettlementLedger = await ledger.GetForAdvanceAsync(wd.AdvanceRequestId) } };
+            var approvedWo = (await AdvancePayable.LoadApprovedWriteOffsAsync(db, [wd.AdvanceRequestId])).GetValueOrDefault(wd.AdvanceRequestId);
+            task = task with { WriteOffDetail = wd with
+            {
+                SettlementLedger         = await ledger.GetForAdvanceAsync(wd.AdvanceRequestId),
+                AdvancePayableTotal      = AdvancePayable.TotalOf(wd.AdvanceGrandTotal, wd.AdvanceCheckTotal, approvedWo),
+                AdvancePayableCheckTotal = AdvancePayable.CheckOf(wd.AdvanceCheckTotal, approvedWo),
+            } };
         }
         else if (task?.TravelWriteOffDetail is { } twd)
         {

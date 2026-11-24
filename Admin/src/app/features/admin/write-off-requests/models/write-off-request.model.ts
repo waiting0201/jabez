@@ -85,6 +85,10 @@ export interface WriteOffRequest extends WriteOffReturnedCash {
   advanceCheckTotal?: number;
   /** 本單之前已核准沖銷的月結合計（範圍同 advanceWrittenOffTotal） */
   advanceWrittenOffCheckTotal?: number;
+  /** 關聯預支單撥款明細的應撥總額 ＝ 現金預支 ＋ 月結應撥（有已核准沖銷即改用沖銷月結實際金額；後端 AdvancePayable 單一真相，僅單筆詳情帶入）*/
+  advancePayableTotal?: number | null;
+  /** 上述應撥總額中的月結部分 */
+  advancePayableCheckTotal?: number | null;
   advanceIsClosed: boolean;
   /** 關聯預支單的結案時間 */
   advanceClosedAt?: string;

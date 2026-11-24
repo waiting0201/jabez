@@ -274,6 +274,7 @@ export class ApprovalTaskReview implements OnInit {
   getInstallmentTotal(task: ApprovalTask): number {
     if (task.writeOffDetail) return task.writeOffDetail.refundDue ?? 0;
     return task.paymentDetail?.totalAmount
+        ?? task.advanceDetail?.payableTotal   // 預支：應撥總額（月結有已核准沖銷即用實際金額，後端 AdvancePayable）
         ?? task.advanceDetail?.grandTotal
         ?? task.travelDetail?.grandTotal
         ?? task.travelPaymentDetail?.grandTotal

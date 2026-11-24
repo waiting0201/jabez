@@ -1241,6 +1241,7 @@ private recomputeTotalHours() {
 - 表格上方對照列：現金 / 月結各自「已排 / 合計（已撥）」＋未分類金額，不一致時黃字「僅提示，仍可儲存」——**不影響「儲存撥款明細」按鈕狀態**。
 - 新增一期的預設款別：只有現金或只有月結的預支單直接帶入，兩者皆有則留白。
 - 對照計算共用 [`shared/utils/installment-payment-method.ts`](../Admin/src/app/shared/utils/installment-payment-method.ts)（`summarizeByPaymentMethod` / `defaultPaymentMethod`），唯讀表 `<app-installments-table [checkTotal]>` 亦同（多「款別」欄＋對照列）。
+- **預支單的 `totalAmount` / `checkTotal` 一律傳後端的應撥總額**（`payableTotal` / `payableCheckTotal`，沖銷頁為 `advancePayable*`，fallback `grandTotal` / `checkTotal`），編輯器 `totalLabel="應撥總額"`；唯讀表另傳 `[budgetTotal]`＝預支總額，兩者不同時加註說明（2026-11-24）。
 - 呼叫端：簽核頁本單編輯器傳 `task.advanceDetail ? task.advanceDetail.checkTotal : null`（只對 advance 啟用）、沖銷簽核頁關聯預支編輯器傳 `advanceCheckTotal ?? 0`。
 
 > **預支沖銷的 `totalAmount` 不是整單金額**，而是 `refundDue`＝本次沖銷造成的超支增額（後端 `WriteOffRefundCalculator` 算好帶回；2026-11-23 起只算現金超支、全數補撥同仁，月結不計）。`refundDue = 0` 時整個撥款區塊不顯示。

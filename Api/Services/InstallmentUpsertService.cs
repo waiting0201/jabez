@@ -23,20 +23,22 @@ public static class InstallmentUpsertService
     /// <param name="totalAmount">申請總金額（PaymentRequest.TotalAmount 或其他三類 GrandTotal）</param>
     /// <param name="userId">操作者（新填撥款時記為 PaidByUserId）</param>
     /// <param name="create">建立新列的工廠（須設好外鍵；其餘欄位由本方法填入）</param>
+    /// <param name="totalLabel">錯誤訊息中總額的稱呼（預支單傳「應撥總額」）</param>
     public static List<NewlyPaidInstallment> Apply<TEntity>(
         DbContext              db,
         ICollection<TEntity>   existing,
         List<InstallmentInput> inputs,
         decimal                totalAmount,
         Guid                   userId,
-        Func<TEntity>          create)
+        Func<TEntity>          create,
+        string                 totalLabel = "申請總額")
         where TEntity : class, IInstallmentEntity
     {
         // 共用驗證（序號連續 / SUM == 總額 / 已撥款列保護）
         var existingSnap = existing
             .Select(i => (i.Id, i.InstallmentNo, i.ExpectedDate, i.PaidAt, i.Amount))
             .ToList();
-        InstallmentValidator.Validate(inputs, totalAmount, existingSnap);
+        InstallmentValidator.Validate(inputs, totalAmount, existingSnap, totalLabel);
 
         var nowUtc      = DateTime.UtcNow;
         var taipeiTz    = TimeZoneInfo.FindSystemTimeZoneById("Asia/Taipei");

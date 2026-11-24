@@ -17,11 +17,13 @@ public static class InstallmentValidator
     /// </summary>
     /// <param name="inputs">前端送來的分期清單</param>
     /// <param name="totalAmount">申請總金額（PaymentRequest.TotalAmount 或其他三類的 GrandTotal）</param>
+    /// <param name="totalLabel">錯誤訊息中總額的稱呼（預支單為「應撥總額」，見 AdvancePayable）</param>
     /// <param name="existing">既有的分期紀錄（用於檢查已撥款列保護）— 提供 (Id, InstallmentNo, ExpectedDate, PaidAt, Amount) 五欄</param>
     public static void Validate(
         List<InstallmentInput> inputs,
         decimal totalAmount,
-        IReadOnlyList<(int Id, int InstallmentNo, DateTime ExpectedDate, DateTime? PaidAt, decimal Amount)> existing)
+        IReadOnlyList<(int Id, int InstallmentNo, DateTime ExpectedDate, DateTime? PaidAt, decimal Amount)> existing,
+        string totalLabel = "申請總額")
     {
         if (inputs is null || inputs.Count == 0)
             throw AppException.BadRequest("至少需要 1 筆撥款明細。");
@@ -40,13 +42,13 @@ public static class InstallmentValidator
             if (i.Amount <= 0m)
                 throw AppException.BadRequest($"第 {i.InstallmentNo} 期撥款金額必須大於 0。");
             if (i.Amount > totalAmount + 0.01m)
-                throw AppException.BadRequest($"第 {i.InstallmentNo} 期撥款金額不可超過申請總額（{totalAmount:N2}）。");
+                throw AppException.BadRequest($"第 {i.InstallmentNo} 期撥款金額不可超過{totalLabel}（{totalAmount:N2}）。");
         }
 
         // 金額加總驗證
         var sum = inputs.Sum(i => i.Amount);
         if (Math.Abs(sum - totalAmount) > 0.01m)
-            throw AppException.BadRequest($"各筆金額加總（{sum:N2}）需等於申請總額（{totalAmount:N2}）。");
+            throw AppException.BadRequest($"各筆金額加總（{sum:N2}）需等於{totalLabel}（{totalAmount:N2}）。");
 
         // 已撥款列保護：對於 existing 中 PaidAt.HasValue 的列，inputs 中不可改 ExpectedDate / Amount，且不可刪除
         var existingPaid = existing.Where(e => e.PaidAt.HasValue).ToDictionary(e => e.Id);

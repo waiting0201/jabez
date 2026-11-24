@@ -679,10 +679,14 @@ public sealed class AdvanceRequestHandler(
         if (body is null)
             return new BadRequestObjectResult(ApiResponse.Fail("Invalid request body."));
 
+        // 應撥總額 ＝ 現金預支 ＋ 月結應撥（有已核准沖銷即改用沖銷的月結實際金額，見 AdvancePayable）
+        var payableTotal = await AdvancePayable.TotalAsync(db, ar.Id, ar.GrandTotal, ar.CheckTotal);
+
         // 共用 validate + diff（不 SaveChanges）
         var newlyPaid = InstallmentUpsertService.Apply(
-            db, ar.Installments, body.Installments, ar.GrandTotal, userId,
-            () => new AdvanceRequestInstallment { AdvanceRequestId = ar.Id });
+            db, ar.Installments, body.Installments, payableTotal, userId,
+            () => new AdvanceRequestInstallment { AdvanceRequestId = ar.Id },
+            totalLabel: "應撥總額");
 
         await db.SaveChangesAsync();
 

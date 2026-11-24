@@ -1627,10 +1627,10 @@
                     mode="review"
                     [required]="true"
                     [title]="applicationType === 'write_off' ? '本次現金沖銷差額撥款明細' : '撥款明細'"
-                    [totalLabel]="applicationType === 'write_off' ? '應撥差額' : '申請總額'"
+                    [totalLabel]="applicationType === 'write_off' ? '應撥差額' : applicationType === 'advance' ? '應撥總額' : '申請總額'"
                     [totalAmount]="getInstallmentTotal(task)"
                     [installments]="getInstallments(task)"
-                    [checkTotal]="task.advanceDetail ? task.advanceDetail.checkTotal : null"
+                    [checkTotal]="task.advanceDetail ? (task.advanceDetail.payableCheckTotal ?? task.advanceDetail.checkTotal) : null"
                     [error]="installmentsError()"
                     [hint]="applicationType === 'write_off'
                       ? '本次沖銷的現金超出預支現金，財務核准時必須填寫差額撥款明細（只算現金、補撥同仁；月結超支不在此列）（加總須等於應撥差額）；核准後可回來修改未撥款的列或填入實際撥款日。'
@@ -1650,15 +1650,15 @@
                     #advanceInstallmentsEditor
                     mode="manage"
                     title="關聯預支單撥款明細"
-                    totalLabel="預支總額"
-                    [totalAmount]="task.writeOffDetail.advanceGrandTotal"
+                    totalLabel="應撥總額"
+                    [totalAmount]="task.writeOffDetail.advancePayableTotal ?? task.writeOffDetail.advanceGrandTotal"
                     [installments]="task.writeOffDetail.advanceInstallments"
-                    [checkTotal]="task.writeOffDetail.advanceCheckTotal ?? 0"
+                    [checkTotal]="task.writeOffDetail.advancePayableCheckTotal ?? task.writeOffDetail.advanceCheckTotal ?? 0"
                     [statusLabel]="task.writeOffDetail.advancePaymentStatus ? getStatusBadgeLabel(task.writeOffDetail.advancePaymentStatus) : null"
                     [statusClass]="task.writeOffDetail.advancePaymentStatus ? getStatusBadgeClass(task.writeOffDetail.advancePaymentStatus) : ''"
                     [message]="advInstallmentsMsg()"
                     [error]="advInstallmentsError()"
-                    hint="此區塊直接讀寫預支申請單 {{ task.writeOffDetail.advanceRequestNo }} 的撥款明細，儲存後與預支申請單完全同步。"
+                    hint="此區塊直接讀寫預支申請單 {{ task.writeOffDetail.advanceRequestNo }} 的撥款明細，儲存後與預支申請單完全同步。應撥總額＝現金預支＋月結應撥；月結在有已核准的沖銷後改用沖銷的月結實際金額（本張沖銷核准後才計入），未撥款的月結列請依實際金額調整。"
                     (save)="submitAdvanceInstallments(task, $event)" />
                 }
                 <div class="mb-4">
@@ -1790,10 +1790,10 @@
                   #installmentsEditor
                   mode="manage"
                   [title]="applicationType === 'write_off' ? '設定現金沖銷差額撥款明細' : '設定撥款明細'"
-                  [totalLabel]="applicationType === 'write_off' ? '應撥差額' : '申請總額'"
+                  [totalLabel]="applicationType === 'write_off' ? '應撥差額' : applicationType === 'advance' ? '應撥總額' : '申請總額'"
                   [totalAmount]="getInstallmentTotal(task)"
                   [installments]="getInstallments(task)"
-                  [checkTotal]="task.advanceDetail ? task.advanceDetail.checkTotal : null"
+                  [checkTotal]="task.advanceDetail ? (task.advanceDetail.payableCheckTotal ?? task.advanceDetail.checkTotal) : null"
                   [statusLabel]="getPaymentStatus(task) ? getStatusBadgeLabel(getPaymentStatus(task)!) : null"
                   [statusClass]="getPaymentStatus(task) ? getStatusBadgeClass(getPaymentStatus(task)!) : ''"
                   [message]="installmentsMsg()"
@@ -1808,15 +1808,15 @@
                   #advanceInstallmentsEditor
                   mode="manage"
                   title="關聯預支單撥款明細"
-                  totalLabel="預支總額"
-                  [totalAmount]="task.writeOffDetail.advanceGrandTotal"
+                  totalLabel="應撥總額"
+                  [totalAmount]="task.writeOffDetail.advancePayableTotal ?? task.writeOffDetail.advanceGrandTotal"
                   [installments]="task.writeOffDetail.advanceInstallments"
-                    [checkTotal]="task.writeOffDetail.advanceCheckTotal ?? 0"
+                    [checkTotal]="task.writeOffDetail.advancePayableCheckTotal ?? task.writeOffDetail.advanceCheckTotal ?? 0"
                   [statusLabel]="task.writeOffDetail.advancePaymentStatus ? getStatusBadgeLabel(task.writeOffDetail.advancePaymentStatus) : null"
                   [statusClass]="task.writeOffDetail.advancePaymentStatus ? getStatusBadgeClass(task.writeOffDetail.advancePaymentStatus) : ''"
                   [message]="advInstallmentsMsg()"
                   [error]="advInstallmentsError()"
-                  hint="此區塊直接讀寫預支申請單 {{ task.writeOffDetail.advanceRequestNo }} 的撥款明細，儲存後與預支申請單完全同步。"
+                  hint="此區塊直接讀寫預支申請單 {{ task.writeOffDetail.advanceRequestNo }} 的撥款明細，儲存後與預支申請單完全同步。應撥總額＝現金預支＋月結應撥；月結在有已核准的沖銷後改用沖銷的月結實際金額（本張沖銷核准後才計入），未撥款的月結列請依實際金額調整。"
                   (save)="submitAdvanceInstallments(task, $event)" />
               }
               @if (canCloseAfterApproval(task)) {

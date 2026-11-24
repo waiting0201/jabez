@@ -178,9 +178,13 @@ public sealed class WriteOffRequestReadService(IDbConnection db, IInstallmentRea
                       .GetValueOrDefault(id, []);
         var advInst = (await installments.GetByParentIdsAsync(InstallmentParentTable.AdvanceRequest, [dto.AdvanceRequestId]))
                       .GetValueOrDefault(dto.AdvanceRequestId, []);
+        var approvedWo = (await AdvancePayable.LoadApprovedWriteOffsAsync(db, [dto.AdvanceRequestId]))
+                         .GetValueOrDefault(dto.AdvanceRequestId);
 
         return dto with
         {
+            AdvancePayableTotal      = AdvancePayable.TotalOf(dto.AdvanceGrandTotal, dto.AdvanceCheckTotal, approvedWo),
+            AdvancePayableCheckTotal = AdvancePayable.CheckOf(dto.AdvanceCheckTotal, approvedWo),
             DesignatedReviewers  = designatedReviewers.Length > 0 ? designatedReviewers : null,
             Attachments          = attachments.Length > 0 ? attachments : null,
             AdvanceRounds        = advanceRounds,
